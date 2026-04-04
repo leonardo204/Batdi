@@ -39,7 +39,7 @@
 - **[UI/UX 디자인 지침 v2](docs/plan/batdi-uiux-guideline.md)** — 디자인 토큰·A2UI 팔레트·CopilotChat 통합·디자이너 핸드오프
 - [Context DB](Ref-docs/claude/context-db.md) — SQLite 기반 세션/태스크/결정 저장소
 - [Context Monitor](Ref-docs/claude/context-monitor.md) — HUD + compaction 감지/복구
-- [컨벤션](Ref-docs/claude/conventions.md) — 커밋, 주석, 로깅 규칙
+- [컨벤션](Ref-docs/claude/conventions.md) — 커밋 · 주석 · 로깅 · **Mermaid 다이어그램** 규칙 (코드 룰만이 아님)
 - [셋업](Ref-docs/claude/setup.md) — 새 환경 초기 설정
 
 ### 핵심 규칙 (문서 SSOT)
@@ -64,6 +64,7 @@
 - **팀 컬러는 `data-team` 속성 스위치**: `--team-primary` 변수만 참조
 - **CopilotKit `useCopilotReadable`로 상태 노출**: user/team/level/profile/game/recent는 자동 컨텍스트, 프롬프트 중복 금지
 - **CopilotKit `useCopilotAction` 툴은 백엔드 검증 API와 1:1 매핑**: LLM 악용 방지
+- **Mermaid 다이어그램 작성 시 [컨벤션](Ref-docs/claude/conventions.md) 준수**: 노드 라벨 `()` 괄호 금지(`—`/쉼표로 대체), `\n` 금지(`<br>` 사용), 마크다운 문법(`#`, `**`, `` ` ``) 금지, 넘버링은 `A.` `B.` 문자 사용. 컨벤션 문서는 코드 룰뿐 아니라 다이어그램 룰도 포함
 
 ---
 

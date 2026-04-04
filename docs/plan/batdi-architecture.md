@@ -20,6 +20,63 @@
 
 ## 1. 전체 시스템 토폴로지
 
+### 1.0 시스템 구성도 (Mermaid)
+
+```mermaid
+flowchart TB
+    subgraph Client["클라이언트 — Next.js 14+ App Router"]
+        CP["CopilotKitProvider<br>A2UIRenderer<br>CopilotChat headless"]
+        UR["useCopilotReadable<br>user, team, profile, game"]
+        UA["useCopilotAction<br>registerFavoritePlayer 외 7종"]
+    end
+
+    subgraph Edge["Edge — Phase 6 이후"]
+        CF["Cloudflare Pages + Tunnel"]
+        FCM["FCM Web Push"]
+    end
+
+    subgraph Server["서버 — Mac 로컬 P0~P5 / Linux P6+"]
+        NEST["NestJS<br>copilotRuntimeNestEndpoint"]
+        RT["CopilotRuntime<br>MultiLLMAdapter<br>GoogleGenerativeAIAdapter"]
+
+        subgraph Graph["Core LangGraph CoAgent"]
+            G["InputGuardrail → IntentRouter<br>→ CacheLookup → PersonalContext<br>→ ServiceSubgraph<br>→ UIComposer → UIValidator<br>→ DataBinder → TeamPersona<br>→ OutputGuardrail → EmitA2UI"]
+        end
+
+        subgraph Sub["Service Subgraphs"]
+            S1["ScoreGraph"]
+            S2["StatsGraph"]
+            S3["NewsGraph"]
+            S4["ChatGraph"]
+            S5["MemeGraph"]
+        end
+
+        PA["PersonalAgent Service<br>사용자별 컨텍스트 공급"]
+        DA["DataAgent 배치 크롤러<br>Playwright, cheerio"]
+    end
+
+    subgraph Data["데이터·관측"]
+        PG["PostgreSQL 16 단일<br>users, messages, personal_agent_state<br>cache_ui_envelopes, a2ui_templates<br>players, memes, agent_traces"]
+        LF["Langfuse 셀프호스팅<br>트레이스, 비용, 에러"]
+    end
+
+    CP -->|"AG-UI Protocol<br>HTTP + SSE"| CF
+    CF --> NEST
+    NEST --> RT
+    RT --> Graph
+    Graph --> Sub
+    Graph --> PA
+    Graph --> PG
+    DA --> PG
+    Graph --> LF
+    RT --> LF
+    UR -.->|"자동 컨텍스트 주입"| RT
+    UA <-->|"ToolCall + ToolResult"| Graph
+    FCM -.->|"P6 이후"| CP
+```
+
+### 1.1 ASCII 참조도
+
 ```
                      [Cloudflare CDN]
                             │
@@ -91,6 +148,49 @@
 ---
 
 ## 2. AG-UI Protocol 통신 계약
+
+### 2.0 메시지 시퀀스 (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant U as 사용자
+    participant C as CopilotKit Provider
+    participant R as CopilotRuntime
+    participant G as Core LangGraph
+    participant P as PostgreSQL
+    participant L as Langfuse
+
+    U->>C: 메시지 입력 — 한화 경기 어때
+    C->>R: POST /api/copilotkit<br>useCopilotReadable 자동 포함
+    R->>G: 그래프 실행 시작
+    G-->>C: RunStarted
+    C-->>U: TypingIndicator 표시
+
+    G->>G: InputGuardrail 통과
+    G->>G: IntentRouter — score, general
+    G->>P: CacheLookup L0
+    P-->>G: MISS
+
+    G->>P: ServiceSubgraph ScoreGraph
+    P-->>G: ScoreData
+    G->>G: UIComposer L2 Template 선택
+    G-->>C: StateSnapshot, StateDelta
+    G->>G: UIValidator 통과
+    G->>G: DataBinder DB 값 치환
+    G->>G: TeamPersona 한화 톤
+    G-->>C: A2UIEnvelope<br>surfaceUpdate, dataModelUpdate, beginRendering
+    C-->>U: A2UIRenderer 카드 렌더
+
+    G->>R: LLM 호출 Flash 50 tokens
+    R-->>C: TextMessageChunk stream
+    C-->>U: 리액션 스트리밍 누적
+    G->>G: OutputGuardrail 통과
+    G-->>C: RunFinished
+    C-->>U: TypingIndicator 제거, 입력 활성화
+
+    G->>L: 트레이스 기록<br>노드별 latency, tokens, 비용
+    G->>P: agent_traces 저장
+```
 
 ### 2.1 프론트 → 백엔드 (사용자 메시지)
 
@@ -165,7 +265,42 @@ type CoreState = {
 };
 ```
 
-### 3.2 노드 흐름
+### 3.2 노드 흐름 (Mermaid)
+
+```mermaid
+flowchart TD
+    S([Start]) --> IG["InputGuardrail<br>일베, 비속어, 해킹, 아동보호"]
+    IG -->|fail| ER["ErrorResponse<br>팀별 fallback 메시지"]
+    IG -->|pass| IR["IntentRouter<br>키워드 분류, LLM 미사용"]
+    IR --> CL["CacheLookup<br>L0 envelope 조회"]
+
+    CL -->|L0 HIT| RE["ReturnEnvelope"]
+    RE --> E([End])
+
+    CL -->|miss| PC["PersonalContext<br>DB 로드"]
+    PC --> SS["ServiceSubgraph<br>Score, Stats, News, Chat, Meme"]
+    SS --> UC{"UIComposer<br>complexity 판정"}
+
+    UC -->|simple| T1["L1 Template 선택<br>LLM 0회"]
+    UC -->|general| T2["L1 Template + L2 리액션<br>LLM 1회"]
+    UC -->|composite| T3["L3 Full UIComposer<br>A2UI spec 생성"]
+
+    T1 --> UV["UIValidator<br>Schema, 팔레트, 바인딩"]
+    T2 --> UV
+    T3 --> UV
+
+    UV -->|fail| FB["Fallback<br>기본 Template"]
+    FB --> DB2["DataBinder<br>DB 실값 치환"]
+    UV -->|pass| DB2
+
+    DB2 --> TP["TeamPersona<br>감정 톤 주입"]
+    TP --> OG["OutputGuardrail<br>팩트체크, 필터"]
+    OG --> EA["EmitA2UIEnvelope<br>AG-UI stream"]
+    EA --> E
+    ER --> E
+```
+
+### 3.3 ASCII 참조
 
 ```
 [Start]
@@ -202,6 +337,39 @@ type CoreState = {
 ---
 
 ## 4. 4단계 캐시 아키텍처
+
+### 4.0 캐시 결정 플로우 (Mermaid)
+
+```mermaid
+flowchart TD
+    Q["사용자 질의<br>IntentRouter 결과"] --> K["CacheKey 생성<br>hash intent + params + teamId + date"]
+    K --> L0{"L0 Envelope<br>cache_ui_envelopes"}
+
+    L0 -->|HIT| R0["envelope 즉시 반환<br>LLM 0회, 약 200ms"]
+    L0 -->|MISS| FETCH["ServiceSubgraph<br>DB 데이터 조회"]
+
+    FETCH --> COMP{"complexity 판정"}
+
+    COMP -->|simple| L1["L1 Template + Binding<br>LLM 0회, 약 500ms"]
+    COMP -->|general| L2["L2 Template + 리액션<br>LLM 1회 Flash, 약 800ms"]
+    COMP -->|composite| L3["L3 Full UIComposer<br>LLM 1~2회 Flash, 약 2~3s"]
+
+    L1 --> SAVE["envelope 저장<br>expires_at 설정"]
+    L2 --> SAVE
+    L3 --> SAVE
+    SAVE --> R["A2UI envelope 반환"]
+    R0 --> R
+
+    R --> AGUI["AG-UI stream → 프론트"]
+
+    INV["경기 상태 변경<br>TTL 만료"] -.->|무효화| L0
+```
+
+**TTL 정책**
+- A. 스코어 경기 중: 1~5분
+- B. 순위표: 1시간
+- C. 선수 기본 스탯: 1일
+- D. 뉴스: 30분
 
 ### 4.1 캐시 레이어
 
@@ -387,6 +555,53 @@ interface LLMAdapter {
 ---
 
 ## 7. CoAgents 계층 구조
+
+### 7.0 계층 구조도 (Mermaid)
+
+```mermaid
+flowchart TB
+    subgraph L1["상위 CoAgent"]
+        Core["Core CoAgent<br>가드레일, 라우팅, 캐시<br>오케스트레이션, UI 조립"]
+    end
+
+    subgraph L2["Service Subgraphs — 독립 LangGraph"]
+        SG1["ScoreGraph<br>실시간 스코어"]
+        SG2["StatsGraph<br>선수, 팀 스탯"]
+        SG3["NewsGraph<br>뉴스 검색, 요약"]
+        SG4["ChatGraph<br>잡담, 대화"]
+        SG5["MemeGraph<br>밈, 유머"]
+    end
+
+    subgraph L3["비 CoAgent Services"]
+        PAS["PersonalAgent Service<br>사용자별 컨텍스트"]
+        TP["TeamPersona 프롬프트<br>한화, 두산, 기아, 롯데"]
+        LV["LevelAgent Service<br>XP, 레벨 규칙"]
+    end
+
+    subgraph L4["Background"]
+        DA["DataAgent<br>배치 크롤러<br>주기 크롤링, 적재"]
+    end
+
+    Core -->|invoke| SG1
+    Core -->|invoke| SG2
+    Core -->|invoke| SG3
+    Core -->|invoke| SG4
+    Core -->|invoke| SG5
+
+    PAS -.->|주입| Core
+    PAS -.->|주입| SG1
+    PAS -.->|주입| SG2
+    PAS -.->|주입| SG3
+    PAS -.->|주입| SG4
+
+    TP -.->|주입| Core
+    LV -.->|이벤트| Core
+    DA -->|적재| DB[(PostgreSQL)]
+    SG1 -->|조회| DB
+    SG2 -->|조회| DB
+    SG3 -->|조회| DB
+    SG5 -->|조회| DB
+```
 
 ### 7.1 Core CoAgent (상위 그래프)
 
