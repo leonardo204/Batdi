@@ -54,7 +54,13 @@
 - **LangGraph 병렬 실행**: 의존성 없는 I/O(PersonalContext DB + ServiceSubgraph)는 `Promise.all` 병렬. CacheLookup MISS 후 즉시 분기
 - **크롤링 3단계 + healthScore**: T1 실시간스코어·뉴스(필수) / T2 기본스탯(P3) / T3 세이버(선택). 연속 실패 3회 시 자동 비활성 + graceful degradation
 - **IntentRouter는 LLM 미사용**: 키워드·정규식 라우팅. 미매칭 → `chat` 기본값
-- **Gemini Context Caching 필수**: 팀별 시스템 프롬프트 캐시 (75% 입력 토큰 할인)
+- **Gemini Context Caching MVP 보류**: 현재 시스템 프롬프트 ~2K 토큰 < API 최소 32K 요건. 프롬프트 32K 돌파 시 재도입 → [architecture §6.3](docs/plan/batdi-architecture.md)
+- **PersonalAgent 상태는 Write-through**: message_count/last_active/favorites/custom_persona는 이벤트 즉시 DB 반영. 인메모리는 읽기 캐시만 → [service-plan §3.5](docs/plan/batdi-service-plan.md)
+- **UIValidator 실패 시 LLM 재호출 금지**: 즉시 L1 Template fallback + Langfuse 비동기 로깅 (레이턴시 우선) → [architecture §5.4](docs/plan/batdi-architecture.md)
+- **CLS 0 원칙**: `RunStarted` 즉시 `<TypingIndicator>` + intent별 `<SkeletonCard>` 사전 렌더. A2UIEnvelope 도착 시 in-place swap → [uiux §5.4](docs/plan/batdi-uiux-guideline.md)
+- **L0 캐시는 비개인화 응답만**: 캐시 키에 `personaScope` 포함(`default`/`team_only`). custom_persona·personal_profile·favorites 주입된 응답은 write 금지 (Cache Poisoning 방지) → [architecture §4.2](docs/plan/batdi-architecture.md)
+- **DB 커넥션은 PgBouncer 경유**: transaction pooling, `agent_traces`·tool_call_logs·Langfuse는 비동기 배치(1초·100건 bulk insert)로 분리 → [architecture §10.3](docs/plan/batdi-architecture.md)
+- **LangGraph State는 summary만 담는다**: ServiceSubgraph 종단에서 `serviceDataSummary`(<1KB, LLM용) + `serviceDataRef`(전체 payload 핸들, DataBinder 전용)로 분리. 전체 payload 프롬프트 주입 금지 → [architecture §3.5](docs/plan/batdi-architecture.md)
 - **크롤링 부하 제한**: 요청 간격 10초+·동시 1·robots.txt 준수. 금지: 네이버/다음
 - **입력은 Normalizer 통과 후 매칭**: 모든 정규식 필터는 `userMessageNormalized`(NFKC+자모+homoglyph+이모지 제거) 기준. 원문은 LLM 전달용으로만 보존
 - **가드레일 3중 검증**: Input(일베/비속어/프롬프트해킹/아동보호/Semantic) + Output(팩트체크/비속어 재검증) + 커스텀 페르소나 저장 시
@@ -71,4 +77,4 @@
 
 ---
 
-*최종 업데이트: 2026-04-04*
+*최종 업데이트: 2026-04-05*

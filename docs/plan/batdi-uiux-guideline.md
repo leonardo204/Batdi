@@ -348,11 +348,17 @@ export function Scoreboard(props: ScoreboardProps) {
 
 CopilotKit AG-UI Protocol 이벤트를 직접 사용:
 
-1. **`RunStarted` 수신 (0ms)** → `<TypingIndicator>` 팀별 텍스트 표시
-2. **`StateSnapshot`/`StateDelta`** → 내부 디버깅 (옵션, 개발모드에서만 표시)
-3. **`A2UIEnvelope` 수신** → `surfaceUpdate` 즉시 렌더 (fade-in)
+1. **`RunStarted` 수신 (0ms)** → `<TypingIndicator>` + **intent 기반 `<SkeletonCard>` 사전 렌더**로 DOM 공간 선점 (CLS 0)
+2. **`StateSnapshot`/`StateDelta`** (intent 확정) → 스켈레톤 종류 확정 (scoreboard/news/stats/...)
+3. **`A2UIEnvelope` 수신** → `surfaceUpdate`가 스켈레톤 슬롯을 **in-place 교체** (레이아웃 이동 없이 fade-in)
 4. **`TextMessageChunk` 스트리밍** → A2UI `{{llm.reaction}}` 슬롯에 문자 단위 누적
 5. **`RunFinished`** → TypingIndicator 제거, 입력창 활성화
+
+**Layout Shift (CLS) 방어 원칙**
+
+- IntentRouter가 `StateSnapshot` 초기에 의도(`score`/`news`/`stats`/`chat`…)를 노출하므로, 프론트는 그 즉시 해당 intent의 스켈레톤 박스를 예약된 높이(§5.4)로 렌더.
+- `<TypingIndicator>` + `<SkeletonCard>`가 **함께** 나타나 DOM 공간을 잡는다. A2UIEnvelope 도착 시 스켈레톤 영역을 동일 박스 크기의 실제 widget으로 swap → 스크롤 이동 0.
+- shimmer 애니메이션은 쓰지 않는다 (조용한 세련됨). 1px 배경·border만으로 placeholder 표현.
 
 **캐시 경로별 체감 속도**
 - L0 HIT: ~200ms (envelope 즉시 반환)
@@ -385,9 +391,21 @@ LLM이 `useCopilotAction`을 호출할 때 프론트 UI 피드백:
 - `Esc` 모달 닫기, 입력 취소
 - 모든 인터랙티브 요소 `focus-visible` 링 (`outline: 2px solid var(--team-primary)`)
 
-### 5.4 로딩·빈 상태·에러
+### 5.4 로딩·빈 상태·에러 + Intent별 스켈레톤 높이 예약
 
-- **스켈레톤** — 카드 대기 시 (shimmer 애니메이션 없이 정적)
+- **스켈레톤 (shimmer 없음, 정적)** — `<TypingIndicator>`와 함께 DOM 공간 선점하여 CLS 0 보장.
+- **Intent별 예약 높이** (실제 widget과 동일 박스 크기):
+
+| Intent | 스켈레톤 컴포넌트 | 예약 높이 (mobile) |
+|--------|-------------------|-------------------|
+| `score` | `<SkeletonScoreboard>` | 140px |
+| `stats` | `<SkeletonStatsCard>` | 180px |
+| `news` | `<SkeletonNewsList>` | 220px (3건 기본) |
+| `schedule` | `<SkeletonScheduleList>` | 160px |
+| `chat`/`meme` | 스켈레톤 없음 (텍스트만) | — |
+| `composite` (L3) | 범용 `<SkeletonBlock>` | 200px |
+
+- **교체 방식**: `A2UIEnvelope` 도착 시 스켈레톤 영역을 실제 widget으로 in-place swap. 높이 오차는 `min-height` + `transition: min-height 180ms` 으로 흡수.
 - **빈 상태** — 일러스트 대신 단문 1줄 + 유도 CTA (촌스러운 3D 일러스트 금지)
 - **에러** — Toast (우상단, 3초 자동 닫힘) + 페르소나 Fallback 메시지 (플랜 §10.1)
 

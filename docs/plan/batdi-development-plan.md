@@ -72,6 +72,8 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 | 1.3 | `copilotRuntimeNestEndpoint` 컨트롤러 `/api/copilotkit` + `GoogleGenerativeAIAdapter` | PoC 1 재현 |
 | 1.4 | `MultiLLMAdapter` 인터페이스 + GeminiAdapter 구현 + `FreeQuotaTracker` | 모델 4종 라우팅 유닛테스트 |
 | 1.5 | Langfuse SDK 연동 + trace decorator | 모든 LLM 호출이 Langfuse에 기록 |
+| 1.6 | **PgBouncer 컨테이너** 추가 (`docker-compose.yml`, transaction pooling, `default_pool_size=25`, `max_client_conn=200`) + Prisma `DATABASE_URL` PgBouncer 경유 | `/health`에서 DB connection 확인 |
+| 1.7 | **TraceCollector 비동기 배치 writer** — 인메모리 큐 → 1초·100건 단위 bulk INSERT `agent_traces` + 로컬 retry buffer | 부하 테스트 100rps에서 DB 동기 트랜잭션 ≤2건/요청 |
 
 ### W2: Core LangGraph 최소 그래프
 
@@ -91,6 +93,7 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 | 3.2 | 이메일 가입/로그인 UI + JWT 저장(HttpOnly cookie) + `/dev/mock-login` | 로그인 → `/chat` 이동 |
 | 3.3 | 온보딩 페이지 (팀 선택 4개, 페르소나 스타일) | `users.team_id` 저장 |
 | 3.4 | `CopilotKitProvider` + `A2UIRenderer` + `CopilotChat` headless + 커스텀 테마 (팀 컬러 `data-team`) | 한화 선택 시 오렌지 악센트 |
+| 3.4b | `<TypingIndicator>` + intent별 `<SkeletonCard>` 사전 렌더 (score/news/stats/schedule/composite 5종, uiux-guideline §5.4) | CLS=0, AG-UI `StateSnapshot` intent 확정 시 스켈레톤 고정 |
 | 3.5 | `useCopilotReadable` 6종 등록 (user/team/level/profile/game/recent) | 프롬프트 출력에 자동 포함 |
 | 3.6 | PWA manifest + 서비스워커 등록 | Lighthouse PWA installability 통과 |
 
@@ -116,7 +119,7 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 | 4.3 | `SemanticGuardrail` Flash-Lite 2단계 필터 | 우회 표현 10건 차단 |
 | 4.4 | `LightweightIntentRouter` — intent 7종 + complexity 3단계 분류 | 샘플 30건 분류 정확도 95%+ |
 | 4.5 | `CacheLookup` L0 구현 + `cache_ui_envelopes` 히트/미스 로직 + TTL 정리 배치 | HIT 시 LLM 호출 0건 확인 |
-| 4.6 | Gemini Context Caching 시스템 프롬프트 캐시 (팀별 1 entry, TTL 1h) | 입력 토큰 ≤25% 과금 확인 |
+| 4.6 | ~~Gemini Context Caching~~ — **MVP 보류** (프롬프트 ~2K 토큰 < API 최소 32K). 시스템 프롬프트는 매 요청 주입. 32K 돌파 시 재도입 (architecture §6.3) | 보류 결정 ADR 기록 |
 | 4.7 | **LangGraph 병렬 엣지** — `CacheLookup` MISS → `PersonalContext` + `ServiceSubgraph` 동시 디스패치 → `Join` 노드 | 병렬 실행 trace 확인, L2 체감 속도 약 30% 단축 |
 | 4.8 | **XML 프롬프트 조립기** `PromptBuilder` — `<system_base>`/`<team_persona>`/`<personal_profile>`/`<user_instruction>`/`<current_situation>` priority 기반 조립 | 단위테스트 5종 통과 |
 
@@ -179,7 +182,7 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 
 | # | DoD |
 |---|-----|
-| 9.1 | L3 UIComposer: LLM이 A2UI spec 생성 + UIValidator 통과 + 재시도 1회 | 복합 질의 "문동주 vs 양의지 상대전적 + 올시즌" → 조합 카드 |
+| 9.1 | L3 UIComposer: LLM이 A2UI spec 생성 + UIValidator 통과 (**재호출 없음, 실패 시 L1 즉시 fallback**) | 복합 질의 "문동주 vs 양의지 상대전적 + 올시즌" → 조합 카드, fallback 경로 trace 검증 |
 | 9.2 | 3단계 메모리: Working(20건) + Session 요약(Flash-Lite) + Long-term profile | 20건 초과 시 증분 요약 |
 | 9.3 | 세션 종료 트리거 (30분/자정/명시적) + 최종 요약 | `conversations.summary` 자동 |
 | 9.4 | `PersonalAgent.learnFromConversation` + Batch API (Flash-Lite 50% 할인) | 50건마다 프로필 갱신 |
@@ -311,7 +314,7 @@ P6 인프라 이관 (1~2주) — Linux PC+도메인+CF+OAuth+FCM+v1.0 공개
 | 리스크 | 발견 시기 | 대응 |
 |--------|----------|------|
 | CopilotKit/LangGraph 러닝커브 | P0 | PoC 4종으로 리스크 선노출 |
-| A2UI Schema 위반 높음 | P2~P3 | UIValidator 재호출 1회 + L1 Template fallback |
+| A2UI Schema 위반 높음 | P2~P3 | UIValidator 실패 시 **재호출 없이** L1 Template 즉시 fallback + Langfuse 비동기 로깅 (레이턴시 우선) |
 | Statiz/KBO 봇 차단 | P0 | 다중 소스 fallback 즉시 설계 |
 | 크롤링 사이트 변경 | P3~ | 추상화 계층 + 실패 3회 자동 비활성 |
 | LangGraph state 복잡도 | P2~P3 | Langfuse 트레이스 + subgraph 격리 |

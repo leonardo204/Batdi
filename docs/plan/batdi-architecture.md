@@ -164,7 +164,8 @@ sequenceDiagram
     C->>R: POST /api/copilotkit<br>useCopilotReadable 자동 포함
     R->>G: 그래프 실행 시작
     G-->>C: RunStarted
-    C-->>U: TypingIndicator 표시
+    C-->>U: TypingIndicator + Intent별 SkeletonCard 사전 렌더 — CLS 0
+    G-->>C: StateSnapshot intent 확정
 
     G->>G: InputGuardrail 통과
     G->>G: IntentRouter — score, general
@@ -254,8 +255,10 @@ type CoreState = {
   personalContext: PersonalContext;
   teamPersona: TeamPersonaPrompt;
 
-  // 서비스 데이터
-  serviceData: ServiceAgentOutput;     // DB 조회 결과, 바인딩 소스
+  // 서비스 데이터 — LLM 프롬프트용 요약과 DataBinder용 전체를 분리 (§3.5 Payload 최적화)
+  serviceDataSummary: ServiceSummary;  // LLM 주입용 경량 (예: Top5 플레이어, 스코어 핵심 지표 — <1KB)
+  serviceDataRef: string;              // 전체 원본 핸들 (Map에 저장, State 밖)
+  // ServiceSubgraph 내부에서만 전체 데이터 접근. 외부 노드는 Summary만 참조.
 
   // UI
   a2uiEnvelope?: A2UIEnvelope;         // 최종 렌더링 메시지
@@ -265,7 +268,7 @@ type CoreState = {
   ioPhase: 'cache' | 'parallel_fetch' | 'sequential_compose';
   parallelResults: {
     personalContext?: PersonalContext;
-    serviceData?: ServiceAgentOutput;
+    serviceDataSummary?: ServiceSummary;  // full payload는 별도 Store
   };
 
   // 메타
@@ -397,6 +400,41 @@ const result = filter.check(state.userMessageNormalized);
 
 **성능**: Normalizer 전체 파이프라인 <1ms (500자 메시지 기준).
 
+### 3.5 ServiceData Payload 분리 (State Bloat 방지)
+
+**문제**: StatsGraph가 수십 명 선수 레코드를, NewsGraph가 긴 기사 배열을 긁어와 serviceData에 담으면 State가 수백 KB까지 부풀고, LangGraph 노드마다 복사되어 메모리를 잡아먹는다. 프롬프트에 그대로 주입하면 토큰 낭비 + LLM 집중력 저하.
+
+**분리 원칙**
+
+| 영역 | 저장 위치 | 크기 | 용도 |
+|------|----------|------|------|
+| `serviceDataSummary` | State (CoreState) | < 1KB | LLM 프롬프트 주입 (핵심 지표만: 타율 Top5, 스코어 요약 3필드) |
+| 전체 원본 payload | **ServiceDataStore** (요청 스코프 Map, State 밖) | 제한 없음 | DataBinder가 `serviceDataRef` 핸들로 조회해 A2UI 바인딩 |
+
+**전처리 로직 (ServiceSubgraph 내부)**
+
+```typescript
+// subgraph 내 종단 노드
+async function finalize(fullData: PlayerStats[]): Promise<SubgraphOutput> {
+  const ref = store.put(fullData);  // UUID 핸들 발급
+  const summary: ServiceSummary = {
+    type: 'stats',
+    highlights: fullData.slice(0, 5).map(p => ({
+      name: p.name, avg: p.avg, hr: p.hr   // LLM이 쓸 핵심 지표만
+    })),
+    totalCount: fullData.length,
+    // 긴 텍스트·비핵심 필드 제외
+  };
+  return { serviceDataSummary: summary, serviceDataRef: ref };
+}
+```
+
+**규칙**
+- **State에 실리는 serviceDataSummary는 최대 1KB** (검증 노드가 size 초과 시 잘라냄)
+- **LLM 프롬프트는 summary만 참조**. 전체 payload를 프롬프트에 넣는 것 금지.
+- **DataBinder만 store에서 full payload 꺼내씀** → `{{bind:"data.path"}}` 해석 시 ref 경유
+- 요청 종료 시 store 엔트리 자동 GC
+
 ---
 
 ## 4. 4단계 캐시 아키텍처
@@ -405,11 +443,14 @@ const result = filter.check(state.userMessageNormalized);
 
 ```mermaid
 flowchart TD
-    Q["사용자 질의<br>IntentRouter 결과"] --> K["CacheKey 생성<br>hash intent + params + teamId + date"]
+    Q["사용자 질의<br>IntentRouter 결과"] --> BP{"개인화 응답<br>custom_persona 주입 여부"}
+    BP -->|YES| BYPASS["L0 Bypass<br>캐시 쓰기, 읽기 모두 스킵"]
+    BP -->|NO| K["CacheKey 생성<br>hash intent + params + teamId + date + personaScope"]
     K --> L0{"L0 Envelope<br>cache_ui_envelopes"}
 
     L0 -->|HIT| R0["envelope 즉시 반환<br>LLM 0회, 약 200ms"]
     L0 -->|MISS| FETCH["ServiceSubgraph<br>DB 데이터 조회"]
+    BYPASS --> FETCH
 
     FETCH --> COMP{"complexity 판정"}
 
@@ -438,7 +479,7 @@ flowchart TD
 
 | 레벨 | 저장소 | Key | TTL | LLM | 적용 대상 |
 |------|--------|-----|-----|-----|-----------|
-| **L0** Envelope 캐시 | `cache_ui_envelopes` | `hash(intent, params, teamId, date)` | 1~5분 (스코어) / 1시간 (순위) / 1일 (선수 기본스탯) | 0회 | 공개·반복 질의 |
+| **L0** Envelope 캐시 | `cache_ui_envelopes` | `hash(intent, params, teamId, date, personaScope)` | 1~5분 (스코어) / 1시간 (순위) / 1일 (선수 기본스탯) | 0회 | **비개인화** 공개·반복 질의만 |
 | **L1** Template + Binding | `a2ui_templates` + runtime bind | template_id + DB row | 무제한 (배포 시 고정) | 0회 | 고정 구조 카드 |
 | **L2** Partial LLM (리액션) | inline 생성 | — | — | 1회 (Flash, ~50 out tokens) | 페르소나 리액션 |
 | **L3** Full UIComposer | inline 생성 | — | — | 1~2회 (Flash, ~500 out tokens) | 복합·개인화·온보딩 |
@@ -451,6 +492,7 @@ CREATE TABLE cache_ui_envelopes (
   intent         VARCHAR(32) NOT NULL,
   params_hash    VARCHAR(64) NOT NULL,
   team_id        VARCHAR(20),
+  persona_scope  VARCHAR(16) NOT NULL,  -- 'default' | 'team_only' (개인화 응답은 저장 금지)
   envelope_jsonl TEXT NOT NULL,      -- A2UI 3-메시지 JSONL
   data_snapshot  JSONB,              -- 원본 데이터 (디버깅용)
   hit_count      INT DEFAULT 0,
@@ -464,6 +506,20 @@ CREATE INDEX idx_cache_ui_expires ON cache_ui_envelopes(expires_at);
 - 스코어 변경 이벤트 → 해당 경기 관련 envelope 전체 DELETE
 - 5분 배치: 만료 envelope 삭제
 - Admin 수동 flush 지원
+
+**L0 Cache Poisoning 방지 (개인화 격리)**
+
+> **원칙**: 사용자 고유 정보가 응답에 주입된 경우 L0 캐시에 **절대 저장하지 않는다**. 동일 질의라도 persona가 다르면 다른 엔트리.
+
+1. **persona_scope 분리**:
+   - `default` — 시스템 기본 페르소나만 사용한 응답 (팀별 기본 톤 포함)
+   - `team_only` — 팀 페르소나까지만 적용, custom_persona 미주입
+2. **Bypass 조건 (L0 저장 금지, 조회 금지)**:
+   - 사용자의 `custom_persona`가 비어있지 않고 프롬프트 조립에 포함된 경우
+   - 응답 텍스트에 `personal_profile`·`favorite_players`·호칭 슬롯이 주입된 경우
+   - `{{llm.reaction}}`에 개인 이름/호칭 등 PII 패턴이 포함된 경우 (OutputGuardrail 감지)
+3. **캐시 키 구성**: `sha256(intent || params_hash || teamId || dateBucket || persona_scope)` — `persona_scope`가 키에 포함되어 default/team_only 격리
+4. **쓰기 경로 가드**: `CacheStore.write()` 호출 전 "응답에 custom_persona 반영 플래그" 체크 → true면 write abort + Langfuse `cache_bypass` 이벤트 기록
 
 ### 4.3 L1 Template 스키마
 
@@ -564,10 +620,13 @@ const A2UISchema = {
 };
 ```
 
-**검증 실패 시 Fallback 정책**
-1. LLM 재호출 1회 (오류 메시지 프롬프트 주입)
-2. 재실패 → 해당 intent의 기본 L1 Template으로 대체
-3. 트레이스에 `llm_ui_invalid` 이벤트 기록 → Langfuse
+**검증 실패 시 Fallback 정책 — 재호출 없음 (레이턴시 우선)**
+
+L3 TTFB가 이미 2~3초인데 LLM 재호출은 5초+ 지연을 유발해 UX를 망친다. 따라서 **재호출 경로 제거**.
+
+1. Schema·팔레트·바인딩 검증 실패 → **즉시** 해당 intent의 L1 기본 Template(scoreboardWidget·newsItemWidget 등)으로 렌더링
+2. 실패한 A2UI JSONL 페이로드는 **Langfuse에 `llm_ui_invalid` 에러 이벤트**로 비동기 기록 (개발자 튜닝용)
+3. 런타임은 사용자 경험(조용한 세련됨)을 지키고, 프롬프트 개선은 오프라인 루프에서 처리
 
 ### 5.5 데이터 바인딩 규칙
 
@@ -607,13 +666,13 @@ interface LLMAdapter {
 | Batch 프로필 요약 | **Flash-Lite Batch** | 50% 할인 |
 | 심층 분석 (추후) | **Gemini 2.5 Pro** | 품질 |
 
-### 6.3 Gemini Context Caching
+### 6.3 Gemini Context Caching — **MVP 보류 (Deferred)**
 
-시스템 프롬프트(Team Persona + System Base + A2UI 팔레트 정의)는 **Context Caching API**로 캐시. 입력 토큰 75% 할인.
-
-- 팀당 1 cache entry (4팀 × ~2000 토큰 시스템 프롬프트)
-- TTL 1시간 (자동 갱신)
-- 캐시 히트 시 재사용 → 실제 과금은 `user_message + personal_context`만
+> **결정 (2026-04-05)**: Gemini Context Caching API는 **최소 32,768 토큰 이상**의 캐시 콘텐츠가 있어야 활성화된다. 현재 설계의 시스템 프롬프트(System Base + Team Persona + A2UI 팔레트 정의)는 팀당 **~2,000 토큰** 수준이므로 캐싱 적용이 불가능하다.
+>
+> **대응**: MVP에서는 매 요청마다 시스템 프롬프트를 주입한다. Gemini 2.5 Flash의 입력 토큰 단가가 저렴하여 월 비용 영향은 미미(< ₩1,000 증가)하며, 목표 비용 모델(월 15,000원 이내)은 그대로 유지된다.
+>
+> **재도입 조건**: 프롬프트가 32K 토큰을 넘는 시점 (예: 대규모 Few-shot 예시·Knowledge Base·대화 이력 주입)이 오면 Context Caching을 재도입한다. 그 전까지는 **레거시 반복 주입 방식**을 사용.
 
 ---
 
@@ -695,6 +754,15 @@ class PersonalAgent {
   async detectFavoritePlayers(message: string): Promise<void>
 }
 ```
+
+**상태 동기화 — Write-through (원자성 보장)**
+
+NestJS 프로세스 크래시/재시작 시 인메모리 손실을 막기 위해, 인메모리 객체는 **DB의 읽기 캐시**로만 취급한다.
+
+- **즉시 DB 반영 (Write-through)**: `message_count`(원자적 증가 SQL), `last_active`, `favorite_players`, `custom_persona`
+- **지연 배치**: `profile_summary` (50건마다 Flash-Lite Batch), `profile_data` (세션 종료 시)
+- `deactivate()`의 `saveState`는 배치 항목만 다룬다 → 30분 비활성·크래시 어느 쪽이든 핵심 메타데이터 유실 0.
+- 상세 정책: [service-plan §3.5](./batdi-service-plan.md).
 
 ---
 
@@ -780,9 +848,9 @@ Gemini·Claude 모두 XML 태그 경계 인식력이 높다. 다층 프롬프트
 </priority_rules>
 ```
 
-**Context Caching 경계**
+**Context Caching 경계 — MVP 보류**
 
-`system_base` + `a2ui_palette` + `team_persona` 블록은 Gemini Context Caching 대상 (팀별 1 cache entry, TTL 1h, 입력 토큰 75% 할인). 변동이 잦은 `personal_profile`/`user_instruction`/`current_situation`은 매 요청 주입.
+MVP에서는 Context Caching 미사용(§6.3 참조). 전체 프롬프트를 매 요청마다 주입한다. 향후 프롬프트가 32K 토큰을 돌파하면 `system_base` + `a2ui_palette` + `team_persona` 블록을 캐시 대상으로 분리하고, `personal_profile`/`user_instruction`/`current_situation`는 변동 영역으로 분리해 매 요청 주입한다.
 
 **우선순위 충돌 해결 알고리즘**
 
@@ -839,6 +907,35 @@ ALTER TABLE messages
   ADD COLUMN trace_id UUID REFERENCES agent_traces(trace_id);
 ```
 
+### 10.3 DB 커넥션 풀 전략 (Connection Exhaustion 방지)
+
+**문제 시나리오**: 경기 시작 시각 100명 동시 접속 → messages INSERT + personal_agent_state UPDATE(write-through) + LangGraph checkpoint + agent_traces INSERT이 한 요청에 4~6회 DB 트랜잭션 유발. Prisma 기본 풀(connection_limit=10~20)은 즉시 포화 → 대기열 폭증 → 스트리밍 레이턴시 악화.
+
+**계층 전략**
+
+| 계층 | 도구 | 설정 |
+|------|------|------|
+| App ↔ Pooler | Prisma `connection_limit` | NestJS 인스턴스당 20 |
+| Pooler ↔ Postgres | **PgBouncer** (transaction pooling) | `default_pool_size=25`, `max_client_conn=200` |
+| 실시간 쓰기 우선순위 | messages, personal_agent_state(write-through), conversations | 동기 트랜잭션 |
+| 지연 쓰기 (Async Batch) | **agent_traces**, tool_call_logs, Langfuse raw events, cache_ui_envelopes hit_count 증분 | 인메모리 큐 → 1초·100건 배치 flush |
+
+**비동기 배치 경로**
+
+```
+LangGraph 노드 → TraceCollector(in-memory queue)
+                    ↓ (1s OR 100건)
+                 TraceBatchWriter → single bulk INSERT
+                    ↓ 실패 시
+                 local retry buffer (최대 1MB) → 다음 tick
+```
+
+- **Langfuse SDK는 이미 비동기 배치** (out-of-the-box). 자체 `agent_traces` 테이블도 동일 방식 적용.
+- `hit_count` 증분은 `UPDATE ... SET hit_count = hit_count + 1` 개별 트랜잭션 대신 5분 배치 집계 + `UPDATE` (무효화 배치와 동일 job).
+- P6+ 스케일 아웃 시 PgBouncer → Postgres 16 read replica 추가 대비.
+
+**측정**: Langfuse `db_wait_ms` 메트릭 노출, >50ms 지속 시 Admin 알람.
+
 ---
 
 ## 11. 관측·디버깅 (Langfuse)
@@ -876,7 +973,7 @@ ALTER TABLE messages
 - MVP 100명, 인당 평균 15건/일 → 1,500건/일, 45,000건/월
 - 질의 분포: L0 60% / L1 10% / L2 20% / L3 10%
 - L2 평균 50 out tokens, L3 평균 500 out tokens
-- Gemini Context Caching 입력 75% 할인 적용
+- Gemini Context Caching **미적용** (§6.3 — 32K 토큰 최소 요건 미충족)
 
 ### 12.2 월간 LLM 호출 추정
 
@@ -884,7 +981,7 @@ ALTER TABLE messages
 |------|---------|------|--------------|---------|
 | L0 | 27,000 | — | 0 | ₩0 |
 | L1 | 4,500 | — | 0 | ₩0 |
-| L2 | 9,000 | Flash | ~800/50 (캐시 히트 입력) | ~$0.65 → **₩900** |
+| L2 | 9,000 | Flash | ~800/50 (캐시 미적용, 전체 과금) | ~$0.70 → **₩1,000** |
 | L3 | 4,500 | Flash | ~1500/500 | ~$2.90 → **₩4,000** |
 | Guardrail Semantic | ~2,000 | Flash-Lite | ~300/20 | ~$0.05 → **₩70** |
 | Batch 프로필 요약 | ~60 | Flash-Lite Batch | ~3000/200 | ~$0.01 → **₩15** |
@@ -923,9 +1020,9 @@ ALTER TABLE messages
 | 백엔드 | **NestJS** | 10+ |
 | Agent Runtime | **CopilotRuntime** (copilotRuntimeNestEndpoint) | latest |
 | Agent Orchestration | **LangGraph.js** | latest |
-| LLM 기본 | Gemini 2.5 Flash/Flash-Lite + 3 Flash (+ Context Caching) | — |
+| LLM 기본 | Gemini 2.5 Flash/Flash-Lite + 3 Flash (Context Caching 미적용, §6.3) | — |
 | LLM 어댑터 | `GoogleGenerativeAIAdapter` + MultiLLMAdapter 자체 | latest |
-| DB | **PostgreSQL 16 (단일 인스턴스)** | 16 |
+| DB | **PostgreSQL 16 (단일 인스턴스)** + **PgBouncer** (transaction pooling, §10.3) | 16 |
 | Observability | **Langfuse (셀프호스팅)** | latest |
 | 크롤링 | Playwright (Stealth) + cheerio | latest |
 | 인증 (로컬) | 이메일 + JWT + AuthProvider 추상화 | — |
