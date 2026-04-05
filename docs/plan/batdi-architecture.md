@@ -231,7 +231,9 @@ CopilotKit Provider가 `/api/copilotkit` 엔드포인트에 POST, 본문에 `use
 ```typescript
 type CoreState = {
   // 입력
-  userMessage: string;
+  userMessage: string;                 // 원문 (저장·LLM 전달용)
+  userMessageNormalized: string;       // 필터 매칭용 normalized form
+  userMessageDisplay: string;          // 화면 표시용 NFKC 정규화 form
   userId: string;
   teamId: TeamId;
 
@@ -259,6 +261,13 @@ type CoreState = {
   a2uiEnvelope?: A2UIEnvelope;         // 최종 렌더링 메시지
   llmReactionText?: string;
 
+  // 병렬 실행 제어
+  ioPhase: 'cache' | 'parallel_fetch' | 'sequential_compose';
+  parallelResults: {
+    personalContext?: PersonalContext;
+    serviceData?: ServiceAgentOutput;
+  };
+
   // 메타
   llmCallCount: number;
   traceId: string;
@@ -269,7 +278,8 @@ type CoreState = {
 
 ```mermaid
 flowchart TD
-    S([Start]) --> IG["InputGuardrail<br>일베, 비속어, 해킹, 아동보호"]
+    S([Start]) --> NM["Normalizer<br>NFKC, 자모 재조합<br>특수문자 제거, homoglyph"]
+    NM --> IG["InputGuardrail<br>일베, 비속어, 해킹, 아동보호<br>normalized form 매칭"]
     IG -->|fail| ER["ErrorResponse<br>팀별 fallback 메시지"]
     IG -->|pass| IR["IntentRouter<br>키워드 분류, LLM 미사용"]
     IR --> CL["CacheLookup<br>L0 envelope 조회"]
@@ -277,9 +287,13 @@ flowchart TD
     CL -->|L0 HIT| RE["ReturnEnvelope"]
     RE --> E([End])
 
-    CL -->|miss| PC["PersonalContext<br>DB 로드"]
-    PC --> SS["ServiceSubgraph<br>Score, Stats, News, Chat, Meme"]
-    SS --> UC{"UIComposer<br>complexity 판정"}
+    CL -->|miss<br>parallel_fetch phase| PAR{{"병렬 실행<br>Promise.all"}}
+    PAR --> PC["PersonalContext<br>DB 로드"]
+    PAR --> SS["ServiceSubgraph<br>Score, Stats, News, Chat, Meme"]
+    PC --> JOIN[/"Join — 두 결과 대기"/]
+    SS --> JOIN
+
+    JOIN --> UC{"UIComposer<br>complexity 판정"}
 
     UC -->|simple| T1["L1 Template 선택<br>LLM 0회"]
     UC -->|general| T2["L1 Template + L2 리액션<br>LLM 1회"]
@@ -300,21 +314,30 @@ flowchart TD
     ER --> E
 ```
 
+**병렬 실행 규칙**
+- A. `CacheLookup` L0 MISS 이후 `PersonalContext`와 `ServiceSubgraph`는 **의존성 없음** → LangGraph `add_edge` 분기로 동시 디스패치
+- B. 두 노드 완료 시 `Join` 노드에서 state 병합 후 `UIComposer` 진입
+- C. `ServiceSubgraph` 내부에서도 외부 I/O와 DB 조회는 `Promise.all`로 병렬화
+- D. 예상 개선: L2 경로 800ms → 500~600ms, L3 경로 2~3s → 1.5~2s
+
 ### 3.3 ASCII 참조
 
 ```
 [Start]
   ↓
-[InputGuardrail] → fail → [ErrorResponse]
+[Normalizer] (NFKC + 자모 재조합 + 특수문자 제거 + homoglyph)
+  ↓
+[InputGuardrail] (normalized form 매칭) → fail → [ErrorResponse]
   ↓ pass
 [IntentRouter] (키워드, LLM 미사용)
   ↓
 [CacheLookup] → L0 HIT → [ReturnEnvelope] → [End]
-  ↓ miss
-[PersonalContext] (DB)
-  ↓
-[ServiceSubgraph] (Score/Stats/News/... — 병렬 실행 가능)
-  ↓
+  ↓ miss (parallel_fetch phase)
+  ├─→ [PersonalContext] (DB) ─┐
+  └─→ [ServiceSubgraph] ──────┤  Promise.all
+                              ↓
+                         [Join — state 병합]
+                              ↓
 [UIComposer]
   ├── complexity=simple → Template 선택 (LLM 0회)
   ├── complexity=general → Template + 리액션 LLM (1회, ~50 토큰)
@@ -333,6 +356,46 @@ flowchart TD
   ↓
 [End]
 ```
+
+### 3.4 Normalizer 상세
+
+정규식 기반 필터는 `노_무현`, `놐무현`, `ㄴㅁㅎ`, `노🔥무현`처럼 띄어쓰기·특수문자·이모지·자모로 쉽게 우회된다. **InputGuardrail 앞단에 전처리 노드 추가**하여 필터 매칭용 정규화 폼을 만든다.
+
+**처리 파이프라인**
+
+| 단계 | 처리 | 예시 |
+|------|------|------|
+| A. NFKC 정규화 | 전각/반각, 호환 문자 통일 | `ｎｏ` → `no` |
+| B. 공백·zero-width 제거 | 스페이스, 탭, ZWSP(`\u200b`) | `노 무 현` → `노무현` |
+| C. 구분자·이모지 제거 | `._-·∙•*~/()[]{}`, 이모지 전량 | `노.무🔥현` → `노무현` |
+| D. 반복 문자 축소 | 3회 이상 반복 → 1회 | `노오오오무현` → `노무현` |
+| E. 한글 자모 재조합 | 초성·중성·종성 분리 입력 정규화 | `ㄴㅇㅁㅜㅎㅕㄴ` → `노무현` |
+| F. Homoglyph 치환 | 숫자·유사자 매핑 | `놐`→`노`, `O`→`o`, `l`→`1` 역방향 |
+
+**State 저장 규칙**
+
+- `userMessage`: **원문 그대로** (LLM 전달용, 저장용)
+- `userMessageDisplay`: NFKC만 적용 (화면 표시용)
+- `userMessageNormalized`: 전체 파이프라인 적용 (필터 매칭용, **사용자 노출 금지**)
+
+**필터 적용**
+
+```typescript
+class IlbeMimFilter {
+  check(normalized: string): FilterResult {
+    for (const pattern of this.patterns) {
+      if (pattern.test(normalized)) return { blocked: true, type: 'ilbe' };
+    }
+    return { blocked: false };
+  }
+}
+
+// 사용 시
+const result = filter.check(state.userMessageNormalized);
+// displayForm은 저장·표시에만, LLM에는 원본 전달
+```
+
+**성능**: Normalizer 전체 파이프라인 <1ms (500자 메시지 기준).
 
 ---
 
@@ -668,6 +731,65 @@ useCopilotReadable({ description: "최근 대화 요약", value: recentSummary }
 
 → 프롬프트 엔지니어링 최소화. Agent는 자동으로 이 컨텍스트를 받음.
 
+### 9.1 XML 프롬프트 조립 규격
+
+Gemini·Claude 모두 XML 태그 경계 인식력이 높다. 다층 프롬프트 충돌 방지 + Instruction Tracking 향상을 위해 **모든 프롬프트 조립은 XML 구조화**.
+
+**조립 규격**
+
+```xml
+<system_base priority="1" immutable="true">
+  {가드레일 + 아동보호 지시}
+  {수치 언급 금지, {{llm.reaction}} 슬롯만 사용}
+</system_base>
+
+<a2ui_palette priority="1">
+  {허용 컴포넌트 목록 + JSON Schema}
+</a2ui_palette>
+
+<team_persona priority="4">
+  <team>hanwha</team>
+  <style>충청 사투리, 긍정적 톤</style>
+  {팀 프롬프트 본문}
+</team_persona>
+
+<personal_profile priority="3" source="auto_learned">
+  <summary>{profileSummary}</summary>
+  <interests>{interests}</interests>
+  <knowledge_level>{knowledgeLevel}</knowledge_level>
+  <response_style>{responseStyle}</response_style>
+</personal_profile>
+
+<user_instruction priority="2" source="explicit">
+  {customPersona}
+  <!-- 사용자가 직접 작성. personal_profile과 충돌 시 이 지시가 우선 -->
+</user_instruction>
+
+<recent_context>
+  {session 요약 3건}
+</recent_context>
+
+<current_situation>
+  <game>{gameState}</game>
+  <user_message>{userMessage}</user_message>
+</current_situation>
+
+<priority_rules>
+  우선순위 숫자가 낮을수록 강함. priority=1(system_base, a2ui_palette)은 불변.
+  priority=2(user_instruction)은 priority=3(personal_profile), priority=4(team_persona)와 충돌 시 우선.
+</priority_rules>
+```
+
+**Context Caching 경계**
+
+`system_base` + `a2ui_palette` + `team_persona` 블록은 Gemini Context Caching 대상 (팀별 1 cache entry, TTL 1h, 입력 토큰 75% 할인). 변동이 잦은 `personal_profile`/`user_instruction`/`current_situation`은 매 요청 주입.
+
+**우선순위 충돌 해결 알고리즘**
+
+1. `system_base` 위반 감지 → 즉시 거부, 재생성
+2. `user_instruction`이 `personal_profile`과 상충 → user_instruction 따름 (명시적 의사 우선)
+3. `team_persona` 스타일을 `user_instruction`이 무력화 요청 시 → user_instruction 수용 (단 `system_base` 범위 내에서만)
+
 ---
 
 ## 10. DB 스키마 (확장)
@@ -828,6 +950,10 @@ ALTER TABLE messages
 | ADR-008 | 4단계 캐시 구조 | LLM 호출 60~70% 감소, 비용·latency 동시 최적화 |
 | ADR-009 | 데이터 바인딩 강제 (`{{bind:...}}`) | LLM 리터럴 값 차단으로 환각 원천 봉쇄 |
 | ADR-010 | Semantic Cache / Persona Reaction Cache 미도입 (MVP) | 검증 부족. Phase 6 이후 효용 측정 후 재검토 |
+| ADR-011 | CacheLookup MISS 이후 PersonalContext·ServiceSubgraph 병렬 실행 | TTFB 단축. 의존성 없는 I/O는 Promise.all. 예상 L2 800→600ms, L3 3s→2s |
+| ADR-012 | InputGuardrail 앞 Normalizer 노드 도입 | 정규식 필터 우회 방지(NFKC+자모+이모지+homoglyph). <1ms 오버헤드 |
+| ADR-013 | 모든 프롬프트 XML 태그 구조화 | Instruction Tracking 향상, priority 속성으로 충돌 해결 규칙 명시화 |
+| ADR-014 | 크롤링 데이터 3단계 분리 + healthScore 기반 자동 비활성 | 유지보수 리스크 분산. 세이버 스탯은 선택적, 실패 시 graceful degradation |
 
 ---
 

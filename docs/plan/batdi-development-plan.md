@@ -48,7 +48,7 @@ CopilotKit + LangGraph + A2UI + Gemini 통합 최소 경로를 검증하고, 기
 | 0.7 | **PoC 3**: A2UI JSONL 3-message envelope 수동 작성 → `createA2UIMessageRenderer` → 렌더링 | scoreboard 카드 1개 UI 표시 |
 | 0.8 | **PoC 4**: Langfuse에 LangGraph 트레이스 기록 | 노드별 latency/tokens UI 확인 |
 | 0.9 | ESLint + Prettier + tsconfig strict + Husky | `pnpm lint` 통과 |
-| 0.10 | 크롤링 사전 테스트 (Statiz/KBO) | 200 응답 확인 or 차단 시 대안 결정 |
+| 0.10 | **데이터 소스 3단계 재조사** (T1/T2/T3) — Statiz·KBReport 차단 여부, KBO 공식 RSS/API 가용성, Statiz 공식 연락, **유료 API 조기 전환 플래그** 판단 | 소스별 가동률 기록 + T3 대안 결정 |
 | 0.11 | ADR 문서 초안 확정 | `batdi-architecture.md` ADR 섹션 업데이트 |
 
 ### P0 완료 조건
@@ -110,12 +110,15 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 
 | # | DoD |
 |---|-----|
-| 4.1 | `IlbeMimFilter` + `SafetyFilter` + 프롬프트 해킹 패턴 (InputGuardrail 구현) | 금지 20건 차단 테스트 |
+| 4.0 | **`MessageNormalizer` 노드** (NFKC + 공백·이모지 제거 + 반복축소 + 자모 재조합 + homoglyph) → State 3필드 분리(original/display/normalized) | 우회 입력 15건 테스트 차단 (`노_무현`, `ㄴㅁㅎ`, `노🔥무현` 등) |
+| 4.1 | `IlbeMimFilter` + `SafetyFilter` + 프롬프트 해킹 패턴 (InputGuardrail 구현, **normalized form 기준 매칭**) | 금지 20건 차단 테스트 |
 | 4.2 | `ChildSafetyGuardrail` (System Base 주입) | 시스템 프롬프트에 항상 포함 |
 | 4.3 | `SemanticGuardrail` Flash-Lite 2단계 필터 | 우회 표현 10건 차단 |
 | 4.4 | `LightweightIntentRouter` — intent 7종 + complexity 3단계 분류 | 샘플 30건 분류 정확도 95%+ |
 | 4.5 | `CacheLookup` L0 구현 + `cache_ui_envelopes` 히트/미스 로직 + TTL 정리 배치 | HIT 시 LLM 호출 0건 확인 |
 | 4.6 | Gemini Context Caching 시스템 프롬프트 캐시 (팀별 1 entry, TTL 1h) | 입력 토큰 ≤25% 과금 확인 |
+| 4.7 | **LangGraph 병렬 엣지** — `CacheLookup` MISS → `PersonalContext` + `ServiceSubgraph` 동시 디스패치 → `Join` 노드 | 병렬 실행 trace 확인, L2 체감 속도 약 30% 단축 |
+| 4.8 | **XML 프롬프트 조립기** `PromptBuilder` — `<system_base>`/`<team_persona>`/`<personal_profile>`/`<user_instruction>`/`<current_situation>` priority 기반 조립 | 단위테스트 5종 통과 |
 
 ### W5: ScoreGraph + DataAgent 크롤러 + A2UI Score 템플릿
 
@@ -157,8 +160,10 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 |---|-----|
 | 7.1 | 두산·기아·롯데 TeamPersona 프롬프트 (service-plan §4.2) | 각 팀 사투리 샘플 검증 |
 | 7.2 | 3팀 컬러 토큰 추가 (`--team-doosan-*` 등) + `data-team` 스위칭 | 테마 전환 확인 |
-| 7.3 | Statiz/KBReport 주 1회 배치 크롤러 + `batting_stats`/`pitching_stats` 적재 | 2026시즌 4팀 스탯 DB |
-| 7.4 | `StatsGraph` subgraph + A2UI widget: `battingLineWidget`, `pitchingLineWidget`, `standingsRowWidget` | "문동주 ERA" 질의 시 카드 반환 |
+| 7.3 | **T2 기본 스탯** (AVG/HR/ERA) KBO 공식 일 1회 크롤러 + `batting_stats`/`pitching_stats` 적재 | 2026시즌 4팀 기본 스탯 DB |
+| 7.3b | **T3 세이버 스탯** (WAR/wRC+/FIP) Statiz/KBReport 주 1회 배치 — **P0 조사 결과 기반 조건부 활성화**. 차단 확인 시 P4 연기 또는 유료 API 전환 | 활성 시 DB 적재, 비활성 시 기본 스탯만 제공 |
+| 7.3c | `CrawlerHealthManager` — 소스별 3회 연속 실패 시 자동 비활성 + Admin 알림 + graceful degradation | 시뮬레이션 통과 |
+| 7.4 | `StatsGraph` subgraph + A2UI widget: `battingLineWidget`, `pitchingLineWidget`, `standingsRowWidget` + **T3 비활성 시 세이버 필드 숨김 분기** | "문동주 ERA" 질의 시 카드 반환, T3 차단 시 기본 스탯만 |
 | 7.5 | `NewsGraph` — Google News RSS 30분 배치 + Flash 요약 + `newsItemWidget` | 최신 KBO 뉴스 5건 |
 
 ### W8: Chat/Meme Subgraph + 도메인 widget 풀세트

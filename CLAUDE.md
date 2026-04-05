@@ -50,10 +50,13 @@
 - **UI 구조는 LLM이 동적 선택 가능**: 단, A2UI 화이트리스트 팔레트 + JSON Schema + 깊이 제한(4단계, 30노드)으로 통제
 - **감정 리액션은 `{{llm.reaction}}` 슬롯만**: 텍스트에 수치 언급 금지 (프롬프트 + OutputGuardrail 이중 검증)
 - **4단계 캐시 우선순위**: L0 Envelope → L1 Template → L2 Partial → L3 Full. 항상 상위 레벨부터 시도
-- **프롬프트 계층**: `System Base (불변) > User Custom Persona > PersonalAgent Profile > Team Persona`
+- **프롬프트 계층 + XML 구조화**: `System Base (불변, priority=1) > User Custom Persona (priority=2) > PersonalAgent Profile (priority=3) > Team Persona (priority=4)`. 모든 조립은 `<system_base>`/`<team_persona>`/`<user_instruction>` 등 XML 태그로 경계 명시 → [architecture §9.1](docs/plan/batdi-architecture.md)
+- **LangGraph 병렬 실행**: 의존성 없는 I/O(PersonalContext DB + ServiceSubgraph)는 `Promise.all` 병렬. CacheLookup MISS 후 즉시 분기
+- **크롤링 3단계 + healthScore**: T1 실시간스코어·뉴스(필수) / T2 기본스탯(P3) / T3 세이버(선택). 연속 실패 3회 시 자동 비활성 + graceful degradation
 - **IntentRouter는 LLM 미사용**: 키워드·정규식 라우팅. 미매칭 → `chat` 기본값
 - **Gemini Context Caching 필수**: 팀별 시스템 프롬프트 캐시 (75% 입력 토큰 할인)
 - **크롤링 부하 제한**: 요청 간격 10초+·동시 1·robots.txt 준수. 금지: 네이버/다음
+- **입력은 Normalizer 통과 후 매칭**: 모든 정규식 필터는 `userMessageNormalized`(NFKC+자모+homoglyph+이모지 제거) 기준. 원문은 LLM 전달용으로만 보존
 - **가드레일 3중 검증**: Input(일베/비속어/프롬프트해킹/아동보호/Semantic) + Output(팩트체크/비속어 재검증) + 커스텀 페르소나 저장 시
 - **무료 할당 우선**: Gemini 3 Flash 5K/월, 2.5 Flash 500 RPD → FreeQuotaTracker
 - **Service Subgraph 추가 절차**: 기존 subgraph capability 확장 > 신규 subgraph 추가 + Core IntentRouter에 routing

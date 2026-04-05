@@ -423,15 +423,26 @@ CREATE TABLE personal_agent_state (
 
 사용자가 기본 프롬프트 위에 자신만의 지시를 추가 가능 (500자 이내).
 
-**프롬프트 계층:**
-```
-[System Base] (불변 — 가드레일, 아동보호, 기본 역할)
-  → [Team Persona] (팀별 기본 — Admin 관리)
-    → [User Custom Persona] (사용자 편집)
-      → [PersonalAgent Profile] (자동 학습 요약)
+**프롬프트 계층 (XML 구조화 필수)**
+
+Gemini·Claude 모두 XML 태그 경계 인식력이 높다. 다층 프롬프트 Instruction Tracking 향상을 위해 **모든 조립은 XML 태그 기반**.
+
+```xml
+<system_base priority="1" immutable="true">가드레일, 아동보호, 기본 역할</system_base>
+<a2ui_palette priority="1">허용 컴포넌트 + Schema</a2ui_palette>
+<team_persona priority="4">팀별 기본 — Admin 관리</team_persona>
+<personal_profile priority="3" source="auto_learned">자동 학습 요약</personal_profile>
+<user_instruction priority="2" source="explicit">사용자 편집 500자</user_instruction>
+<recent_context>최근 세션 요약 3건</recent_context>
+<current_situation>game + user_message</current_situation>
 ```
 
-저장 전 프롬프트 해킹 패턴 + 일베 표현 자동 검증 → 차단.
+**우선순위**: 숫자 작을수록 강함. priority=1 불변. priority=2 > priority=3 > priority=4.
+충돌 시: `user_instruction`이 `personal_profile`·`team_persona`를 **override** 가능 (단 `system_base` 범위 내).
+
+상세 규격: [architecture §9.1](./batdi-architecture.md)
+
+저장 전 프롬프트 해킹 패턴 + 일베 표현 (Normalizer 적용 후) 자동 검증 → 차단.
 
 ---
 
@@ -482,6 +493,19 @@ CREATE TABLE personal_agent_state (
 ```
 
 ### 6.2 입력 가드레일
+
+#### 사전 단계: Normalizer (필수)
+
+정규식 필터는 `노_무현`, `ㄴㅁㅎ`, `노🔥무현` 같은 우회에 취약하다. **모든 필터 이전에 입력 메시지를 정규화**한다.
+
+**처리**: NFKC → 공백·zero-width 제거 → 이모지·구분자 제거 → 반복 문자 축소 → 한글 자모 재조합 → homoglyph 치환
+
+**State 3중 보관**
+- `userMessage` (원문): LLM 전달·저장용
+- `userMessageDisplay` (NFKC만): 화면 표시용
+- `userMessageNormalized` (전체 파이프라인): **필터 매칭 전용, 사용자 노출 금지**
+
+상세: [architecture §3.4](./batdi-architecture.md)
 
 #### A. 야구 외 토픽 Fallback
 
@@ -731,18 +755,30 @@ Messages: 최근 20건 ~2000 + 새 메시지 ~100
 
 크롤링으로만 진행(API 사용 안 함), 부하를 주지 않음(요청 간격 최소 10초, 동시 1개), robots.txt 준수, 법적 위험 낮은 소스 우선.
 
-### 9.2 데이터 소스
+### 9.2 데이터 소스 — 3단계 분리 전략
 
-| 소스 | 데이터 | 주기 | 위험 |
-|------|--------|------|------|
-| **Statiz** | sWAR, wRC+, FIP 등 세이버 스탯 | 주 1회 (로그인 필요) | 중 |
-| **KBReport** | kWAR, 세부 기록 | 주 1회 (출처 표기) | 중 |
-| **KBO 공식** | 일정/결과/순위 | 경기일 5분 간격 (정적 페이지) | 중 |
-| **Google News RSS** | KBO 뉴스 | 30분 | 낮음 |
-| **야구 커뮤니티 RSS** | 야구공작소 등 | 1시간 | 낮음 |
-| **커뮤니티 크롤링** | 밈, 유행어, 팬 반응 | 3시간 | 중 |
+크롤링 유지보수 리스크(DOM 변경·Cloudflare 차단)를 분산하기 위해 **서비스 가동 의존도**에 따라 3단계로 나눈다. 상위 단계 실패 시에도 하위 단계는 정상 동작해야 한다.
 
-실시간 스코어: KBO 공식 최소 접근 + News RSS 보완. 캐시 MISS 시에만 Search Grounding 보조.
+| Tier | 데이터 | 출처 | 주기 | MVP 포함 | 실패 시 |
+|------|--------|------|------|---------|--------|
+| **T1 필수** | 실시간 스코어 | KBO 공식 정적 페이지 | 경기 중 5분 | **P2** | 서비스 치명. 다중 소스 fallback + Admin 긴급 알림 |
+| **T1 필수** | KBO 뉴스 | Google News RSS | 30분 | **P2** | Fallback 메시지 |
+| **T2 기본** | 기본 스탯 (AVG/HR/ERA) | KBO 공식 | 일 1회 | **P3** | 3일 전 데이터 재사용 + "데이터 점검 중" 표시 |
+| **T2 기본** | 일정/순위 | KBO 공식 | 일 1회 | **P3** | 캐시 재사용 |
+| **T3 선택** | 세이버 스탯 (WAR/wRC+/FIP) | Statiz/KBReport | 주 1회 배치 | **P3 옵션** | StatsGraph의 세이버 응답만 비활성, 기본 스탯으로 degrade |
+| **T3 선택** | 커뮤니티 밈 | 야구 커뮤니티 | 3시간 | **P4** | 사전 seed 밈 DB로 대체 |
+
+**healthScore 자동 비활성**
+```typescript
+class CrawlerHealthManager {
+  // 연속 실패 3회 → 자동 비활성 + Admin 알림
+  // T3 비활성 시 StatsGraph가 "기본 스탯만 제공" 모드로 degrade
+}
+```
+
+**T1 다중 소스 Fallback**: KBO 공식 실패 → Google News RSS에서 최신 스코어 파싱 → Search Grounding 최후 보루.
+
+**세이버 스탯 (T3)**: P0 단계에서 Statiz/KBReport 대안 조사 (공식 계정 연락, **유료 API 조기 전환 플래그**). 지속 실패 시 과감히 P4로 연기 또는 유료 전환.
 
 ### 9.3 자체 통계 DB
 
@@ -884,20 +920,32 @@ async handleMessage(message: string, userId: string): AsyncIterable<SSEEvent> {
 }
 ```
 
-#### C. 예상 레이턴시
+#### C. 병렬 실행 (LangGraph)
 
-| 단계 | 캐시 HIT | 캐시 MISS |
-|------|---------|----------|
-| Typing Indicator 전송 | **0ms** | **0ms** |
-| Intent 분류 (키워드) | <1ms | <1ms |
-| PersonalAgent 컨텍스트 | <5ms | <5ms |
-| 데이터 획득 (DB) | <5ms | — |
-| 데이터 획득 (크롤링/검색) | — | 2~5초 |
-| A2UI 카드 전송 | **즉시** | 데이터 후 즉시 |
-| LLM 첫 토큰 (TTFB) | ~300ms | ~300ms |
-| **사용자 체감 첫 응답** | **~300ms** | **~2~5초 (Typing 표시 중)** |
+`CacheLookup` L0 MISS 이후 `PersonalContext`와 `ServiceSubgraph`는 **의존성이 없으므로 병렬 실행**한다. LangGraph `add_edge` 다중 분기로 동시 디스패치 후 `Join` 노드에서 state 병합.
 
-캐시 히트율이 높을수록 체감 속도가 빨라진다. 경기 중 "스코어 알려줘" 같은 요청은 100% 캐시 히트 → 즉시 카드 + 300ms 리액션.
+```
+[CacheLookup MISS]
+  ├─→ PersonalContext (DB 조회)  ─┐
+  └─→ ServiceSubgraph (크롤링/DB) ┤  Promise.all
+                                   ↓
+                              [Join → UIComposer]
+```
+
+`ServiceSubgraph` 내부도 외부 I/O와 DB 조회는 `Promise.all`로 병렬화.
+
+#### D. 예상 레이턴시 (병렬 적용 후)
+
+| 단계 | L0 HIT | L1/L2 | L3 MISS (크롤링) |
+|------|--------|-------|------------------|
+| Typing Indicator 전송 | **0ms** | **0ms** | **0ms** |
+| Normalizer + Intent 분류 | <2ms | <2ms | <2ms |
+| 병렬: PersonalContext + ServiceSubgraph | — | ~50~100ms | ~2~3s |
+| A2UI 카드 전송 | **즉시** | ~300ms | 데이터 후 즉시 |
+| LLM 첫 토큰 (TTFB) | — | ~300ms | ~400ms |
+| **사용자 체감 첫 응답** | **~200ms** | **~500~600ms** | **~1.5~2s** |
+
+**병렬 실행 효과**: 기존 순차 대비 L2 약 30%, L3 약 40% 단축. 경기 중 "스코어" 질의는 100% L0 캐시 히트 → 즉시 카드 + 감정 스트리밍.
 
 ### 10.3 팩트/페르소나/UI 분리 — 환각 방지 + 동적 UI
 
