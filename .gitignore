@@ -1,6 +1,7 @@
 
 # Claude Code runtime
 .claude/db/context.db
+.claude/db/context.db-*
 .claude/.ctx_state
 .claude/.backup-*
 .claude/.ralph_state
@@ -8,3 +9,7 @@
 .claude/.hook_feedback
 .claude/.project_root
 .claude/.messenger_enabled
+
+# macOS
+.DS_Store
+**/.DS_Store
