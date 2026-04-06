@@ -87,6 +87,8 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 
 ### W3: 프론트 스켈레톤 + 이메일 Auth + CopilotChat
 
+> **디자인 참고**: [`docs/design/stitch_batdi_team_onboarding/`](../design/stitch_batdi_team_onboarding/) — Google Stitch 시안 (레퍼런스용, 그대로 사용 금지. 토큰 기준은 uiux-guideline §2)
+
 | # | DoD |
 |---|-----|
 | 3.1 | Next.js 14+ App Router 스캐폴드 + Tailwind + 디자인 토큰 (uiux-guideline §2) | `/` `/auth/login` `/chat` 라우트 |

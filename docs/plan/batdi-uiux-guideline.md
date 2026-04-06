@@ -32,6 +32,7 @@
 | **Figma Community — "Chat UI" / "Sports Dashboard"** | 카드 레이아웃, 팀 컬러 적용 패턴 |
 | **Radix UI / shadcn/ui** | 접근성·구성 방식 기반 컴포넌트 |
 | **Tailwind UI / Untitled UI** | 폼·모달·리스트 패턴 |
+| **Google Stitch 시안** | 화면별 레이아웃·컴포넌트 구조 참고 → [`docs/design/stitch_batdi_team_onboarding/`](../design/stitch_batdi_team_onboarding/) (레퍼런스용, 그대로 사용 금지) |
 
 ---
 

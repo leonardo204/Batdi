@@ -37,6 +37,7 @@
 - **[서비스 플랜 v8](docs/plan/batdi-service-plan.md)** — 서비스 기획·가드레일·페르소나·DB 스키마 (근본 기획서)
 - **[개발 계획서 v2](docs/plan/batdi-development-plan.md)** — P0~P6 Phase별 태스크, DoD, 의존성 (Mac 로컬 + P6 인프라 이관)
 - **[UI/UX 디자인 지침 v2](docs/plan/batdi-uiux-guideline.md)** — 디자인 토큰·A2UI 팔레트·CopilotChat 통합·디자이너 핸드오프
+- **[Stitch 디자인 시안](docs/design/google-stitch-prompts.md)** — 화면별 Stitch 프롬프트 + 생성 결과물 (레퍼런스용, SSOT 아님)
 - [Context DB](Ref-docs/claude/context-db.md) — SQLite 기반 세션/태스크/결정 저장소
 - [Context Monitor](Ref-docs/claude/context-monitor.md) — HUD + compaction 감지/복구
 - [컨벤션](Ref-docs/claude/conventions.md) — 커밋 · 주석 · 로깅 · **Mermaid 다이어그램** 규칙 (코드 룰만이 아님)
