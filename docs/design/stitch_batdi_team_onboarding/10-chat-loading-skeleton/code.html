@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-dim": "#131316",
+                    "surface-container-low": "#1b1b1e",
+                    "background": "#0B0B0E",
+                    "tertiary-container": "#ff5355",
+                    "tertiary-fixed-dim": "#ffb3af",
+                    "on-tertiary-fixed-variant": "#930017",
+                    "tertiary-fixed": "#ffdad7",
+                    "surface-container": "#14151A",
+                    "on-primary": "#FFFFFF",
+                    "error-container": "#93000a",
+                    "outline": "#a98a81",
+                    "on-background": "#E8E8EC",
+                    "primary-fixed": "#ffdbd0",
+                    "primary-fixed-dim": "#ffb59f",
+                    "surface-container-highest": "#353438",
+                    "on-surface-variant": "#8A8B93",
+                    "tertiary": "#ffb3af",
+                    "surface-container-high": "#1F1F24",
+                    "inverse-primary": "#af3100",
+                    "on-tertiary-fixed": "#410005",
+                    "outline-variant": "#2A2B33",
+                    "on-primary-fixed-variant": "#852300",
+                    "on-error-container": "#ffdad6",
+                    "secondary-container": "#454364",
+                    "on-secondary": "#2e2d4c",
+                    "on-error": "#690005",
+                    "inverse-surface": "#e5e1e6",
+                    "surface-variant": "#353438",
+                    "primary": "#F15B2A",
+                    "on-primary-fixed": "#3a0a00",
+                    "secondary": "#c5c3ea",
+                    "surface-bright": "#39393c",
+                    "on-tertiary-container": "#5c000b",
+                    "on-primary-container": "#531200",
+                    "surface-tint": "#F15B2A",
+                    "on-tertiary": "#68000e",
+                    "secondary-fixed-dim": "#c5c3ea",
+                    "secondary-fixed": "#e2dfff",
+                    "surface-container-lowest": "#0B0B0E",
+                    "surface": "#131316",
+                    "on-secondary-container": "#b4b1d8",
+                    "on-secondary-fixed-variant": "#454364",
+                    "inverse-on-surface": "#303033",
+                    "primary-container": "#F15B2A",
+                    "error": "#ffb4ab",
+                    "on-surface": "#E8E8EC",
+                    "on-secondary-fixed": "#191836"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "2xl": "1rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Pretendard", "sans-serif"],
+                    "body": ["Pretendard", "sans-serif"],
+                    "label": ["Space Grotesk", "sans-serif"],
+                    "mono": ["JetBrains Mono", "monospace"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .chat-container::-webkit-scrollbar {
+            display: none;
+        }
+        .chat-container {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .mono-stat {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30">
+<!-- Top Navigation Anchor -->
+<header class="fixed top-0 w-full z-50 bg-[#0B0B0E] dark:bg-[#0B0B0E] flex items-center justify-between px-5 h-16 w-full bg-gradient-to-b from-[#111114] to-transparent">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high flex items-center justify-center">
+<img alt="Hanwha Eagles Team Badge" class="w-6 h-6 object-contain" data-alt="professional sports team mascot logo, stylized orange eagle profile on dark circular background, premium sports branding" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCP8Tg-VfQYvqcSzGPscggpa_L_dz-Y9Tsg1nsQBwWGwTMexvceTCmOG8UXsVjO6K6yAfXM2h86AupYTZu-vbUMaD_RC7P1kEQ2CZUCylR3yvAUSWIKcY_MZp_laKfaUcai_j05ezD9ekkWuZo5V4uxqt_cAhhPx8_PS6mN1Nc28J76wiId7jnVsBudHrT0y4vhJ_idZ2rxeXkgjaNQA9Gkqaru78eRCJ5uc3aOvjApRdLkI-Opjnhv3ht8Y8FIbYojQD0bNY7ciQ"/>
+</div>
+<h1 class="text-[#E8E8EC] font-bold text-lg tracking-tight">밧디 · 한화</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-[#8A8B93] hover:bg-[#1F1F24] transition-colors active:opacity-80 active:scale-95">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</header>
+<!-- Main Chat Canvas -->
+<main class="pt-20 pb-28 px-5 chat-container overflow-y-auto h-screen flex flex-col gap-6">
+<!-- User Message -->
+<div class="flex justify-end w-full">
+<div class="max-w-[80%] bg-primary text-on-primary px-4 py-3 rounded-2xl rounded-tr-none shadow-lg">
+<p class="text-[15px] font-medium leading-relaxed">문보경 올 시즌 성적 알려줘유</p>
+</div>
+</div>
+<!-- Bot Response -->
+<div class="flex flex-col gap-4 w-full">
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex-shrink-0 flex items-center justify-center border border-outline-variant/10">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div class="max-w-[85%] bg-surface-container-high text-on-surface px-4 py-3 rounded-2xl rounded-tl-none border border-outline-variant/10">
+<p class="text-[15px] font-medium leading-relaxed">문보경 시즌 성적이여! 타율이 미쳤다 그려~ 🔥</p>
+</div>
+</div>
+<!-- Player Stats Card (Bento-style Card) -->
+<div class="ml-11 bg-surface-container border border-outline-variant rounded-[14px] overflow-hidden shadow-2xl">
+<!-- Card Header -->
+<div class="p-4 flex items-center gap-3 border-b border-outline-variant/50">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high border border-primary/20">
+<img alt="문보경" class="w-full h-full object-cover" data-alt="professional baseball player headshot, stoic expression, wearing orange and white baseball jersey, soft studio lighting, high resolution" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6EM0Yx140uzNUKSs-2XZLzsrNm8oRQqzAZQ-NKR1P5XwQA2I8adxkujvLmU29mWSsYpjiIRpkmI5O1xKbX__f8LVlVHmSjYQpLbMAIEIhdMMr9CpTxhArjZ0kmE72l5wM9MuNNZlaVd8_NHQjbDwYh6yd2Rm5qNY2d_IM3cXcOWFmWFtKRI8rTMMwyAazu4HxSdAlIOBbLpKjw3cKf1PRUuoKQ_jN7uz3Nx9gSzd5QRlt6qrZUS_x8Fjr7yI3PNT74Y3bjvN2XQ"/>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="text-on-surface text-base font-semibold">문보경</span>
+<span class="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded">MVP CANDIDATE</span>
+</div>
+<span class="text-on-surface-variant text-xs mt-0.5">한화 이글스 · #52 · 내야수</span>
+</div>
+</div>
+<!-- Stats Grid -->
+<div class="p-4 grid grid-cols-3 gap-4">
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant text-[11px]">타율</span>
+<span class="mono-stat text-primary text-lg font-bold">.342</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant text-[11px]">홈런</span>
+<span class="mono-stat text-on-surface text-lg font-bold">18</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant text-[11px]">타점</span>
+<span class="mono-stat text-on-surface text-lg font-bold">67</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant text-[11px]">안타</span>
+<span class="mono-stat text-on-surface text-lg font-bold">128</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant text-[11px]">OPS</span>
+<span class="mono-stat text-primary text-lg font-bold">1.024</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant text-[11px]">WAR</span>
+<span class="mono-stat text-on-surface text-lg font-bold">4.2</span>
+</div>
+</div>
+<!-- Trend Sparkline -->
+<div class="px-4 pb-4">
+<div class="flex items-center justify-between mb-2">
+<span class="text-on-surface-variant text-[10px] uppercase tracking-wider font-medium">최근 10경기 타격 페이스</span>
+<span class="text-primary text-[10px] font-bold">+12.4%</span>
+</div>
+<div class="relative h-[60px] w-full bg-surface-container-low rounded-lg overflow-hidden border border-outline-variant/30">
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<!-- Gradient Fill Area -->
+<path d="M0 80 Q 15 60, 25 75 T 45 40 T 70 20 T 100 10 V 100 H 0 Z" fill="url(#sparkline-gradient)" opacity="0.1"></path>
+<!-- Sparkline Path -->
+<path d="M0 80 Q 15 60, 25 75 T 45 40 T 70 20 T 100 10" fill="none" stroke="#F15B2A" stroke-linecap="round" stroke-width="2"></path>
+<defs>
+<lineargradient id="sparkline-gradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#F15B2A;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#F15B2A;stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<!-- Data Points -->
+<div class="absolute right-2 top-2 w-1.5 h-1.5 rounded-full bg-primary ring-4 ring-primary/20"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Suggestion Chips -->
+<div class="flex flex-wrap gap-2 ml-11">
+<button class="px-4 py-2 bg-surface-container border border-outline-variant rounded-full text-on-surface text-sm font-medium hover:bg-surface-container-high transition-all active:scale-95">
+                투수 성적도 보기
+            </button>
+<button class="px-4 py-2 bg-surface-container border border-outline-variant rounded-full text-on-surface text-sm font-medium hover:bg-surface-container-high transition-all active:scale-95">
+                팀 순위
+            </button>
+<button class="px-4 py-2 bg-surface-container border border-outline-variant rounded-full text-on-surface text-sm font-medium hover:bg-surface-container-high transition-all active:scale-95">
+                비교할 선수
+            </button>
+</div>
+</main>
+<!-- Chat Input Area (Fixed Bottom) -->
+<div class="fixed bottom-0 w-full bg-[#0B0B0E]/95 backdrop-blur-md border-t border-outline-variant/20 pt-4 pb-8 px-5 z-50">
+<div class="flex items-center gap-3 bg-surface-container-high rounded-2xl px-4 py-3 border border-outline-variant/30">
+<span class="material-symbols-outlined text-on-surface-variant">add_circle</span>
+<input class="bg-transparent border-none focus:ring-0 text-on-surface text-[15px] flex-1 placeholder:text-on-surface-variant/50" placeholder="질문을 입력해유..." type="text"/>
+<button class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary transition-transform active:scale-90">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+<!-- Bottom Nav Shell -->
+</div>
+</body></html>

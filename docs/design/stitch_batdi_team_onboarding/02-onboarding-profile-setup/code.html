@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Batdi - KBO Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary": "#2e2d4c",
+                    "surface-container-highest": "#353438",
+                    "surface-container-low": "#1b1b1e",
+                    "on-secondary-fixed": "#191836",
+                    "secondary-fixed": "#e2dfff",
+                    "on-error-container": "#ffdad6",
+                    "error": "#ffb4ab",
+                    "tertiary": "#ffb3af",
+                    "secondary": "#c5c3ea",
+                    "on-secondary-fixed-variant": "#454364",
+                    "on-background": "#e5e1e6",
+                    "outline-variant": "#5a413a",
+                    "inverse-primary": "#af3100",
+                    "surface-container-high": "#2a2a2d",
+                    "primary-fixed": "#ffdbd0",
+                    "on-surface-variant": "#e2bfb5",
+                    "on-tertiary-fixed": "#410005",
+                    "primary-fixed-dim": "#ffb59f",
+                    "surface-variant": "#353438",
+                    "error-container": "#93000a",
+                    "tertiary-container": "#ff5355",
+                    "surface-container": "#1f1f22",
+                    "surface-bright": "#39393c",
+                    "on-primary": "#5e1600",
+                    "primary-container": "#f75f2e",
+                    "on-primary-fixed": "#3a0a00",
+                    "surface-dim": "#131316",
+                    "on-secondary-container": "#b4b1d8",
+                    "on-tertiary-fixed-variant": "#930017",
+                    "inverse-on-surface": "#303033",
+                    "inverse-surface": "#e5e1e6",
+                    "on-primary-container": "#531200",
+                    "tertiary-fixed": "#ffdad7",
+                    "surface-container-lowest": "#0e0e11",
+                    "tertiary-fixed-dim": "#ffb3af",
+                    "on-tertiary-container": "#5c000b",
+                    "background": "#131316",
+                    "on-primary-fixed-variant": "#852300",
+                    "on-error": "#690005",
+                    "surface-tint": "#ffb59f",
+                    "primary": "#ffb59f",
+                    "secondary-fixed-dim": "#c5c3ea",
+                    "on-tertiary": "#68000e",
+                    "surface": "#131316",
+                    "secondary-container": "#454364",
+                    "outline": "#a98a81",
+                    "on-surface": "#e5e1e6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Pretendard", "Inter"],
+                    "body": ["Pretendard", "Inter"],
+                    "label": ["Space Grotesk"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #0B0B0E; color: #E8E8EC; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1F1F24; border-radius: 10px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col h-screen overflow-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 w-full bg-[#0B0B0E] border-none bg-gradient-to-b from-[#111114] to-transparent">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-[#1F1F24] flex items-center justify-center">
+<img alt="KBO Team Badge" class="w-full h-full object-cover" data-alt="minimalist orange emblem with a white eagle silhouette on a clean background for a professional sports brand" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNOURuvl2RBXIGHKh7dQSzgThYHIXDvvY5ZxVkD-Ybf5-TnEdjDFzPNHwXb7b-haSdW2yBldk5uflG8l6kSeZfFTBWdn_aArcPpVB4IpvVa7cPGa6vnEyFtpqoOQKVor4GbnxsIsMQc-HmdMG0IzFuivXeEkMATYJyasAZP8dFG9Oe5orOpZBrLVIl_bH4lq6k1MVV55jbwQwvNLdx67z5sIXjJh6g-gJ-R3L8StLD7RAFI0-KLC3M3Hivl5x55yjUmQvWSqJliA"/>
+</div>
+<h1 class="text-xl font-bold tracking-tighter text-[#E8E8EC] font-['Pretendard']">Batdi</h1>
+</div>
+<button class="text-[#8A8B93] hover:bg-[#1F1F24] transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</header>
+<!-- Chat Canvas -->
+<main class="flex-1 overflow-y-auto pt-20 pb-36 px-4 space-y-6 custom-scrollbar">
+<!-- User Message -->
+<div class="flex justify-end w-full">
+<div class="max-w-[80%] bg-[#F15B2A] text-white px-4 py-3 rounded-[20px] rounded-tr-none shadow-lg shadow-[#F15B2A]/10">
+<p class="text-[15px] font-medium leading-relaxed">한화 최근 뉴스 보여줘</p>
+</div>
+</div>
+<!-- Bot Response -->
+<div class="flex justify-start w-full gap-2">
+<div class="w-8 h-8 rounded-full bg-[#1F1F24] flex-shrink-0 flex items-center justify-center border border-[#2A2B33]">
+<span class="material-symbols-outlined text-[18px] text-[#F15B2A]" data-icon="smart_toy">smart_toy</span>
+</div>
+<div class="max-w-[85%] space-y-3">
+<!-- Text Bubble -->
+<div class="bg-[#14151A] border border-[#2A2B33] text-[#E8E8EC] px-4 py-3 rounded-[20px] rounded-tl-none">
+<p class="text-[15px] font-medium leading-relaxed">최신 한화 소식 가져왔어유! 📰</p>
+</div>
+<!-- News Card -->
+<div class="bg-[#14151A] border border-[#2A2B33] rounded-[14px] p-4 shadow-xl shadow-black/20">
+<div class="flex items-center justify-between mb-4">
+<span class="text-[11px] font-bold tracking-widest text-[#8A8B93] uppercase">LATEST NEWS</span>
+<div class="flex gap-1">
+<div class="w-1 h-4 bg-[#F15B2A] rounded-full"></div>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Item 1 -->
+<div class="group cursor-pointer">
+<h3 class="text-[15px] font-semibold text-[#E8E8EC] leading-snug group-hover:text-[#F15B2A] transition-colors">한화 문보경, 시즌 18호 홈런… 팀 타율 1위 질주</h3>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-[12px] text-[#8A8B93]">스포츠조선</span>
+<span class="w-1 h-1 rounded-full bg-[#5A5B63]"></span>
+<span class="text-[12px] text-[#8A8B93]">2시간 전</span>
+</div>
+</div>
+<div class="h-[1px] bg-[#2A2B33] w-full opacity-50"></div>
+<!-- Item 2 -->
+<div class="group cursor-pointer">
+<h3 class="text-[15px] font-semibold text-[#E8E8EC] leading-snug group-hover:text-[#F15B2A] transition-colors">이글스파크 매진 행렬, 올 시즌 관중 100만 돌파 임박</h3>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-[12px] text-[#8A8B93]">OSEN</span>
+<span class="w-1 h-1 rounded-full bg-[#5A5B63]"></span>
+<span class="text-[12px] text-[#8A8B93]">5시간 전</span>
+</div>
+</div>
+<div class="h-[1px] bg-[#2A2B33] w-full opacity-50"></div>
+<!-- Item 3 -->
+<div class="group cursor-pointer">
+<h3 class="text-[15px] font-semibold text-[#E8E8EC] leading-snug group-hover:text-[#F15B2A] transition-colors">한화 불펜 보강 급한 불… 트레이드 카드는?</h3>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-[12px] text-[#8A8B93]">일간스포츠</span>
+<span class="w-1 h-1 rounded-full bg-[#5A5B63]"></span>
+<span class="text-[12px] text-[#8A8B93]">8시간 전</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Suggestion Chips -->
+<div class="flex flex-wrap gap-2 pt-2 pb-4">
+<button class="bg-[#1F1F24] hover:bg-[#2A2A2D] text-[#E8E8EC] border border-[#2A2B33] px-4 py-2 rounded-full text-[13px] font-medium transition-all active:scale-95">
+                기사 더 보기
+            </button>
+<button class="bg-[#1F1F24] hover:bg-[#2A2A2D] text-[#E8E8EC] border border-[#2A2B33] px-4 py-2 rounded-full text-[13px] font-medium transition-all active:scale-95">
+                오늘 경기
+            </button>
+<button class="bg-[#1F1F24] hover:bg-[#2A2A2D] text-[#E8E8EC] border border-[#2A2B33] px-4 py-2 rounded-full text-[13px] font-medium transition-all active:scale-95">
+                팀 순위
+            </button>
+</div>
+</main>
+<!-- Bottom Input Area -->
+<footer class="fixed bottom-0 w-full p-4 bg-gradient-to-t from-[#0B0B0E] via-[#0B0B0E] to-transparent">
+<div class="max-w-2xl mx-auto flex items-center gap-2 bg-[#14151A] border border-[#2A2B33] rounded-[24px] p-2 pl-5 focus-within:border-[#F15B2A]/50 transition-all shadow-2xl shadow-black">
+<input class="flex-1 bg-transparent border-none text-[#E8E8EC] text-[15px] focus:ring-0 placeholder-[#5A5B63]" placeholder="메시지를 입력하세요..." type="text"/>
+<button class="w-10 h-10 bg-[#F15B2A] rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-lg shadow-[#F15B2A]/20">
+<span class="material-symbols-outlined text-[20px]" data-icon="send">send</span>
+</button>
+</div>
+<!-- Safety spacing for bottom bars on mobile devices -->
+<div class="h-4"></div>
+</footer>
+</body></html>

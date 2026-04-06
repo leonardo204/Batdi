@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#ff5355",
+                        "on-secondary-container": "#b4b1d8",
+                        "secondary-fixed-dim": "#c5c3ea",
+                        "on-error": "#690005",
+                        "surface-variant": "#353438",
+                        "on-primary-fixed-variant": "#852300",
+                        "surface-container-low": "#111114",
+                        "on-primary-container": "#531200",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed": "#e2dfff",
+                        "surface-container-lowest": "#0B0B0E",
+                        "secondary-container": "#454364",
+                        "tertiary": "#ffb3af",
+                        "on-primary-fixed": "#3a0a00",
+                        "on-secondary-fixed-variant": "#454364",
+                        "primary": "#F15B2A",
+                        "primary-fixed-dim": "#ffb59f",
+                        "surface-container-high": "#1F1F24",
+                        "on-secondary": "#2e2d4c",
+                        "inverse-surface": "#e5e1e6",
+                        "on-surface-variant": "#8A8B93",
+                        "on-primary": "#FFFFFF",
+                        "on-surface": "#E8E8EC",
+                        "primary-fixed": "#ffdbd0",
+                        "tertiary-fixed": "#ffdad7",
+                        "error": "#ffb4ab",
+                        "outline-variant": "#2A2B33",
+                        "background": "#0B0B0E",
+                        "on-tertiary-fixed-variant": "#930017",
+                        "error-container": "#93000a",
+                        "surface-dim": "#0B0B0E",
+                        "tertiary-fixed-dim": "#ffb3af",
+                        "on-tertiary-container": "#5c000b",
+                        "primary-container": "#F15B2A",
+                        "surface-container": "#14151A",
+                        "secondary": "#c5c3ea",
+                        "surface-bright": "#39393c",
+                        "surface-tint": "#F15B2A",
+                        "on-secondary-fixed": "#191836",
+                        "inverse-on-surface": "#303033",
+                        "surface-container-highest": "#353438",
+                        "on-tertiary": "#68000e",
+                        "on-background": "#E8E8EC",
+                        "outline": "#5A5B63",
+                        "on-tertiary-fixed": "#410005",
+                        "surface": "#0B0B0E",
+                        "inverse-primary": "#af3100"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Pretendard", "Inter", "sans-serif"],
+                        "body": ["Pretendard", "Inter", "sans-serif"],
+                        "label": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #0B0B0E;
+            color: #E8E8EC;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-lowest min-h-screen flex flex-col">
+<!-- TopAppBar Section (Shared Component Mapping) -->
+<header class="w-full top-0 sticky z-50 bg-[#0B0B0E] flex justify-between items-center px-6 py-4 h-[56px] border-none">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-full border-2 border-primary overflow-hidden flex items-center justify-center bg-surface-container">
+<img alt="Hanwha Eagles Logo" class="w-full h-full object-cover" data-alt="Small circular professional sports team badge with a minimalist orange eagle icon on a clean white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5tVjcKJZoaMVljhacupwYc1fvwdSLhyYU8vlxlmV0lvS9hp8jP2GU_umbISTPuMcTdHsTogaTVhnSxraSRVBhyyJ6fEiwB_6Xc9eisT0orR6wQvyW9lW99H1fSUNXS1umMXxVTZ2OGMYnpTdBMY-AJnBuKRI9QJXNXMX_p6SIFFCYbm7P1J7PuDTHY8-qkoHj1CsbvlDpyE1jBqfF8OALYCW59BeQLeE9DtWeX5-stYtM5WkLM9u-qn0-s59xwAKGB6IkCWda7Q"/>
+</div>
+<h1 class="text-primary font-bold text-lg tracking-tight italic">밧디 · 한화</h1>
+</div>
+<button class="text-on-surface-variant hover:bg-surface-container-high p-1 rounded-full transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</header>
+<!-- Main Canvas: Empty State -->
+<main class="flex-1 flex flex-col items-center justify-center px-6 pb-32">
+<!-- Abstract Mascot/Logo Placeholder -->
+<div class="mb-6 relative">
+<div class="w-20 h-20 bg-surface-container rounded-[24px] flex items-center justify-center text-outline transition-all duration-300">
+<span class="material-symbols-outlined text-[48px]" data-weight="fill" style="font-variation-settings: 'FILL' 1;">forum</span>
+</div>
+<div class="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-full border-4 border-background flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+</div>
+</div>
+<!-- Greeting Text -->
+<div class="text-center space-y-2">
+<h2 class="text-[18px] font-semibold text-on-surface">안녕하셔유! 밧디예유~ 🧡</h2>
+<p class="text-[14px] text-on-surface-variant">오늘 한화 경기 궁금한 거 물어봐유!</p>
+</div>
+<!-- Suggestion Chips Row -->
+<div class="w-full mt-10 overflow-x-auto no-scrollbar flex gap-2 justify-center">
+<button class="whitespace-nowrap bg-surface-container border border-outline-variant px-[14px] py-[8px] rounded-full text-[13px] text-on-surface hover:bg-surface-container-high transition-colors active:scale-95 duration-150">
+                오늘 경기 스코어
+            </button>
+<button class="whitespace-nowrap bg-surface-container border border-outline-variant px-[14px] py-[8px] rounded-full text-[13px] text-on-surface hover:bg-surface-container-high transition-colors active:scale-95 duration-150">
+                팀 순위
+            </button>
+<button class="whitespace-nowrap bg-surface-container border border-outline-variant px-[14px] py-[8px] rounded-full text-[13px] text-on-surface hover:bg-surface-container-high transition-colors active:scale-95 duration-150">
+                최근 뉴스
+            </button>
+</div>
+</main>
+<!-- Bottom Input Area -->
+<footer class="fixed bottom-0 left-0 w-full bg-background/80 backdrop-blur-md px-4 pt-3 pb-[calc(12px+34px)]">
+<div class="max-w-3xl mx-auto flex items-center gap-3">
+<div class="relative flex-1">
+<input class="w-full h-[52px] bg-surface-container border border-outline-variant rounded-[10px] px-4 text-on-surface placeholder:text-outline focus:outline-none focus:border-primary/50 transition-all text-[15px]" placeholder="밧디에게 물어보기..." type="text"/>
+</div>
+<button class="w-[40px] h-[40px] bg-primary rounded-full flex items-center justify-center opacity-50 cursor-not-allowed shadow-lg shadow-primary/10 transition-transform active:scale-90" disabled="">
+<span class="material-symbols-outlined text-white text-[20px] font-bold">arrow_upward</span>
+</button>
+</div>
+</footer>
+<!-- Visual Polish: Soft Grain Overlay -->
+<div class="fixed inset-0 pointer-events-none opacity-[0.02] mix-blend-overlay bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+</body></html>

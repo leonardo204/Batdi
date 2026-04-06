@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#531200",
+                        "surface-container-high": "#2a2a2d",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#e2dfff",
+                        "inverse-on-surface": "#303033",
+                        "primary-fixed-dim": "#ffb59f",
+                        "primary-container": "#f75f2e",
+                        "outline": "#a98a81",
+                        "on-primary-fixed": "#3a0a00",
+                        "primary": "#ffb59f",
+                        "on-primary": "#5e1600",
+                        "on-secondary-fixed-variant": "#454364",
+                        "surface-variant": "#353438",
+                        "surface-dim": "#131316",
+                        "on-tertiary-fixed-variant": "#930017",
+                        "tertiary-fixed-dim": "#ffb3af",
+                        "secondary": "#c5c3ea",
+                        "on-surface": "#e5e1e6",
+                        "inverse-primary": "#af3100",
+                        "primary-fixed": "#ffdbd0",
+                        "on-primary-fixed-variant": "#852300",
+                        "on-secondary-fixed": "#191836",
+                        "tertiary-fixed": "#ffdad7",
+                        "surface-container-lowest": "#0e0e11",
+                        "on-tertiary": "#68000e",
+                        "surface-container-highest": "#353438",
+                        "background": "#131316",
+                        "surface-container-low": "#1b1b1e",
+                        "surface": "#131316",
+                        "surface-container": "#1f1f22",
+                        "on-secondary": "#2e2d4c",
+                        "on-tertiary-fixed": "#410005",
+                        "error": "#ffb4ab",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#c5c3ea",
+                        "secondary-container": "#454364",
+                        "on-background": "#e5e1e6",
+                        "tertiary-container": "#ff5355",
+                        "surface-tint": "#ffb59f",
+                        "on-secondary-container": "#b4b1d8",
+                        "inverse-surface": "#e5e1e6",
+                        "tertiary": "#ffb3af",
+                        "on-error-container": "#ffdad6",
+                        "outline-variant": "#5a413a",
+                        "surface-bright": "#39393c",
+                        "on-tertiary-container": "#5c000b",
+                        "on-surface-variant": "#e2bfb5",
+                        "hanwha-orange": "#F15B2A"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "sans": ["Pretendard", "Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #0B0B0E;
+            color: #E8E8EC;
+            font-family: 'Pretendard', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .chat-container {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .chat-container::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col min-h-screen">
+<!-- Top Navigation Bar (Shared Component Strategy) -->
+<header class="w-full sticky top-0 z-50 bg-gradient-to-b from-[#111114] to-transparent flex items-center justify-between px-6 py-4 h-16">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high flex items-center justify-center border border-outline-variant/20">
+<img alt="Hanwha Eagles Logo" class="w-full h-full object-cover" data-alt="stylized hanwha eagles kbo baseball team logo with vibrant orange and white elements on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAXGV7sfhpgB2DNJREoM0t3U8ZnCVkxpdWQeEd4qWJUGN56Fn5kY0YT2i14msc-y5juywhFYzacqJbowzJYsD7ziJM9kfOwMskWadI23CwC2fxA3d5RbD9Xd3atEsGLTMJDzmt0U_-XR3lY3i7vxYjFFh_PPvKAydWTyuT24xxFIHl7Xrj0JCgVT__ZlcLfwpvFC5NdbxK-XjoWw4MKos5dpCytS-nod-z6ZkcAVoBxvOjwDmITTPBe90bRtGBGKsp-19buDKtOQ"/>
+</div>
+<h1 class="font-bold text-[#E8E8EC] tracking-tighter text-lg">Batdi AI</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-[#8A8B93] hover:bg-[#1F1F24] transition-colors duration-200 p-2 rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Chat Canvas -->
+<main class="flex-1 overflow-y-auto px-5 pt-4 pb-32 space-y-8 chat-container max-w-2xl mx-auto w-full">
+<!-- User Bubble -->
+<div class="flex flex-col items-end w-full">
+<div class="bg-hanwha-orange text-white px-5 py-3 rounded-2xl rounded-tr-none max-w-[85%] shadow-lg shadow-hanwha-orange/10 font-medium">
+                지금 순위 어때유?
+            </div>
+</div>
+<!-- Bot Response -->
+<div class="flex flex-col items-start w-full space-y-4">
+<div class="flex items-start gap-3 w-full">
+<div class="bg-surface-container-high px-5 py-3 rounded-2xl rounded-tl-none max-w-[90%] text-on-surface leading-relaxed">
+                    현재 순위여! 한화 2위 유지 중이여~ 올해는 진짜 되는 거여! 🦅
+                </div>
+</div>
+<!-- Standings Card -->
+<div class="w-full bg-[#14151A] rounded-[14px] border border-[#2A2B33] overflow-hidden shadow-2xl">
+<div class="p-4 flex flex-col space-y-4">
+<header class="flex justify-between items-center">
+<span class="text-[11px] font-bold tracking-[0.1em] text-[#8A8B93] uppercase">2026 KBO STANDINGS</span>
+<span class="text-[10px] text-[#5A5B63] font-mono">UPDATED: JUN 24</span>
+</header>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="text-[12px] text-[#5A5B63] border-b border-[#2A2B33]/30">
+<th class="pb-2 font-medium px-1">#</th>
+<th class="pb-2 font-medium">팀</th>
+<th class="pb-2 font-medium text-right">승</th>
+<th class="pb-2 font-medium text-right">패</th>
+<th class="pb-2 font-medium text-right">승률</th>
+<th class="pb-2 font-medium text-right">게임차</th>
+</tr>
+</thead>
+<tbody class="text-[14px] font-sans">
+<!-- Row 1: LG -->
+<tr class="group border-b border-[#2A2B33]/10">
+<td class="py-3 px-1 font-mono text-[#8A8B93]">1</td>
+<td class="py-3 font-semibold">LG</td>
+<td class="py-3 font-mono text-right tabular-nums">42</td>
+<td class="py-3 font-mono text-right tabular-nums">28</td>
+<td class="py-3 font-mono text-right tabular-nums text-primary">.600</td>
+<td class="py-3 font-mono text-right tabular-nums text-[#8A8B93]">-</td>
+</tr>
+<!-- Row 2: Hanwha (Highlighted) -->
+<tr class="bg-[#1C1D24] border-l-4 border-hanwha-orange">
+<td class="py-3 px-2 font-mono text-hanwha-orange font-bold">2</td>
+<td class="py-3 font-bold text-on-surface">한화</td>
+<td class="py-3 font-mono text-right tabular-nums">40</td>
+<td class="py-3 font-mono text-right tabular-nums">29</td>
+<td class="py-3 font-mono text-right tabular-nums text-hanwha-orange">.580</td>
+<td class="py-3 font-mono text-right tabular-nums">1.5</td>
+</tr>
+<!-- Row 3: Samsung -->
+<tr class="group border-b border-[#2A2B33]/10">
+<td class="py-3 px-1 font-mono text-[#8A8B93]">3</td>
+<td class="py-3">삼성</td>
+<td class="py-3 font-mono text-right tabular-nums">38</td>
+<td class="py-3 font-mono text-right tabular-nums">31</td>
+<td class="py-3 font-mono text-right tabular-nums">.551</td>
+<td class="py-3 font-mono text-right tabular-nums">3.5</td>
+</tr>
+<!-- Row 4: Kia -->
+<tr class="group border-b border-[#2A2B33]/10">
+<td class="py-3 px-1 font-mono text-[#8A8B93]">4</td>
+<td class="py-3">기아</td>
+<td class="py-3 font-mono text-right tabular-nums">37</td>
+<td class="py-3 font-mono text-right tabular-nums">33</td>
+<td class="py-3 font-mono text-right tabular-nums">.529</td>
+<td class="py-3 font-mono text-right tabular-nums">5.0</td>
+</tr>
+<!-- Row 5: Doosan -->
+<tr class="group border-b border-[#2A2B33]/10">
+<td class="py-3 px-1 font-mono text-[#8A8B93]">5</td>
+<td class="py-3">두산</td>
+<td class="py-3 font-mono text-right tabular-nums">35</td>
+<td class="py-3 font-mono text-right tabular-nums">34</td>
+<td class="py-3 font-mono text-right tabular-nums">.507</td>
+<td class="py-3 font-mono text-right tabular-nums">6.5</td>
+</tr>
+<!-- Row 6: KT -->
+<tr class="group border-b border-[#2A2B33]/10">
+<td class="py-3 px-1 font-mono text-[#8A8B93]">6</td>
+<td class="py-3">KT</td>
+<td class="py-3 font-mono text-right tabular-nums">33</td>
+<td class="py-3 font-mono text-right tabular-nums">36</td>
+<td class="py-3 font-mono text-right tabular-nums">.478</td>
+<td class="py-3 font-mono text-right tabular-nums">8.5</td>
+</tr>
+<!-- Row 7: SSG -->
+<tr class="group border-b border-[#2A2B33]/10">
+<td class="py-3 px-1 font-mono text-[#8A8B93]">7</td>
+<td class="py-3">SSG</td>
+<td class="py-3 font-mono text-right tabular-nums">32</td>
+<td class="py-3 font-mono text-right tabular-nums">38</td>
+<td class="py-3 font-mono text-right tabular-nums">.457</td>
+<td class="py-3 font-mono text-right tabular-nums">10.0</td>
+</tr>
+<!-- Row 8: NC -->
+<tr class="group border-b border-[#2A2B33]/10">
+<td class="py-3 px-1 font-mono text-[#8A8B93]">8</td>
+<td class="py-3">NC</td>
+<td class="py-3 font-mono text-right tabular-nums">30</td>
+<td class="py-3 font-mono text-right tabular-nums">39</td>
+<td class="py-3 font-mono text-right tabular-nums">.435</td>
+<td class="py-3 font-mono text-right tabular-nums">11.5</td>
+</tr>
+<!-- Row 9: Kiwoom -->
+<tr class="group border-b border-[#2A2B33]/10">
+<td class="py-3 px-1 font-mono text-[#8A8B93]">9</td>
+<td class="py-3">키움</td>
+<td class="py-3 font-mono text-right tabular-nums">29</td>
+<td class="py-3 font-mono text-right tabular-nums">40</td>
+<td class="py-3 font-mono text-right tabular-nums">.420</td>
+<td class="py-3 font-mono text-right tabular-nums">12.5</td>
+</tr>
+<!-- Row 10: Lotte -->
+<tr class="group">
+<td class="py-3 px-1 font-mono text-[#8A8B93]">10</td>
+<td class="py-3">롯데</td>
+<td class="py-3 font-mono text-right tabular-nums">28</td>
+<td class="py-3 font-mono text-right tabular-nums">42</td>
+<td class="py-3 font-mono text-right tabular-nums">.400</td>
+<td class="py-3 font-mono text-right tabular-nums">14.0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Fixed Bottom Interaction Area -->
+<footer class="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-[#0B0B0E] via-[#0B0B0E] to-transparent pt-8 pb-[max(24px,env(safe-area-inset-bottom))] px-6">
+<div class="max-w-2xl mx-auto space-y-4">
+<!-- Suggestion Chips -->
+<div class="flex gap-2 overflow-x-auto pb-2 chat-container">
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container border border-outline-variant/10 rounded-full text-sm font-medium text-on-surface hover:bg-surface-container-high transition-colors">
+                    한화 최근 5경기
+                </button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container border border-outline-variant/10 rounded-full text-sm font-medium text-on-surface hover:bg-surface-container-high transition-colors">
+                    1위와 비교
+                </button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container border border-outline-variant/10 rounded-full text-sm font-medium text-on-surface hover:bg-surface-container-high transition-colors">
+                    팀 타율 순위
+                </button>
+</div>
+<!-- Input Bar -->
+<div class="relative group">
+<div class="absolute inset-0 bg-hanwha-orange/5 blur-xl rounded-full group-focus-within:bg-hanwha-orange/10 transition-all"></div>
+<div class="relative bg-surface-container-low border border-outline-variant/20 rounded-full px-6 py-4 flex items-center gap-3 backdrop-blur-md">
+<input class="bg-transparent border-none focus:ring-0 w-full text-[#E8E8EC] placeholder-[#5A5B63] text-base" placeholder="밧디에게 궁금한 점을 물어보세유..." type="text"/>
+<button class="flex-shrink-0 bg-hanwha-orange text-white w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-transform shadow-lg shadow-hanwha-orange/20">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">arrow_upward</span>
+</button>
+</div>
+</div>
+</div>
+</footer>
+</body></html>

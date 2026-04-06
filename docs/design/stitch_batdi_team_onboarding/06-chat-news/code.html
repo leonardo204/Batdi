@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed-dim": "#c5c3ea",
+                    "tertiary-container": "#ff5355",
+                    "surface-container-high": "#2a2a2d",
+                    "secondary-container": "#454364",
+                    "on-primary-fixed-variant": "#852300",
+                    "on-error-container": "#ffdad6",
+                    "outline": "#a98a81",
+                    "on-primary": "#5e1600",
+                    "on-tertiary-fixed": "#410005",
+                    "on-tertiary-container": "#5c000b",
+                    "background": "#0B0B0E",
+                    "primary-fixed": "#ffdbd0",
+                    "on-secondary-fixed": "#191836",
+                    "on-secondary-fixed-variant": "#454364",
+                    "tertiary": "#ffb3af",
+                    "on-tertiary-fixed-variant": "#930017",
+                    "on-surface-variant": "#8A8B93",
+                    "on-tertiary": "#68000e",
+                    "surface": "#0B0B0E",
+                    "inverse-surface": "#e5e1e6",
+                    "surface-container": "#14151A",
+                    "secondary": "#c5c3ea",
+                    "error": "#ffb4ab",
+                    "surface-tint": "#ffb59f",
+                    "surface-container-highest": "#353438",
+                    "tertiary-fixed-dim": "#ffb3af",
+                    "primary-fixed-dim": "#ffb59f",
+                    "secondary-fixed": "#e2dfff",
+                    "error-container": "#93000a",
+                    "on-secondary-container": "#b4b1d8",
+                    "surface-container-lowest": "#0B0B0E",
+                    "on-primary-container": "#531200",
+                    "inverse-primary": "#af3100",
+                    "on-secondary": "#2e2d4c",
+                    "surface-bright": "#39393c",
+                    "inverse-on-surface": "#303033",
+                    "outline-variant": "#2A2B33",
+                    "on-background": "#E8E8EC",
+                    "surface-dim": "#0B0B0E",
+                    "surface-container-low": "#111114",
+                    "surface-variant": "#353438",
+                    "primary-container": "#F15B2A",
+                    "on-surface": "#E8E8EC",
+                    "on-error": "#690005",
+                    "tertiary-fixed": "#ffdad7",
+                    "on-primary-fixed": "#3a0a00",
+                    "primary": "#F15B2A"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Pretendard", "sans-serif"],
+                    "body": ["Pretendard", "sans-serif"],
+                    "label": ["Space Grotesk", "monospace"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #0B0B0E; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1F1F24; border-radius: 10px; }
+        .glass-effect { backdrop-filter: blur(12px); background: rgba(11, 11, 14, 0.8); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface antialiased overflow-hidden">
+<!-- Device Frame Wrapper (iPhone 15 Pro simulation) -->
+<div class="max-w-[393px] h-[852px] mx-auto bg-background relative flex flex-col shadow-2xl overflow-hidden md:border-[8px] md:border-[#1F1F24] md:rounded-[55px] md:my-8">
+<!-- Shared Component: TopAppBar -->
+<header class="flex justify-between items-center w-full px-5 py-3 h-16 bg-[#0B0B0E] dark:bg-[#0B0B0E] sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="relative w-9 h-9 rounded-full p-[2px] bg-[#F15B2A]">
+<div class="w-full h-full rounded-full overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Hanwha Eagles professional baseball team logo with orange and white eagle motif on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwZ0-F_4qvdb9wdY919ROlfXYGalV9RC1TTk7nk9SSf9PL21LInzBoXMBcpJBhE6RkjSeNXT68SYEqa8lojYzvk4gcl3CKhXnRpd3NpEY4ruLJtjA6udF76_7GIXwmdGZG--F7trj8mRn4hR_AjAPSz6jKJ8vNbsRXjm08E2fHQoJp04-0sHM_pSvKAG8wJLLyQA-vr3OC5hR8x5FrWSqL22Qlb5O-d8JkeqJ4zdqWS-n1-GdLZR1kQvWTqbowEk6amUl3ab1ZrA"/>
+</div>
+</div>
+<h1 class="font-['Pretendard'] text-[16px] font-semibold tracking-tight text-[#E8E8EC] tracking-tighter">Batdi</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform hover:bg-[#1F1F24] p-2 rounded-full">
+<span class="material-symbols-outlined text-[#8A8B93]">search</span>
+</button>
+<button class="active:scale-95 transition-transform hover:bg-[#1F1F24] p-2 rounded-full">
+<span class="material-symbols-outlined text-[#8A8B93]">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Chat Area -->
+<main class="flex-1 overflow-y-auto px-4 py-6 space-y-6 custom-scrollbar pb-32">
+<!-- User Message -->
+<div class="flex flex-col items-end space-y-1">
+<div class="bg-[#F15B2A] text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[80%] shadow-lg">
+<p class="text-[15px] font-medium leading-relaxed">오늘 경기 어때유?</p>
+</div>
+<span class="text-[11px] text-on-surface-variant px-1">오후 7:32</span>
+</div>
+<!-- Bot Response Group -->
+<div class="space-y-4">
+<div class="flex items-start gap-2.5">
+<div class="w-6 h-6 rounded-full ring-1 ring-[#F15B2A] p-0.5 flex-shrink-0 mt-1">
+<div class="w-full h-full rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-[#F15B2A]" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+</div>
+<div class="space-y-3 max-w-[85%]">
+<!-- Bot Bubble -->
+<div class="bg-[#14151A] border border-[#2A2B33] px-4 py-2.5 rounded-2xl rounded-tl-none">
+<p class="text-[15px] text-on-surface leading-relaxed">지금 경기 중이여! 한화가 리드하고 있어유~ 💪</p>
+</div>
+<!-- Scoreboard Card -->
+<div class="bg-[#14151A] border border-[#2A2B33] rounded-[14px] p-4 shadow-sm">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label text-[10px] font-bold tracking-widest text-on-surface-variant">TODAY'S GAME</span>
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-[#4ADE80] animate-pulse"></span>
+<span class="text-[12px] font-semibold text-[#4ADE80]">7회초 · 한화 공격</span>
+</div>
+</div>
+<div class="flex justify-between items-center py-2">
+<div class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center">
+<img class="w-8 h-8" data-alt="Small Hanwha Eagles team icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuANOhztNYIJzqRktv5ymf_YAYQdxvZkgN9F364vTkSshQylZHIm9pHnA5GnTIz-EAKE6dcDzp6BcM1lMkK9rpyPSLKPlCqRFFkIlDzHGw6QufbFIT82EjxsTQBacLl8AZbOue_7hVNFPKk-FyLZ9LER_QezfR55vjhdbCCRBrHkJN_eAhf2lbJr25rKWNhi_AdmNoHiiUTqR0watLhjmBLF4od3CDRD855JXN3Bjk5jOHt8lp67fmfQRNs1jpLT1ntDyX_3WmXu1A"/>
+</div>
+<span class="text-[13px] font-semibold">한화</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-label text-4xl font-bold text-primary">5</span>
+<span class="text-on-surface-variant font-light text-xl">:</span>
+<span class="font-label text-4xl font-bold text-on-surface">3</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center">
+<img class="w-8 h-8" data-alt="Kia Tigers professional baseball team logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqw2GVm1JEWbVnCaz5_FJi3MuU67FiN0ODJviTg3vSfn5pVuRDRAsknS6qzPjUy8wbUU8GvN85ux2q-AfCHTrjXowVc_qSv-YOFJV2Hti50p8jBaHAi1-FHmedm2Ge6eobSDxDse4LwUUimcgfJ6MhAk80DRJJ3_jEATeNIZkauw1TJBf9EUlUki7SgGnzAVDjbihNpAQELKYK_CKKxP0IRhsNQCUI8VWPq7plsJgzwAb6MQY5a12O5RQx2PvJBBg82vuf-hBZ-g"/>
+</div>
+<span class="text-[13px] font-semibold text-on-surface-variant">KIA</span>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-[#2A2B33]/50 flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+<span class="text-[12px]">이글스파크</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">groups</span>
+<span class="text-[12px]">관중 18,234</span>
+</div>
+</div>
+</div>
+<!-- Suggestion Chips -->
+<div class="flex flex-wrap gap-2 pt-2">
+<button class="px-4 py-2 rounded-full bg-[#14151A] border border-[#2A2B33] text-[13px] font-medium text-on-surface hover:bg-[#1F1F24] transition-colors active:scale-95">
+                                이닝별 스코어
+                            </button>
+<button class="px-4 py-2 rounded-full bg-[#14151A] border border-[#2A2B33] text-[13px] font-medium text-on-surface hover:bg-[#1F1F24] transition-colors active:scale-95">
+                                오늘 선발 투수
+                            </button>
+<button class="px-4 py-2 rounded-full bg-[#14151A] border border-[#2A2B33] text-[13px] font-medium text-on-surface hover:bg-[#1F1F24] transition-colors active:scale-95">
+                                실시간 중계
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Input Area -->
+<div class="absolute bottom-0 w-full glass-effect p-4 pb-8 space-y-4">
+<div class="flex items-center gap-3 bg-surface-container-high rounded-full pl-5 pr-2 py-2 border border-[#2A2B33]">
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-[15px] placeholder-[#8A8B93] text-on-surface" placeholder="궁금한 경기 소식을 물어보세유..." type="text"/>
+<button class="w-10 h-10 rounded-full bg-[#F15B2A] flex items-center justify-center text-white active:scale-90 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">arrow_upward</span>
+</button>
+</div>
+<!-- Visual Indicator for iPhone bottom bar -->
+<div class="w-32 h-1 bg-surface-container-highest mx-auto rounded-full mt-2"></div>
+</div>
+</div>
+</body></html>

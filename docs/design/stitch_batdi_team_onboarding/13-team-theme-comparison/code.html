@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#3a0a00",
+                        "secondary-fixed": "#e2dfff",
+                        "surface-dim": "#131316",
+                        "on-error": "#690005",
+                        "surface-container-lowest": "#0e0e11",
+                        "surface-container-high": "#2a2a2d",
+                        "outline-variant": "#5a413a",
+                        "surface-container-highest": "#353438",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-container": "#531200",
+                        "on-tertiary-container": "#5c000b",
+                        "tertiary-container": "#ff5355",
+                        "secondary": "#c5c3ea",
+                        "surface-variant": "#353438",
+                        "secondary-container": "#454364",
+                        "primary-fixed-dim": "#ffb59f",
+                        "tertiary-fixed-dim": "#ffb3af",
+                        "primary": "#ffb59f",
+                        "on-tertiary-fixed": "#410005",
+                        "inverse-surface": "#e5e1e6",
+                        "on-background": "#e5e1e6",
+                        "on-primary-fixed-variant": "#852300",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-surface": "#e5e1e6",
+                        "on-secondary-container": "#b4b1d8",
+                        "surface-container-low": "#1b1b1e",
+                        "error-container": "#93000a",
+                        "tertiary": "#ffb3af",
+                        "secondary-fixed-dim": "#c5c3ea",
+                        "primary-fixed": "#ffdbd0",
+                        "outline": "#a98a81",
+                        "on-surface-variant": "#e2bfb5",
+                        "surface": "#131316",
+                        "surface-bright": "#39393c",
+                        "surface-tint": "#ffb59f",
+                        "primary-container": "#f75f2e",
+                        "on-primary": "#5e1600",
+                        "on-secondary": "#2e2d4c",
+                        "error": "#ffb4ab",
+                        "on-tertiary": "#68000e",
+                        "on-tertiary-fixed-variant": "#930017",
+                        "inverse-on-surface": "#303033",
+                        "surface-container": "#1f1f22",
+                        "on-secondary-fixed-variant": "#454364",
+                        "background": "#131316",
+                        "on-secondary-fixed": "#191836",
+                        "inverse-primary": "#af3100"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Pretendard", "Inter"],
+                        "body": ["Pretendard", "Inter"],
+                        "label": ["Space Grotesk"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #0B0B0E; color: #E8E8EC; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { backdrop-filter: blur(12px); background: rgba(20, 21, 26, 0.7); }
+        .iphone-frame { border: 8px solid #2A2B33; border-radius: 40px; overflow: hidden; position: relative; }
+        .dynamic-island { width: 80px; height: 24px; background: #000; border-radius: 12px; margin: 8px auto; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#0B0B0E] min-h-screen p-4 md:p-8">
+<!-- Header Section -->
+<header class="max-w-6xl mx-auto mb-12 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#F15B2A] text-3xl">sports_baseball</span>
+<h1 class="text-2xl font-bold tracking-tight text-zinc-100">Batdi AI <span class="text-[#F15B2A] text-sm font-medium ml-2">Personalization Lab</span></h1>
+</div>
+<div class="hidden md:flex gap-4">
+<button class="px-4 py-2 rounded-xl bg-surface-container-high text-sm font-medium hover:bg-surface-bright transition-colors">Documentation</button>
+<button class="px-4 py-2 rounded-xl bg-primary-container text-on-primary-container text-sm font-bold">Export Config</button>
+</div>
+</header>
+<main class="max-w-7xl mx-auto">
+<!-- 2x2 Grid Comparison -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+<!-- 1. Hanwha Eagles -->
+<div class="iphone-frame bg-[#0B0B0E] aspect-[9/19.5] shadow-2xl">
+<div class="dynamic-island"></div>
+<div class="flex flex-col h-full">
+<!-- Top Bar -->
+<div class="flex justify-between items-center px-6 py-4 bg-zinc-900/50 backdrop-blur-md">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-[#F15B2A] flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xs" data-weight="fill">token</span>
+</div>
+<span class="font-bold text-[#F15B2A] tracking-tighter">밧디 · 한화</span>
+</div>
+<span class="material-symbols-outlined text-zinc-500">settings</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
+<!-- Score Card -->
+<div class="bg-surface-container rounded-2xl p-4 border-l-4 border-[#F15B2A]">
+<div class="flex justify-between items-center mb-3">
+<span class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase">TODAY'S GAME</span>
+<div class="flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>
+<span class="text-[10px] text-red-500 font-bold">LIVE</span>
+</div>
+</div>
+<div class="flex justify-between items-center px-2">
+<div class="text-center">
+<div class="w-10 h-10 rounded-full bg-zinc-800 mb-1 flex items-center justify-center">
+<span class="text-xs font-bold text-zinc-400">KT</span>
+</div>
+<span class="text-[10px] text-zinc-400">Wiz</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-2xl font-mono font-bold text-zinc-100">2</span>
+<span class="text-zinc-600 font-bold">:</span>
+<span class="text-2xl font-mono font-bold text-[#F15B2A]">5</span>
+</div>
+<div class="text-center">
+<div class="w-10 h-10 rounded-full bg-zinc-800 mb-1 flex items-center justify-center border-2 border-[#F15B2A]">
+<span class="text-xs font-bold text-white">HH</span>
+</div>
+<span class="text-[10px] text-zinc-400">Eagles</span>
+</div>
+</div>
+</div>
+<!-- Chat -->
+<div class="flex justify-end">
+<div class="bg-[#F15B2A] text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[80%] shadow-lg shadow-orange-950/20">
+<p class="text-sm">오늘 경기 어때?</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full border-2 border-[#F15B2A] flex-shrink-0 p-0.5">
+<img class="w-full h-full rounded-full object-cover" data-alt="minimalist white AI robot avatar with orange circular glowing elements on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVU1RZ7N4PlnKr00wJCKZ_s3kY9XT8Iy4W086ru21RRqrwK8KCPMfTIGwNjA6Z97qC7-wv9RSKBJNRtekVVTGYYyPQnDTB-u5YtY6bNlYDbEu2Z8fXB7PfAXybHjLaRbvFGqPBP0y13Sh4dsOO-6LOapnlYM7uC6E-3GsLCzY6FYvlOC0-p93tjwSh0xbvEwcql3Bq9mtQx_PuHYT7Fh0eG4i25uY2p9sJP6I98SZKlSDfXpQtO4quU8eUKlNEwiEXj6uvgA0MKw"/>
+</div>
+<div class="bg-surface-container-high px-4 py-2.5 rounded-2xl rounded-tl-none max-w-[80%]">
+<p class="text-sm">한화가 이기고 있어유~ 💪 최재훈 선수가 적시타를 쳤네요!</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 2. Doosan Bears -->
+<div class="iphone-frame bg-[#0B0B0E] aspect-[9/19.5] shadow-2xl">
+<div class="dynamic-island"></div>
+<div class="flex flex-col h-full">
+<div class="flex justify-between items-center px-6 py-4 bg-zinc-900/50 backdrop-blur-md">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-[#131230] flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xs" data-weight="fill">token</span>
+</div>
+<span class="font-bold text-[#131230] tracking-tighter">밧디 · 두산</span>
+</div>
+<span class="material-symbols-outlined text-zinc-500">settings</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
+<div class="bg-surface-container rounded-2xl p-4 border-l-4 border-[#131230]">
+<div class="flex justify-between items-center mb-3">
+<span class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase">TODAY'S GAME</span>
+<div class="flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+<span class="text-[10px] text-red-500 font-bold">LIVE</span>
+</div>
+</div>
+<div class="flex justify-between items-center px-2">
+<div class="text-center">
+<div class="w-10 h-10 rounded-full bg-zinc-800 mb-1 flex items-center justify-center">
+<span class="text-xs font-bold text-zinc-400">SSG</span>
+</div>
+<span class="text-[10px] text-zinc-400">Landers</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-2xl font-mono font-bold text-zinc-100">3</span>
+<span class="text-zinc-600 font-bold">:</span>
+<span class="text-2xl font-mono font-bold text-[#131230]">4</span>
+</div>
+<div class="text-center">
+<div class="w-10 h-10 rounded-full bg-zinc-800 mb-1 flex items-center justify-center border-2 border-[#131230]">
+<span class="text-xs font-bold text-white">DS</span>
+</div>
+<span class="text-[10px] text-zinc-400">Bears</span>
+</div>
+</div>
+</div>
+<div class="flex justify-end">
+<div class="bg-[#131230] text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[80%] border border-[#C8102E]/30">
+<p class="text-sm">오늘 경기 어때?</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full border-2 border-[#131230] flex-shrink-0 p-0.5 shadow-[0_0_8px_rgba(200,16,46,0.3)]">
+<img class="w-full h-full rounded-full object-cover" data-alt="sleek dark navy and chrome robot head with red accent lights on a high-tech obsidian surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDH9YSh7ia3LgV8jgbIcrD5KousPC85JifMFjk1FoUUrFJzfPFXxVJiiIONMSZm_V7bnNEK2vhortM83SUVz1I0xmCrsal8bh50sRF82G0b3oQrGh6EyQgX1606K-FqxKl-mrWNqxEBEVRp4DHuPDiLJLN1imJ1AFllij6Zis-9IIpDlu0mFvqyl69ns2yWIVYT9v0DkDzbec3EaOK8Lo4tQ96iEd7wHDxm5MNScMnNSdhkwVhS3pq6z4wiG4zGwqO4iE6-HL5ycA"/>
+</div>
+<div class="bg-surface-container-high px-4 py-2.5 rounded-2xl rounded-tl-none max-w-[80%]">
+<p class="text-sm">뭐 이 정도면 괜찮지~ 😎 양의지 선수가 리드를 잘 하고 있어.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 3. Kia Tigers -->
+<div class="iphone-frame bg-[#0B0B0E] aspect-[9/19.5] shadow-2xl">
+<div class="dynamic-island"></div>
+<div class="flex flex-col h-full">
+<div class="flex justify-between items-center px-6 py-4 bg-zinc-900/50 backdrop-blur-md">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-[#EA002C] flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xs" data-weight="fill">token</span>
+</div>
+<span class="font-bold text-[#EA002C] tracking-tighter">밧디 · 기아</span>
+</div>
+<span class="material-symbols-outlined text-zinc-500">settings</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
+<div class="bg-surface-container rounded-2xl p-4 border-l-4 border-[#EA002C]">
+<div class="flex justify-between items-center mb-3">
+<span class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase">TODAY'S GAME</span>
+<div class="flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+<span class="text-[10px] text-red-500 font-bold">LIVE</span>
+</div>
+</div>
+<div class="flex justify-between items-center px-2">
+<div class="text-center">
+<div class="w-10 h-10 rounded-full bg-zinc-800 mb-1 flex items-center justify-center">
+<span class="text-xs font-bold text-zinc-400">LG</span>
+</div>
+<span class="text-[10px] text-zinc-400">Twins</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-2xl font-mono font-bold text-zinc-100">0</span>
+<span class="text-zinc-600 font-bold">:</span>
+<span class="text-2xl font-mono font-bold text-[#EA002C]">8</span>
+</div>
+<div class="text-center">
+<div class="w-10 h-10 rounded-full bg-zinc-800 mb-1 flex items-center justify-center border-2 border-[#EA002C]">
+<span class="text-xs font-bold text-white">KA</span>
+</div>
+<span class="text-[10px] text-zinc-400">Tigers</span>
+</div>
+</div>
+</div>
+<div class="flex justify-end">
+<div class="bg-[#EA002C] text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[80%]">
+<p class="text-sm">오늘 경기 어때?</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full border-2 border-[#EA002C] flex-shrink-0 p-0.5">
+<img class="w-full h-full rounded-full object-cover" data-alt="futuristic red and black robotic companion face with glowing yellow tiger-like eyes in a cinematic tech studio" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXJr22K4PbDqAV3wUzTOkla3KrBO2CbnaH9L0itsaveKtT0v-IbejsHmL6cNq6SH8GKkgwbwd4lZLuNOpAHV_W-I-NuxWJgBFsHAVEMCGSkd72xoe3EWdIe8JdEnYYJ-gVJzjMh6W6F1LB3S0uKKp3jx6QNAO5H2A8znyl31jKZ9BG5eQKWKQ00kuq6UNVdD5OYVtHEPhJ0-H1_Y7sFGTvo9WCbHAj23Q_DLnKNwItW6sHsRscV4z7DnD720_OO80ioRxSPsoLwQ"/>
+</div>
+<div class="bg-surface-container-high px-4 py-2.5 rounded-2xl rounded-tl-none max-w-[80%]">
+<p class="text-sm">허맛나! 기아가 쥑이네잉! 🐯 홈런 잔치 벌어졌다 안카나!</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 4. Lotte Giants -->
+<div class="iphone-frame bg-[#0B0B0E] aspect-[9/19.5] shadow-2xl">
+<div class="dynamic-island"></div>
+<div class="flex flex-col h-full">
+<div class="flex justify-between items-center px-6 py-4 bg-zinc-900/50 backdrop-blur-md">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-[#041E42] flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xs" data-weight="fill">token</span>
+</div>
+<span class="font-bold text-[#041E42] tracking-tighter">밧디 · 롯데</span>
+</div>
+<span class="material-symbols-outlined text-zinc-500">settings</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
+<div class="bg-surface-container rounded-2xl p-4 border-l-4 border-[#041E42]">
+<div class="flex justify-between items-center mb-3">
+<span class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase">TODAY'S GAME</span>
+<div class="flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+<span class="text-[10px] text-red-500 font-bold">LIVE</span>
+</div>
+</div>
+<div class="flex justify-between items-center px-2">
+<div class="text-center">
+<div class="w-10 h-10 rounded-full bg-zinc-800 mb-1 flex items-center justify-center">
+<span class="text-xs font-bold text-zinc-400">NC</span>
+</div>
+<span class="text-[10px] text-zinc-400">Dinos</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-2xl font-mono font-bold text-zinc-100">1</span>
+<span class="text-zinc-600 font-bold">:</span>
+<span class="text-2xl font-mono font-bold text-[#041E42]">3</span>
+</div>
+<div class="text-center">
+<div class="w-10 h-10 rounded-full bg-zinc-800 mb-1 flex items-center justify-center border-2 border-[#041E42]">
+<span class="text-xs font-bold text-white">LT</span>
+</div>
+<span class="text-[10px] text-zinc-400">Giants</span>
+</div>
+</div>
+</div>
+<div class="flex justify-end">
+<div class="bg-[#041E42] text-white px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[80%] border-r-2 border-[#ED1C24]">
+<p class="text-sm">오늘 경기 어때?</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full border-2 border-[#041E42] flex-shrink-0 p-0.5">
+<img class="w-full h-full rounded-full object-cover" data-alt="deep blue and red mechanical droid with maritime aesthetics and glowing digital eyes in a dark futuristic dock" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGi9UzJrKxRtZ1VspGdpB47NG6CQktUvxN0Y343ErZP8xzXpSuHtfVSPrt2X9bz0GVtGeK_1DzM0I5sGppY2sEA0B5VBpOTRhXbxWUr3brMhqbotRh_w64x3gQj_HuqWzjMCk2M0dtuYRubbvhq14fj6VdIspespFE8qqFt6gW6XyM4yOXeEBgsw4K_G9iBBTJcDcfR7zHKoZ0f0UQEWHbbwVpzE4ZjrmEKmlX6vcTiPOSMXfrIer5ZZA2sCPIsszEBXarcdOuVQ"/>
+</div>
+<div class="bg-surface-container-high px-4 py-2.5 rounded-2xl rounded-tl-none max-w-[80%]">
+<p class="text-sm">부산 사나이답게 이기고 있다 아이가! 🌊 사직 노래 소리 들리나!</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- System Controls Floating Panel -->
+<div class="fixed bottom-8 left-1/2 -translate-x-1/2 glass-panel p-4 rounded-3xl border border-white/5 flex gap-8 items-center z-[100] shadow-2xl">
+<div class="flex flex-col gap-1 px-4">
+<span class="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Theme Variant</span>
+<span class="text-sm font-medium">Dynamic Team Accent</span>
+</div>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex gap-4 px-4">
+<button class="w-8 h-8 rounded-full bg-[#F15B2A] ring-2 ring-white/20 hover:scale-110 transition-transform"></button>
+<button class="w-8 h-8 rounded-full bg-[#131230] ring-2 ring-white/20 hover:scale-110 transition-transform"></button>
+<button class="w-8 h-8 rounded-full bg-[#EA002C] ring-2 ring-white/20 hover:scale-110 transition-transform"></button>
+<button class="w-8 h-8 rounded-full bg-[#041E42] ring-2 ring-white/20 hover:scale-110 transition-transform"></button>
+</div>
+</div>
+</main>
+<!-- Contextual Navigation (TopAppBar Shared Component Mapping) -->
+<nav class="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-3 max-w-full z-[99] bg-[#0B0B0E]/50 backdrop-blur-md no-border tonal-shift font-['Pretendard'] font-semibold tracking-tight">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#F15B2A]">sports_baseball</span>
+<span class="text-xl font-bold text-zinc-100">Batdi AI</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-8 text-sm">
+<span class="text-[#F15B2A] cursor-pointer">Preview</span>
+<span class="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer">Compare</span>
+<span class="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer">Export</span>
+</div>
+<span class="material-symbols-outlined text-zinc-400 hover:bg-zinc-800/50 p-2 rounded-full transition-colors cursor-pointer">settings</span>
+</div>
+</nav>
+<!-- Bottom Navigation Mockup -->
+<footer class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-safe h-16 bg-[#0B0B0E]/80 backdrop-blur-lg z-[98] no-border tonal-shift-top">
+<div class="flex flex-col items-center justify-center text-[#F15B2A] border-t-2 border-[#F15B2A] pt-2">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-['Pretendard'] text-[10px] font-medium uppercase mt-1">Analysis</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-500 pt-2 hover:text-zinc-300">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-['Pretendard'] text-[10px] font-medium uppercase mt-1">Schedule</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-500 pt-2 hover:text-zinc-300">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-['Pretendard'] text-[10px] font-medium uppercase mt-1">Teams</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-500 pt-2 hover:text-zinc-300">
+<span class="material-symbols-outlined">person</span>
+<span class="font-['Pretendard'] text-[10px] font-medium uppercase mt-1">Profile</span>
+</div>
+</footer>
+</body></html>

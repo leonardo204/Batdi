@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#353438",
+                    "surface-dim": "#131316",
+                    "tertiary-container": "#ff5355",
+                    "on-surface": "#e5e1e6",
+                    "on-secondary": "#2e2d4c",
+                    "tertiary-fixed": "#ffdad7",
+                    "secondary-fixed": "#e2dfff",
+                    "inverse-on-surface": "#303033",
+                    "primary": "#ffb59f",
+                    "outline-variant": "#5a413a",
+                    "on-secondary-container": "#b4b1d8",
+                    "surface-container-lowest": "#0e0e11",
+                    "surface-variant": "#353438",
+                    "on-secondary-fixed": "#191836",
+                    "on-primary-container": "#531200",
+                    "on-primary": "#5e1600",
+                    "secondary-fixed-dim": "#c5c3ea",
+                    "surface-tint": "#ffb59f",
+                    "tertiary-fixed-dim": "#ffb3af",
+                    "primary-fixed": "#ffdbd0",
+                    "on-secondary-fixed-variant": "#454364",
+                    "primary-fixed-dim": "#ffb59f",
+                    "on-tertiary-container": "#5c000b",
+                    "surface": "#131316",
+                    "secondary-container": "#454364",
+                    "surface-container": "#1f1f22",
+                    "secondary": "#c5c3ea",
+                    "on-surface-variant": "#e2bfb5",
+                    "surface-container-low": "#1b1b1e",
+                    "on-tertiary": "#68000e",
+                    "background": "#131316",
+                    "outline": "#a98a81",
+                    "on-tertiary-fixed": "#410005",
+                    "tertiary": "#ffb3af",
+                    "error": "#ffb4ab",
+                    "inverse-surface": "#e5e1e6",
+                    "surface-container-high": "#2a2a2d",
+                    "on-primary-fixed-variant": "#852300",
+                    "on-primary-fixed": "#3a0a00",
+                    "on-background": "#e5e1e6",
+                    "error-container": "#93000a",
+                    "primary-container": "#f75f2e",
+                    "inverse-primary": "#af3100",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary-fixed-variant": "#930017",
+                    "surface-bright": "#39393c",
+                    "on-error": "#690005"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Pretendard", "Inter"],
+                    "body": ["Pretendard", "Inter"],
+                    "label": ["Space Grotesk"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #0B0B0E; color: #E8E8EC; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .team-card-active-hanwha { border: 2px solid #F15B2A !important; }
+        .btn-active-hanwha { background-color: #F15B2A !important; opacity: 1 !important; }
+        /* Hide scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex items-center justify-center min-h-screen bg-[#050505]">
+<!-- iPhone 15 Pro Frame Emulator -->
+<div class="relative w-[393px] h-[852px] bg-[#0B0B0E] overflow-hidden rounded-[55px] shadow-2xl border-[8px] border-[#1F1F24]">
+<!-- Status Bar Space -->
+<div class="h-12 w-full flex items-center justify-between px-8 text-[12px] font-medium text-[#8A8B93]">
+<span>9:41</span>
+<div class="flex gap-1">
+<span class="material-symbols-outlined text-[14px]">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-[14px]">wifi</span>
+<span class="material-symbols-outlined text-[14px]">battery_full</span>
+</div>
+</div>
+<!-- Shared Component: TopAppBar -->
+<header class="flex flex-col items-center justify-center w-full pt-12 pb-4 px-6">
+<h1 class="font-['Pretendard'] font-bold text-[28px] tracking-tight text-[#E8E8EC]">밧디</h1>
+<p class="font-['Pretendard'] text-[14px] text-[#8A8B93] mt-1">너의 야구 친구</p>
+</header>
+<!-- Main Content: Team Selection Canvas -->
+<main class="px-6 pt-10 pb-32 h-[calc(100%-180px)] overflow-y-auto no-scrollbar">
+<div class="mb-8">
+<h2 class="text-[18px] font-semibold text-[#E8E8EC] mb-2">응원하는 구단을 선택해주세요</h2>
+<p class="text-[13px] text-[#5A5B63]">선택한 구단을 바탕으로 맞춤형 정보를 제공합니다.</p>
+</div>
+<!-- Team Grid -->
+<div class="grid grid-cols-2 gap-[12px]">
+<!-- Card 1: Hanwha (Selected State Example) -->
+<div class="bg-[#14151A] rounded-[14px] p-5 flex flex-col items-center justify-center border-2 border-[#F15B2A] transition-all cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-[#1F1F24] flex items-center justify-center mb-4 overflow-hidden">
+<img alt="Hanwha Eagles Logo" class="w-8 h-8 object-contain" data-alt="Professional sports team logo of Hanwha Eagles featuring a stylized orange bird icon on a clean dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJiVUpFhMFK7bsbzGb3K1e5RNECeBHyTub9RypDYkq4xd1OV092VoG7AYE_aEtLEwugZud0Zf4CzQHFQdF1suIMXrDYw2saKVidgR4Uq3Kq5RmNURBMydpPF0OMGYVyhm1E6fsAkxUbO6qbe2aWnu-fA5FzfFBrc2lrx7xhDPtUrcH5AlWY8KUbBqum455KY9eJ_AOReuaFxSin2x6T2lEGKfr9WraY459qt1MBYhOsJbh9swBCJXGWx_4gNY5bt6pl1YBQdkB-g"/>
+</div>
+<span class="text-[16px] font-semibold text-[#E8E8EC] mb-1">한화 이글스</span>
+<span class="text-[12px] text-[#8A8B93] text-center leading-tight">새 시대의 독수리</span>
+</div>
+<!-- Card 2: Doosan -->
+<div class="bg-[#14151A] rounded-[14px] p-5 flex flex-col items-center justify-center border border-[#2A2B33] hover:border-[#131230] transition-all cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-[#1F1F24] flex items-center justify-center mb-4 overflow-hidden">
+<img alt="Doosan Bears Logo" class="w-8 h-8 object-contain" data-alt="Minimalist dark navy sports team logo for Doosan Bears with a modern bear silhouette icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5Yeb9WmWZ9Ryye8zaQ-pMm19l2R9DWnBaGDb-FJEVfIDXmMPbDPpqmZy-LKf2eGpvDPw4-nEbgxQgzoqIeAkmBz95iEjPgraad_vkc3lOEGdZm0CCogJ9NM2uaufZFIzAnM4i3whVaNc9nFzSb70sGXMPzd0h9lBtzeuUreglHorJSZ7WCNLwzWpC2uKvzJPkVRvbi7LWzkFMWMPe9dkXKEd_J3O2PxUxlVE2VRkU7Bfy9iU34WoSkiVq31A0AEBONdUtCzdOnQ"/>
+</div>
+<span class="text-[16px] font-semibold text-[#E8E8EC] mb-1">두산 베어스</span>
+<span class="text-[12px] text-[#8A8B93] text-center leading-tight">잠실의 여유</span>
+</div>
+<!-- Card 3: Kia -->
+<div class="bg-[#14151A] rounded-[14px] p-5 flex flex-col items-center justify-center border border-[#2A2B33] hover:border-[#EA002C] transition-all cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-[#1F1F24] flex items-center justify-center mb-4 overflow-hidden">
+<img alt="Kia Tigers Logo" class="w-8 h-8 object-contain" data-alt="Dynamic red tiger head sports logo representing Kia Tigers on a clean dark circular background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAA9UTiiTzNAo2Rao_TdHoeMoRcG_RbEFDneEse7L1DhbahfGkYKSMpvOUlOfuFyWdtBU2eBDoJa7j-viWK2i7ZZAA6Te4zlinf23z5IdR-lHjm3Hvgb36enT8teeBLLjcsY54wnJcTjQ8khQDtY3TnkrysLsq0T_sxtkGpoxII098IPjsYUkM6lQMFzLrru-nzTocjN8ncNp4c9hvwQcb9BXxs1gCSdqmJm5v0uQqrDDfF2PdQ-0kqXnhRQQeTkonKzke3xa0J2g"/>
+</div>
+<span class="text-[16px] font-semibold text-[#E8E8EC] mb-1">기아 타이거즈</span>
+<span class="text-[12px] text-[#8A8B93] text-center leading-tight">광주 열혈 응원단장</span>
+</div>
+<!-- Card 4: Lotte -->
+<div class="bg-[#14151A] rounded-[14px] p-5 flex flex-col items-center justify-center border border-[#2A2B33] hover:border-[#041E42] transition-all cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-[#1F1F24] flex items-center justify-center mb-4 overflow-hidden">
+<img alt="Lotte Giants Logo" class="w-8 h-8 object-contain" data-alt="Traditional yet modern baseball team logo for Lotte Giants with elegant navy and red letter G styling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeD5PzqDssROLLz-JZ6EO7yGo4Q6sQQc8FRkvVSJQEPhfkK78wvh7ahZSFKPIk_EArL6F8m4KcfXiEAISuu6kCSAg2Itq4WSNTucJSXRyZAXTcnmG9vAhYwbCGyajo5103r33ZRwyKLVG4oavRVpsMEd4OvtJBAuX37U-sN7T1Y9egT8NulUiK_7wg5gKSDFEE7xIilaZmh9xuzBoKpXllB_0_shdCY0PJNBHjZM85l3kt8fBXSsBarhGqUR0wRf59Rlh8kJDJxg"/>
+</div>
+<span class="text-[16px] font-semibold text-[#E8E8EC] mb-1">롯데 자이언츠</span>
+<span class="text-[12px] text-[#8A8B93] text-center leading-tight">부산의 자존심</span>
+</div>
+<!-- Card 5 (Extra for visual depth): Samsung -->
+<div class="bg-[#14151A] rounded-[14px] p-5 flex flex-col items-center justify-center border border-[#2A2B33] opacity-60 transition-all cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-[#1F1F24] flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[#8A8B93]">shield</span>
+</div>
+<span class="text-[16px] font-semibold text-[#E8E8EC] mb-1">삼성 라이온즈</span>
+<span class="text-[12px] text-[#8A8B93] text-center leading-tight">대구의 사자들</span>
+</div>
+<!-- Card 6 (Extra for visual depth): LG -->
+<div class="bg-[#14151A] rounded-[14px] p-5 flex flex-col items-center justify-center border border-[#2A2B33] opacity-60 transition-all cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-[#1F1F24] flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[#8A8B93]">star</span>
+</div>
+<span class="text-[16px] font-semibold text-[#E8E8EC] mb-1">LG 트윈스</span>
+<span class="text-[12px] text-[#8A8B93] text-center leading-tight">서울의 자존심</span>
+</div>
+</div>
+</main>
+<!-- Shared Component: BottomNavBar (Used here as CTA Action Bar) -->
+<footer class="fixed bottom-0 left-0 w-full z-50 px-8 pb-[safe-area-inset-bottom] mb-8">
+<!-- Active State Button (Matches Hanwha selection example) -->
+<button class="bg-[#F15B2A] text-[#E8E8EC] rounded-[10px] h-[48px] w-full flex items-center justify-center font-['Pretendard'] font-semibold text-[16px] hover:brightness-110 active:scale-[0.98] transition-all duration-200 shadow-lg">
+<span>다음</span>
+<span class="material-symbols-outlined ml-2 text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</footer>
+<!-- Bottom Safe Area Notch Indicator -->
+<div class="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-[#2A2B33] rounded-full"></div>
+</div>
+</body></html>

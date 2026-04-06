@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#ffb59f",
+                        "on-primary-container": "#531200",
+                        "inverse-surface": "#e5e1e6",
+                        "on-primary": "#5e1600",
+                        "secondary-container": "#454364",
+                        "error": "#ffb4ab",
+                        "surface-container-low": "#111114",
+                        "primary-container": "#f15b2a",
+                        "outline-variant": "#2a2b33",
+                        "surface-container": "#14151a",
+                        "inverse-on-surface": "#303033",
+                        "tertiary-fixed-dim": "#ffb3af",
+                        "background": "#0b0b0e",
+                        "surface-tint": "#ffb59f",
+                        "surface-container-highest": "#1f1f24",
+                        "surface-bright": "#39393c",
+                        "surface": "#131316",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed": "#191836",
+                        "primary-fixed-dim": "#ffb59f",
+                        "on-error": "#690005",
+                        "surface-dim": "#131316",
+                        "on-tertiary": "#68000e",
+                        "error-container": "#93000a",
+                        "tertiary": "#ffb3af",
+                        "primary-fixed": "#ffdbd0",
+                        "on-secondary-container": "#b4b1d8",
+                        "on-primary-fixed-variant": "#852300",
+                        "surface-container-lowest": "#0e0e11",
+                        "on-primary-fixed": "#3a0a00",
+                        "on-surface": "#e8e8ec",
+                        "on-tertiary-fixed-variant": "#930017",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-tertiary-container": "#5c000b",
+                        "surface-variant": "#353438",
+                        "surface-container-high": "#2a2a2d",
+                        "inverse-primary": "#af3100",
+                        "on-background": "#e8e8ec",
+                        "on-tertiary-fixed": "#410005",
+                        "tertiary-container": "#ff5355",
+                        "on-secondary": "#2e2d4c",
+                        "secondary-fixed-dim": "#c5c3ea",
+                        "secondary": "#c5c3ea",
+                        "on-secondary-fixed-variant": "#454364",
+                        "outline": "#8a8b93",
+                        "secondary-fixed": "#e2dfff",
+                        "on-surface-variant": "#8a8b93"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Pretendard", "Inter", "sans-serif"],
+                        "body": ["Pretendard", "Inter", "sans-serif"],
+                        "label": ["Space Grotesk", "sans-serif"]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #0b0b0e; color: #e8e8ec; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface select-none">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#0B0B0E] dark:bg-[#0B0B0E] flex items-center h-14 px-4 w-full">
+<div class="flex-1 flex items-center">
+<button class="material-symbols-outlined text-[#F15B2A] active:scale-95 duration-200 transition-colors hover:bg-[#1F1F24] p-1 rounded-full">arrow_back</button>
+</div>
+<h1 class="font-['Pretendard'] font-semibold text-lg tracking-tight text-[#E8E8EC] absolute left-1/2 -translate-x-1/2">마이페이지</h1>
+<div class="flex-1"></div>
+</header>
+<main class="pt-20 pb-24 px-5 max-w-lg mx-auto">
+<!-- Profile Section -->
+<section class="flex flex-col items-center mb-8">
+<div class="relative">
+<div class="w-[72px] h-[72px] rounded-full bg-[#14151A] border-[3px] border-[#F15B2A] overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="portrait of a confident young person with modern streetwear and sharp lighting, professional profile style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM2HxXfJjB5cj8az4rOO-ot_lC_BbY3Ee2gSkwitakLCsaUmFUloiUO83Yd6DDPjvR0NXX5yQCiml9FmmgbQc5ByY4bd8q73tmv2so84g5rC24-MccpWsBt6FzyKpzj78ilOSJx1avPwnjciVw4JYeWyHvdWW_uqFjmNJGfRZSDZZxKed4RiRmPodJJ_GBCVYkxJSHr2LZuraSYiB62w76S_KDcO8An4FhHbJvefd0OuxItls53VAXi4YliPh7AI3eb3V02dtMzQ"/>
+</div>
+</div>
+<div class="mt-3 text-center">
+<h2 class="text-[18px] font-semibold text-on-surface">밧디팬123</h2>
+<div class="inline-flex items-center mt-1.5 px-2.5 py-0.5 bg-[#F15B2A] rounded-full">
+<span class="text-[12px] font-bold text-white">한화 이글스</span>
+</div>
+</div>
+</section>
+<!-- Level Progress Card -->
+<article class="bg-surface-container border border-outline-variant rounded-[14px] p-4 mb-6">
+<div class="flex justify-between items-center mb-3">
+<h3 class="text-[16px] font-semibold text-on-surface">Lv.7 열혈팬</h3>
+<span class="material-symbols-outlined text-[#F15B2A] text-[20px]" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+<div class="w-full h-[6px] bg-outline-variant rounded-full overflow-hidden">
+<div class="h-full bg-[#F15B2A] w-[65%] rounded-full shadow-[0_0_8px_rgba(241,91,42,0.4)]"></div>
+</div>
+<div class="mt-2 text-right">
+<span class="text-[12px] font-medium text-on-surface-variant tabular-nums">2,340 / 3,600 XP</span>
+</div>
+</article>
+<!-- Settings List -->
+<section class="bg-surface-container-low rounded-[14px] overflow-hidden">
+<div class="flex items-center h-14 px-4 active:bg-surface-container-high transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">stadium</span>
+<span class="flex-1 ml-3 text-[15px] text-on-surface">응원팀 변경</span>
+<div class="flex items-center">
+<span class="text-[14px] text-on-surface-variant mr-1">한화</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+</div>
+</div>
+<div class="h-[1px] mx-4 bg-outline-variant"></div>
+<div class="flex items-center h-14 px-4 active:bg-surface-container-high transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">forum</span>
+<span class="flex-1 ml-3 text-[15px] text-on-surface">대화 스타일</span>
+<div class="flex items-center">
+<span class="text-[14px] text-on-surface-variant mr-1">기본</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+</div>
+</div>
+<div class="h-[1px] mx-4 bg-outline-variant"></div>
+<div class="flex items-center h-14 px-4 active:bg-surface-container-high transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">edit</span>
+<span class="flex-1 ml-3 text-[15px] text-on-surface">커스텀 페르소나</span>
+<div class="flex items-center">
+<span class="text-[14px] text-on-surface-variant mr-1">설정됨</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+</div>
+</div>
+<div class="h-[1px] mx-4 bg-outline-variant"></div>
+<div class="flex items-center h-14 px-4 active:bg-surface-container-high transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">star</span>
+<span class="flex-1 ml-3 text-[15px] text-on-surface">좋아하는 선수</span>
+<div class="flex items-center">
+<span class="text-[14px] text-on-surface-variant mr-1">3명</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+</div>
+</div>
+<div class="h-[1px] mx-4 bg-outline-variant"></div>
+<div class="flex items-center h-14 px-4 active:bg-surface-container-high transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">bar_chart</span>
+<span class="flex-1 ml-3 text-[15px] text-on-surface">야구 지식 수준</span>
+<div class="flex items-center">
+<span class="text-[14px] text-on-surface-variant mr-1">중급</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+</div>
+</div>
+<div class="h-[1px] mx-4 bg-outline-variant"></div>
+<div class="flex items-center h-14 px-4 active:bg-surface-container-high transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">notifications</span>
+<span class="flex-1 ml-3 text-[15px] text-on-surface">알림 설정</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+</div>
+<div class="h-[1px] mx-4 bg-outline-variant"></div>
+<div class="flex items-center h-14 px-4 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">dark_mode</span>
+<span class="flex-1 ml-3 text-[15px] text-on-surface">다크모드</span>
+<div class="w-10 h-6 bg-[#F15B2A] rounded-full relative transition-colors cursor-pointer active:scale-95">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+</div>
+</div>
+</section>
+<!-- Logout Button -->
+<button class="w-full mt-10 py-3 text-[#F87171] text-[14px] font-medium active:opacity-60 transition-opacity">
+            로그아웃
+        </button>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-[#0B0B0E]/80 backdrop-blur-md dark:bg-[#0B0B0E]/80 flex justify-around items-center h-16 w-full px-6 pb-safe">
+<a class="flex flex-col items-center justify-center text-[#5A5B63] hover:text-[#E8E8EC] transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-['Pretendard'] text-[10px] font-medium">홈</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#5A5B63] hover:text-[#E8E8EC] transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-['Pretendard'] text-[10px] font-medium">기록</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#5A5B63] hover:text-[#E8E8EC] transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span class="font-['Pretendard'] text-[10px] font-medium">AI 분석</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#F15B2A] font-bold active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-['Pretendard'] text-[10px] font-medium">마이</span>
+</a>
+</nav>
+</body></html>

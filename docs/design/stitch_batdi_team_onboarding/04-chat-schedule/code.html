@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#ffb3af",
+                        "on-secondary": "#2e2d4c",
+                        "on-secondary-container": "#b4b1d8",
+                        "primary-container": "#f75f2e",
+                        "tertiary-fixed-dim": "#ffb3af",
+                        "on-tertiary-fixed": "#410005",
+                        "background": "#131316",
+                        "error-container": "#93000a",
+                        "primary": "#ffb59f",
+                        "on-secondary-fixed-variant": "#454364",
+                        "on-primary-container": "#531200",
+                        "on-tertiary-fixed-variant": "#930017",
+                        "secondary-fixed-dim": "#c5c3ea",
+                        "primary-fixed-dim": "#ffb59f",
+                        "inverse-primary": "#af3100",
+                        "outline": "#a98a81",
+                        "surface-dim": "#131316",
+                        "surface-container-high": "#2a2a2d",
+                        "surface-bright": "#39393c",
+                        "on-background": "#e5e1e6",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-tertiary-container": "#5c000b",
+                        "outline-variant": "#5a413a",
+                        "on-error": "#690005",
+                        "on-tertiary": "#68000e",
+                        "surface-container": "#1f1f22",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-low": "#1b1b1e",
+                        "on-primary": "#5e1600",
+                        "inverse-on-surface": "#303033",
+                        "tertiary-container": "#ff5355",
+                        "surface": "#131316",
+                        "secondary-container": "#454364",
+                        "on-surface-variant": "#e2bfb5",
+                        "on-secondary-fixed": "#191836",
+                        "surface-container-lowest": "#0e0e11",
+                        "on-primary-fixed-variant": "#852300",
+                        "inverse-surface": "#e5e1e6",
+                        "surface-tint": "#ffb59f",
+                        "secondary-fixed": "#e2dfff",
+                        "on-primary-fixed": "#3a0a00",
+                        "surface-container-highest": "#353438",
+                        "surface-variant": "#353438",
+                        "secondary": "#c5c3ea",
+                        "on-surface": "#e5e1e6",
+                        "primary-fixed": "#ffdbd0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Pretendard", "Inter", "sans-serif"],
+                        "body": ["Pretendard", "Inter", "sans-serif"],
+                        "label": ["Space Grotesk", "sans-serif"],
+                        "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #0B0B0E; color: #E8E8EC; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-effect { backdrop-filter: blur(12px); background: rgba(17, 17, 20, 0.8); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#0B0B0E] min-h-screen flex flex-col items-center">
+<!-- Top AppBar (From Shared Components) -->
+<header class="w-full top-0 sticky z-50 bg-[#0B0B0E]">
+<div class="flex items-center justify-between px-6 py-4 w-full bg-gradient-to-b from-[#111114] to-transparent">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-white/10">
+<img class="w-full h-full object-cover" data-alt="Official Hanwha Eagles team emblem with orange and dark gray colors on a circular badge" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD92FHAS4ska486-rvVoJoqRMQ7b9Wv8L-6F5_CSeW5ACibdiRG7dKdpiKzhj9wT0iGOEIEzh2AR4SiddEyXQdFrNOnThJMnLhOCnPBPsv5Ak9XT5vmP59P-rCgdOnTxbWl2jKlAWOwC8I23ctDw9CBTCbZRaqOia0KBebPamhQNpahMCSJAfn7EaGnoxXt12bwUsAJWHMgtAh8jQN4oS9mQIKFKEwsRF23H3_r3KOcAQaQVu_KTusFMEGr5ewwqcvx2KlJ-rtELQ"/>
+</div>
+<h1 class="text-[#F15B2A] font-black tracking-tighter text-lg font-['Pretendard']">Batdi</h1>
+</div>
+<button class="text-[#8A8B93] hover:bg-[#1F1F24] transition-colors duration-200 p-2 rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Chat Canvas -->
+<main class="flex-1 w-full max-w-2xl px-4 py-6 overflow-y-auto hide-scrollbar flex flex-col gap-8">
+<!-- User Message -->
+<div class="flex justify-end">
+<div class="max-w-[85%] bg-[#F15B2A] text-white px-5 py-3.5 rounded-[20px] rounded-tr-none shadow-lg">
+<p class="text-[15px] font-medium leading-relaxed">이번 주 한화 경기 일정 알려줘유</p>
+</div>
+</div>
+<!-- Bot Response -->
+<div class="flex flex-col gap-4">
+<div class="flex items-start gap-2">
+<div class="w-8 h-8 rounded-full bg-[#1F1F24] flex items-center justify-center text-[#F15B2A]">
+<span class="material-symbols-outlined text-sm">smart_toy</span>
+</div>
+<div class="max-w-[85%] bg-[#1F1F24] text-[#E8E8EC] px-5 py-3.5 rounded-[20px] rounded-tl-none border border-white/5">
+<p class="text-[15px] font-medium leading-relaxed">이번 주 일정이여! 홈 경기 많아서 좋겠다 그려~ 🏟️</p>
+</div>
+</div>
+<!-- Schedule Card -->
+<div class="ml-10 max-w-[90%] bg-[#14151A] rounded-[14px] border border-[#2A2B33] p-4 flex flex-col gap-4 shadow-2xl">
+<div class="flex justify-between items-center">
+<span class="text-[11px] font-bold tracking-widest text-[#8A8B93] font-label">THIS WEEK</span>
+<span class="text-[10px] bg-[#F15B2A]/10 text-[#F15B2A] px-2 py-0.5 rounded-full font-bold">KBO 2024</span>
+</div>
+<div class="flex flex-col gap-2">
+<!-- Row 1 -->
+<div class="bg-[#1C1D24] p-3 rounded-[10px] flex items-center justify-between border border-white/5">
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-center min-w-[40px]">
+<span class="text-[10px] text-[#8A8B93] font-medium uppercase">Mon</span>
+<span class="text-[14px] text-[#E8E8EC] font-mono font-bold leading-none">4/7</span>
+</div>
+<div class="h-6 w-[1px] bg-white/10"></div>
+<div class="flex flex-col">
+<span class="text-[14px] font-semibold text-[#E8E8EC]">한화 vs 기아</span>
+<span class="text-[12px] text-[#5A5B63]">이글스파크 <span class="ml-1 font-mono">18:30</span></span>
+</div>
+</div>
+<span class="bg-[#F15B2A] text-white text-[10px] font-black px-2 py-1 rounded-[4px]">HOME</span>
+</div>
+<!-- Row 2 -->
+<div class="bg-[#1C1D24] p-3 rounded-[10px] flex items-center justify-between border border-white/5">
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-center min-w-[40px]">
+<span class="text-[10px] text-[#8A8B93] font-medium uppercase">Tue</span>
+<span class="text-[14px] text-[#E8E8EC] font-mono font-bold leading-none">4/8</span>
+</div>
+<div class="h-6 w-[1px] bg-white/10"></div>
+<div class="flex flex-col">
+<span class="text-[14px] font-semibold text-[#E8E8EC]">한화 vs 기아</span>
+<span class="text-[12px] text-[#5A5B63]">이글스파크 <span class="ml-1 font-mono">18:30</span></span>
+</div>
+</div>
+<span class="bg-[#F15B2A] text-white text-[10px] font-black px-2 py-1 rounded-[4px]">HOME</span>
+</div>
+<!-- Row 3 -->
+<div class="bg-[#1C1D24] p-3 rounded-[10px] flex items-center justify-between border border-white/5">
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-center min-w-[40px]">
+<span class="text-[10px] text-[#8A8B93] font-medium uppercase">Thu</span>
+<span class="text-[14px] text-[#E8E8EC] font-mono font-bold leading-none">4/10</span>
+</div>
+<div class="h-6 w-[1px] bg-white/10"></div>
+<div class="flex flex-col">
+<span class="text-[14px] font-semibold text-[#E8E8EC]">두산 vs 한화</span>
+<span class="text-[12px] text-[#5A5B63]">잠실 <span class="ml-1 font-mono">18:30</span></span>
+</div>
+</div>
+<span class="bg-[#2A2B33] text-[#8A8B93] text-[10px] font-black px-2 py-1 rounded-[4px]">AWAY</span>
+</div>
+<!-- Row 4 -->
+<div class="bg-[#1C1D24] p-3 rounded-[10px] flex items-center justify-between border border-white/5">
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-center min-w-[40px]">
+<span class="text-[10px] text-[#8A8B93] font-medium uppercase">Fri</span>
+<span class="text-[14px] text-[#E8E8EC] font-mono font-bold leading-none">4/11</span>
+</div>
+<div class="h-6 w-[1px] bg-white/10"></div>
+<div class="flex flex-col">
+<span class="text-[14px] font-semibold text-[#E8E8EC]">두산 vs 한화</span>
+<span class="text-[12px] text-[#5A5B63]">잠실 <span class="ml-1 font-mono">18:30</span></span>
+</div>
+</div>
+<span class="bg-[#2A2B33] text-[#8A8B93] text-[10px] font-black px-2 py-1 rounded-[4px]">AWAY</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Suggestion Chips Container -->
+<div class="flex gap-2 overflow-x-auto hide-scrollbar py-2">
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-white/10 bg-[#1F1F24] text-[#E8E8EC] text-[13px] font-medium hover:bg-[#2A2A2D] transition-colors">4/7 선발 투수</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-white/10 bg-[#1F1F24] text-[#E8E8EC] text-[13px] font-medium hover:bg-[#2A2A2D] transition-colors">경기장 날씨</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-[#F15B2A]/30 bg-[#F15B2A]/10 text-[#F15B2A] text-[13px] font-bold hover:bg-[#F15B2A]/20 transition-colors">예매하기</button>
+</div>
+</main>
+<!-- Fixed Bottom Input -->
+<footer class="w-full max-w-2xl px-4 pb-8 pt-2 glass-effect">
+<div class="relative flex items-center bg-[#1F1F24] border border-white/10 rounded-[12px] overflow-hidden focus-within:border-[#F15B2A]/50 transition-all duration-300 px-4 py-1">
+<button class="text-[#8A8B93] hover:text-[#E8E8EC] p-2">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-[#E8E8EC] placeholder-[#5A5B63] py-3 text-[15px]" placeholder="메시지를 입력하세유..." type="text"/>
+<button class="w-10 h-10 bg-[#F15B2A] text-white rounded-full flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-[#F15B2A]/20">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+<div class="mt-4 flex justify-center">
+<div class="w-32 h-1 bg-white/10 rounded-full"></div>
+</div>
+</footer>
+</body></html>

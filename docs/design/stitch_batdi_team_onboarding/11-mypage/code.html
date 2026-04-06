@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-container-highest": "#353438",
+                "on-tertiary": "#68000e",
+                "on-secondary-fixed": "#191836",
+                "inverse-on-surface": "#303033",
+                "on-tertiary-fixed": "#410005",
+                "surface": "#131316",
+                "inverse-primary": "#af3100",
+                "on-background": "#e5e1e6",
+                "outline": "#a98a81",
+                "surface-dim": "#131316",
+                "primary-container": "#f75f2e",
+                "tertiary-fixed-dim": "#ffb3af",
+                "on-tertiary-container": "#5c000b",
+                "background": "#131316",
+                "error-container": "#93000a",
+                "on-tertiary-fixed-variant": "#930017",
+                "surface-tint": "#ffb59f",
+                "surface-container": "#1f1f22",
+                "secondary": "#c5c3ea",
+                "surface-bright": "#39393c",
+                "on-surface-variant": "#e2bfb5",
+                "on-secondary": "#2e2d4c",
+                "inverse-surface": "#e5e1e6",
+                "on-surface": "#e5e1e6",
+                "on-primary": "#5e1600",
+                "surface-container-high": "#2a2a2d",
+                "primary-fixed-dim": "#ffb59f",
+                "tertiary-fixed": "#ffdad7",
+                "error": "#ffb4ab",
+                "outline-variant": "#5a413a",
+                "primary-fixed": "#ffdbd0",
+                "surface-variant": "#353438",
+                "on-primary-fixed-variant": "#852300",
+                "on-primary-container": "#531200",
+                "on-error-container": "#ffdad6",
+                "surface-container-low": "#1b1b1e",
+                "on-secondary-container": "#b4b1d8",
+                "tertiary-container": "#ff5355",
+                "secondary-fixed-dim": "#c5c3ea",
+                "on-error": "#690005",
+                "tertiary": "#ffb3af",
+                "on-primary-fixed": "#3a0a00",
+                "primary": "#ffb59f",
+                "on-secondary-fixed-variant": "#454364",
+                "secondary-fixed": "#e2dfff",
+                "surface-container-lowest": "#0e0e11",
+                "secondary-container": "#454364"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "fontFamily": {
+                "headline": ["Inter"],
+                "body": ["Inter"],
+                "label": ["Space Grotesk"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { background-color: #0B0B0E; color: #E8E8EC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .typing-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .iphone-frame { max-width: 393px; height: 852px; margin: 0 auto; position: relative; overflow: hidden; background: #0B0B0E; border: 8px solid #1F1F24; border-radius: 54px; box-shadow: 0 50px 100px -20px rgba(0,0,0,0.5); }
+        .safe-area-bottom { padding-bottom: 34px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex items-center justify-center min-h-screen p-4 bg-neutral-950">
+<!-- iPhone 15 Pro Wrapper -->
+<div class="iphone-frame flex flex-col">
+<!-- Top Bar (From JSON) -->
+<header class="bg-[#0B0B0E] docked full-width top-0 z-50">
+<div class="flex justify-between items-center w-full px-5 py-3 max-w-screen-xl mx-auto">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-[#F15B2A]/30">
+<img alt="Hanwha Eagles Logo" data-alt="Official Hanwha Eagles baseball team logo with orange eagle motif on a clean circular background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3T6S5eLzP9n6pl6hMbC28uSFo4720Bd8V06STHL5miFOrZqDeH7EHWGX7rL0thWcjTc8lIkSH1F4RcMpaXmN3WOmm4M3v1EuUdSVgtIek1aTnhjMdGo5KM_OftS_hXm2nC5akUw1mdijXGwig6UZ4R8OkxVMRVrmIFFXsGRaMmt7AUCzVFOvWiZOEf_fLwcMV33DdelPeSElKHesHe8d39nclvKr7BZD8J6o38KjxFYfXJoAEw83HbBx5HS5u0NDAAkEHducbgw"/>
+</div>
+<h1 class="text-[18px] font-bold tracking-tight text-[#E8E8EC]">Batdi · Hanwha</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-[#8A8B93] hover:bg-[#1F1F24] rounded-lg transition-all duration-200 active:scale-95">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Chat Content Canvas -->
+<main class="flex-1 overflow-y-auto px-5 py-6 space-y-8">
+<!-- User Message (Right) -->
+<div class="flex flex-col items-end space-y-1">
+<div class="bg-[#F15B2A] text-white px-4 py-3 rounded-[20px] rounded-tr-none max-w-[80%] shadow-lg shadow-[#F15B2A]/10">
+<p class="text-[15px] font-medium leading-relaxed">오늘 경기 스코어 알려줘유</p>
+</div>
+<span class="text-[11px] text-[#5A5B63] mr-1">오후 6:30</span>
+</div>
+<!-- Bot Response Loading (Left) -->
+<div class="flex flex-col items-start space-y-3">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full border-2 border-[#F15B2A] p-0.5 flex items-center justify-center bg-[#111114]">
+<span class="material-symbols-outlined text-[14px] text-[#F15B2A]" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<p class="text-[13px] italic text-[#8A8B93] typing-pulse font-medium">잠깐, 밧디가 찾아볼게유~</p>
+</div>
+<!-- Skeleton Card Area -->
+<div class="ml-8 w-full max-w-[280px]">
+<div class="h-[140px] bg-[#14151A] border border-[#2A2B33] rounded-[14px] p-4 flex flex-col justify-between">
+<!-- Skeleton Header -->
+<div class="w-[60px] h-[10px] bg-[#2A2B33] rounded-full"></div>
+<!-- Skeleton Scores -->
+<div class="flex items-center justify-between gap-3">
+<div class="flex-1 h-[28px] bg-[#2A2B33] rounded-lg"></div>
+<div class="w-4 h-4 rounded-full bg-[#2A2B33]"></div>
+<div class="flex-1 h-[28px] bg-[#2A2B33] rounded-lg"></div>
+</div>
+<!-- Skeleton Status -->
+<div class="space-y-2">
+<div class="w-[120px] h-[10px] bg-[#2A2B33] rounded-full"></div>
+<div class="w-[80px] h-[8px] bg-[#2A2B33]/50 rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Fixed Input Area (Bottom) -->
+<div class="bg-[#111114] px-5 pt-4 safe-area-bottom">
+<div class="flex items-center gap-3 bg-[#1F1F24] rounded-[24px] pl-5 pr-2 py-2 mb-4">
+<div class="flex-1 text-[#5A5B63] text-[15px] font-medium py-2">
+                    응답 대기 중...
+                </div>
+<button class="w-10 h-10 rounded-full bg-[#F15B2A]/50 flex items-center justify-center text-white cursor-not-allowed" disabled="">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+<!-- Home Indicator Space -->
+<div class="w-32 h-1.5 bg-[#1F1F24] rounded-full mx-auto mb-2 opacity-30"></div>
+</div>
+</div>
+</body></html>

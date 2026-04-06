@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Space+Grotesk:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @font-face {
+            font-family: 'Pretendard';
+            src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+        }
+        body {
+            font-family: 'Pretendard', 'Inter', sans-serif;
+            background-color: #0B0B0E;
+            color: #E8E8EC;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for subtle look */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2A2B33;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#303033",
+                        "primary": "#ffb59f",
+                        "on-tertiary-fixed-variant": "#930017",
+                        "surface-container-high": "#2a2a2d",
+                        "tertiary-fixed-dim": "#ffb3af",
+                        "on-tertiary": "#68000e",
+                        "on-surface": "#e5e1e6",
+                        "on-primary-container": "#531200",
+                        "surface-dim": "#131316",
+                        "primary-fixed-dim": "#ffb59f",
+                        "inverse-surface": "#e5e1e6",
+                        "on-error": "#690005",
+                        "tertiary-container": "#ff5355",
+                        "on-tertiary-container": "#5c000b",
+                        "surface-container-highest": "#353438",
+                        "surface-container": "#1f1f22",
+                        "on-secondary-fixed": "#191836",
+                        "surface-variant": "#353438",
+                        "secondary-fixed": "#e2dfff",
+                        "on-surface-variant": "#e2bfb5",
+                        "primary-container": "#f75f2e",
+                        "on-background": "#e5e1e6",
+                        "primary-fixed": "#ffdbd0",
+                        "surface-bright": "#39393c",
+                        "on-secondary": "#2e2d4c",
+                        "on-primary-fixed-variant": "#852300",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed": "#3a0a00",
+                        "error": "#ffb4ab",
+                        "background": "#131316",
+                        "surface-container-low": "#1b1b1e",
+                        "surface": "#131316",
+                        "secondary-fixed-dim": "#c5c3ea",
+                        "outline": "#a98a81",
+                        "secondary": "#c5c3ea",
+                        "surface-container-lowest": "#0e0e11",
+                        "secondary-container": "#454364",
+                        "inverse-primary": "#af3100",
+                        "surface-tint": "#ffb59f",
+                        "error-container": "#93000a",
+                        "outline-variant": "#5a413a",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-primary": "#5e1600",
+                        "on-tertiary-fixed": "#410005",
+                        "tertiary": "#ffb3af",
+                        "on-secondary-container": "#b4b1d8",
+                        "on-secondary-fixed-variant": "#454364"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#0B0B0E] flex justify-center items-center min-h-screen overflow-hidden">
+<!-- Mobile Frame (iPhone 15 Pro) -->
+<div class="relative w-[393px] h-[852px] bg-[#0B0B0E] overflow-hidden flex flex-col">
+<!-- Background Layer (My Page Content - Mocked & Dimmed) -->
+<div class="absolute inset-0 opacity-40 grayscale-[0.2]">
+<!-- Header for Background -->
+<div class="px-6 py-10">
+<div class="w-16 h-16 rounded-full bg-[#1F1F24] mb-4"></div>
+<div class="h-6 w-32 bg-[#1F1F24] rounded-md mb-2"></div>
+<div class="h-4 w-48 bg-[#14151A] rounded-md"></div>
+</div>
+<!-- Stats Blocks -->
+<div class="grid grid-cols-2 gap-4 px-6 mt-4">
+<div class="h-24 bg-[#14151A] rounded-xl"></div>
+<div class="h-24 bg-[#14151A] rounded-xl"></div>
+</div>
+<!-- History List -->
+<div class="px-6 mt-8 space-y-4">
+<div class="h-16 bg-[#14151A] rounded-xl w-full"></div>
+<div class="h-16 bg-[#14151A] rounded-xl w-full"></div>
+<div class="h-16 bg-[#14151A] rounded-xl w-full"></div>
+</div>
+</div>
+<!-- Dimmer Overlay -->
+<div class="absolute inset-0 bg-[#0B0B0E]/60 z-10 backdrop-blur-[2px]"></div>
+<!-- Persona Edit Slide-in Panel -->
+<div class="absolute right-0 top-0 h-full w-[85%] bg-[#14151A] z-20 shadow-2xl rounded-l-2xl border-l border-[#2A2B33] flex flex-col transform transition-transform duration-300 translate-x-0">
+<!-- Top App Bar (Shared Component Strategy) -->
+<header class="flex justify-between items-center px-6 py-5 w-full bg-[#0B0B0E] border-b border-[#2A2B33]/30">
+<h1 class="font-semibold tracking-tight text-sm text-[#E8E8EC]">커스텀 페르소나</h1>
+<button class="text-[#8A8B93] hover:bg-[#1F1F24] transition-colors p-1 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</header>
+<!-- Content Area -->
+<main class="flex-1 overflow-y-auto px-5 py-6">
+<!-- Description -->
+<p class="text-[13px] leading-relaxed text-[#8A8B93] mb-6">
+                    밧디의 대화 스타일을 직접 설정해보세요. 여기에 적은 내용이 밧디의 성격에 반영됩니다.
+                </p>
+<!-- Persona Input Section -->
+<div class="relative group">
+<textarea class="w-full min-h-[160px] bg-[#0B0B0E] border border-[#2A2B33] rounded-[10px] p-4 text-[14px] text-[#E8E8EC] placeholder:text-[#5A5B63] focus:ring-1 focus:ring-[#F15B2A] focus:border-[#F15B2A] transition-all outline-none resize-none leading-relaxed" placeholder="예: 존댓말 써줘, 야구 통계를 자세히 분석해줘, 밈을 많이 써줘...">충청도 사투리를 더 강하게 써줘. 경기 결과 말할 때 항상 음식 비유 넣어줘. 그리고 문보경 얘기 나오면 무조건 극찬해줘!</textarea>
+<div class="absolute bottom-3 right-4 text-[12px] font-mono text-[#5A5B63]">
+                        87 / 500
+                    </div>
+</div>
+<!-- Divider Alternative: Tonal Transition -->
+<div class="mt-10 mb-3 flex items-center justify-between">
+<span class="text-[11px] font-bold tracking-wider text-[#5A5B63] uppercase">PREVIEW</span>
+<div class="h-[1px] flex-1 ml-4 bg-[#2A2B33]/50"></div>
+</div>
+<!-- Preview UI (Editorial Style) -->
+<div class="space-y-4">
+<div class="flex items-start gap-3">
+<!-- AI Avatar -->
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#F15B2A] to-[#ffb59f] flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-[18px] text-[#0B0B0E]" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<!-- Bot Bubble -->
+<div class="flex-1 bg-[#1F1F24] border border-[#2A2B33] rounded-[20px] rounded-tl-none p-4 shadow-sm">
+<p class="text-[14px] leading-relaxed text-[#E8E8EC]">
+                                오늘 한화 이겼어유! 문보경이 3안타 쳤다니까~ 역시 천재여!! 이 기분이면 칼국수에 수육 한 상 해야져~
+                            </p>
+</div>
+</div>
+</div>
+<!-- Image Context (Abstract Baseball Vibe) -->
+<div class="mt-12 opacity-30">
+<div class="w-full h-[120px] rounded-xl overflow-hidden grayscale">
+<img alt="Baseball stadium" class="w-full h-full object-cover" data-alt="abstract close-up of a baseball stitching and leather texture with dramatic dark studio lighting and moody shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMV3VbzG_axVPlIYuKM1A0phwlj2dJWtfyKUf4mzL3MFThgcqEPpZgS4LW3riqZzUU0kWmYbd39CtLMU0MmX3qDeYvsxLY_Lo01R1CWpDTDOGUhwPp-sEd6GmjwTloh9BJ1EbNAw-KMlK8xydEP3y-pGomLkvKov9xmP5Q_hN9aaqVpeSawI03nV7AHBnRXnt84qKzBcU87DABDfEpaoaofaFy2pV8Q0P0JI30-lFRU-J9IwMTVWMTVXW3Xp7IcjNA1Xp2ZQuoXg"/>
+</div>
+</div>
+</main>
+<!-- Fixed Bottom Action Area -->
+<footer class="p-5 bg-[#14151A] border-t border-[#2A2B33]/20">
+<button class="w-full h-[48px] bg-[#F15B2A] text-white font-bold rounded-[10px] hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    저장
+                </button>
+</footer>
+</div>
+<!-- Shared BottomNavBar (Positioned relative to frame, suppressed or hidden based on 'focused journey' rule, but keeping structure if needed for context) -->
+<nav class="fixed bottom-0 left-0 w-full z-10 flex justify-around items-center px-4 py-3 bg-[#0B0B0E]/80 backdrop-blur-md opacity-20 pointer-events-none">
+<div class="flex flex-col items-center justify-center text-[#5A5B63]">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="text-[10px] mt-1">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#5A5B63]">
+<span class="material-symbols-outlined text-[24px]">analytics</span>
+<span class="text-[10px] mt-1">Analysis</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#5A5B63]">
+<span class="material-symbols-outlined text-[24px]">chat_bubble</span>
+<span class="text-[10px] mt-1">Chat</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#F15B2A] relative after:content-[''] after:absolute after:bottom-0 after:w-1 after:h-1 after:bg-[#F15B2A] after:rounded-full">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="text-[10px] mt-1">My Page</span>
+</div>
+</nav>
+</div>
+</body></html>

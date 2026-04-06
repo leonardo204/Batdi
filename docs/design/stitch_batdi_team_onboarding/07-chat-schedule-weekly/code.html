@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Batdi - KBO AI Chat</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link as="style" crossorigin="" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-primary": "#af3100",
+                      "on-secondary-fixed-variant": "#454364",
+                      "background": "#0B0B0E",
+                      "on-secondary-fixed": "#191836",
+                      "surface-container": "#14151A",
+                      "inverse-on-surface": "#303033",
+                      "on-tertiary-fixed-variant": "#930017",
+                      "on-secondary": "#2e2d4c",
+                      "error": "#ffb4ab",
+                      "on-tertiary": "#68000e",
+                      "surface-bright": "#39393c",
+                      "surface-tint": "#ffb59f",
+                      "primary-container": "#F15B2A",
+                      "on-primary": "#FFFFFF",
+                      "surface": "#0B0B0E",
+                      "primary-fixed": "#ffdbd0",
+                      "outline": "#2A2B33",
+                      "on-surface-variant": "#8A8B93",
+                      "tertiary": "#ffb3af",
+                      "secondary-fixed-dim": "#c5c3ea",
+                      "error-container": "#93000a",
+                      "surface-container-low": "#111114",
+                      "on-secondary-container": "#b4b1d8",
+                      "on-surface": "#E8E8EC",
+                      "on-primary-fixed-variant": "#852300",
+                      "tertiary-fixed": "#ffdad7",
+                      "on-background": "#E8E8EC",
+                      "primary-fixed-dim": "#ffb59f",
+                      "tertiary-fixed-dim": "#ffb3af",
+                      "primary": "#F15B2A",
+                      "on-tertiary-fixed": "#410005",
+                      "inverse-surface": "#e5e1e6",
+                      "tertiary-container": "#ff5355",
+                      "secondary": "#c5c3ea",
+                      "surface-variant": "#1F1F24",
+                      "secondary-container": "#454364",
+                      "on-tertiary-container": "#5c000b",
+                      "on-error-container": "#ffdad6",
+                      "on-primary-container": "#FFFFFF",
+                      "surface-container-highest": "#353438",
+                      "surface-container-high": "#1F1F24",
+                      "outline-variant": "#5a413a",
+                      "on-error": "#690005",
+                      "surface-container-lowest": "#0B0B0E",
+                      "surface-dim": "#0B0B0E",
+                      "on-primary-fixed": "#3a0a00",
+                      "secondary-fixed": "#e2dfff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Pretendard", "Inter", "sans-serif"],
+                      "body": ["Pretendard", "Inter", "sans-serif"],
+                      "label": ["Space Grotesk", "sans-serif"]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Pretendard', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col selection:bg-primary-container selection:text-white">
+<!-- TopAppBar - Mapped from Shared Components JSON with manual overrides for the specific screen intent -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-background bg-opacity-80 backdrop-blur-md">
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-on-surface">menu</span>
+</button>
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img class="w-6 h-6 object-contain" data-alt="professional sports team logo featuring a stylized eagle in vibrant orange and dark grey colors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBIKxWlyDU0-8SbVAb8rDTjWlgC6XJrC9HadbKotTb1j-n2Uk58o7YGrlgISreX4SLC6C6BJV7togH-8QzutzoRy6ap9K4SU6vhbdPNNnqlg18EgqdfzYIdQ-yHRN4C-iSBufOKSjA9uKtfDo0LnRVdOiw8E2CT1GnnQHVXUTnWRO2Y_OZbQu6rFTFwmDXdX3ccF0U9Y2N4H26uSCiAu-d3qg3aaSNHf1OFASQDd16V-cIWQYxTXT1Ts45QPVMOTIyaTnEhE8Kzdw"/>
+</div>
+<h1 class="text-xl font-bold tracking-widest text-on-surface">BATDI</h1>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-on-surface">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Chat Canvas -->
+<main class="flex-1 pt-20 pb-24 px-4 max-w-2xl mx-auto w-full flex flex-col">
+<!-- Conversation Flow -->
+<div class="space-y-4">
+<!-- Timestamp Indicator -->
+<div class="flex justify-center my-6">
+<span class="text-xs text-on-surface-variant font-medium bg-surface-container px-3 py-1 rounded-full">2024년 5월 22일</span>
+</div>
+<!-- Message Cluster 1: User -->
+<div class="flex flex-col items-end space-y-1">
+<span class="text-[10px] text-on-surface-variant mr-1 mb-1">오후 7:45</span>
+<div class="bg-primary-container text-on-primary px-4 py-3 rounded-[20px] rounded-tr-[4px] max-w-[85%] shadow-lg">
+<p class="text-[15px] leading-[1.7] font-medium">밧디 오늘 기분 어때유?</p>
+</div>
+</div>
+<!-- Message Cluster 2: Bot -->
+<div class="flex items-start gap-2 mt-4">
+<div class="w-8 h-8 rounded-full border-2 border-primary-container overflow-hidden flex-shrink-0 mt-1">
+<img class="w-full h-full object-cover" data-alt="friendly AI robot character avatar with orange glowing accents and a professional clean digital illustration style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2NLX0S9_mApRjkV3bupKGxE0GJGvzHuh9aA26qpne7yRBhh4WQDcg1juIeTnm4frpCqyv20AAcW0zwlO8wqV00e1o9fRX7PLBqYLNiIXAzhEOS9mA62MAS07xam0Btjt0D861F1levD8fAr1YWF85jYwkQL3WZEq9vbkMRYcET-ywqIq23guQbYWyZSUoeuvNCpjyYeRGM2Ww3a3nHc4436WzynGZz4oUWEWIC-rIPTetEcR5zjAC0IimI1f3z-U4UFyv4dEQtQ"/>
+</div>
+<div class="flex flex-col space-y-1 max-w-[85%]">
+<div class="bg-surface-container text-on-surface px-4 py-3 rounded-[20px] rounded-tl-[4px]">
+<p class="text-[15px] leading-[1.7] font-medium">어유~ 한화가 어제 이겼으니까 기분 최고여! 밥이 꿀맛이었다니까유 🍚✨</p>
+</div>
+</div>
+</div>
+<!-- Message Cluster 3: User -->
+<div class="flex flex-col items-end space-y-1 mt-6">
+<div class="bg-primary-container text-on-primary px-4 py-3 rounded-[20px] rounded-tr-[4px] max-w-[85%] shadow-lg">
+<p class="text-[15px] leading-[1.7] font-medium">ㅋㅋㅋ 한화 팬은 이기면 밥이 맛있고 지면?</p>
+</div>
+</div>
+<!-- Message Cluster 4: Bot -->
+<div class="flex items-start gap-2 mt-4">
+<div class="w-8 h-8 rounded-full border-2 border-primary-container overflow-hidden flex-shrink-0 mt-1">
+<img class="w-full h-full object-cover" data-alt="friendly AI robot character avatar with orange glowing accents and a professional clean digital illustration style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBs2_ogr0_lTCKjShabU4FK-3Nxom-206maJRBrH2rd-RANvDRm2ARyJLuJJ_6cPzTpvylcbfPSneBnfsp799D4_O7VMg5rusUJ6hxYVGnN8_C7y57JIOlH6lQjtiZHmHB8YLeQZy9OkLDnoxlpqj3PWbU_79rcNSIL1QU8hP-FtoVQrgoMAl2hKg74QkKP8USJvD0Kq-YDE_bpKM75ICBJO9MXEQnMrau6fOFd_dPXXDeWbK-0PzlZRXVWRXHgKglzCLo_UTfcCA"/>
+</div>
+<div class="flex flex-col space-y-1 max-w-[85%]">
+<div class="bg-surface-container text-on-surface px-4 py-3 rounded-[20px] rounded-tl-[4px]">
+<p class="text-[15px] leading-[1.7] font-medium">지면은... 그래도 칼국수에 수육 한 상 하면 괜찮아유 ㅎㅎ 대전 맛집은 안 배신해유~ 🍜</p>
+</div>
+</div>
+</div>
+<!-- Message Cluster 5: User -->
+<div class="flex flex-col items-end space-y-1 mt-6">
+<div class="bg-primary-container text-on-primary px-4 py-3 rounded-[20px] rounded-tr-[4px] max-w-[85%] shadow-lg">
+<p class="text-[15px] leading-[1.7] font-medium">올해 한화 우승 가능?</p>
+</div>
+</div>
+<!-- Message Cluster 6: Bot -->
+<div class="flex items-start gap-2 mt-4">
+<div class="w-8 h-8 rounded-full border-2 border-primary-container overflow-hidden flex-shrink-0 mt-1">
+<img class="w-full h-full object-cover" data-alt="friendly AI robot character avatar with orange glowing accents and a professional clean digital illustration style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUxz0EK1XG81IKYeCi6lIl1rYM_XXXgkbsk9af_1s0XeXZBqFiQ-b5YGP_6yxUvlZRxAu8urEST8OoAJQoSkcJiH-Qwplyt-bLywzn0Vit8pxdaVBUBissHCvXrwaMOL4PYwvoYcFCwsXspmv0jjup_paR5RftelH3vhE2q80X4xHNPVaZGY6c33XcizYyG9md5yqOEhl1E56xmgauLSID3ZNa7jVUhccfG1sGBbyyoPiiF-Eqrd1Hh8MWV87Wj2V7qHqz3t_Fig"/>
+</div>
+<div class="flex flex-col space-y-1 max-w-[85%]">
+<div class="bg-surface-container text-on-surface px-4 py-3 rounded-[20px] rounded-tl-[4px]">
+<p class="text-[15px] leading-[1.7] font-medium">아 그럼유!! 타선이 이렇게 좋은 적이 없었다니까! 문보경이 미쳤고, 불펜만 버텨주면 10월에 맥주 한 잔 할 수 있어유~ 🍺</p>
+</div>
+<div class="bg-surface-container text-on-surface px-4 py-3 rounded-[20px] max-w-full">
+<p class="text-[15px] leading-[1.7] font-medium">근데 조금... 아주 조금만 불안한 건 비밀이여 ㅎ</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Input Section -->
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent pt-10">
+<div class="max-w-2xl mx-auto flex items-center gap-3">
+<div class="flex-1 relative">
+<input class="w-full bg-surface-container border-none text-on-surface placeholder:text-on-surface-variant rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary-container focus:bg-surface-container-high transition-all outline-none text-[15px]" placeholder="밧디에게 물어보기..." type="text"/>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">add_circle</span>
+</button>
+</div>
+</div>
+<button class="w-12 h-12 bg-primary-container text-on-primary rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-transform duration-200">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+<!-- Hidden Navigation Drawer (Shell Component Structure preserved from JSON) -->
+<div class="fixed inset-y-0 left-0 z-[60] w-72 bg-surface-container-low transform -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl" id="drawer">
+<div class="p-6 h-full flex flex-col">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-12 h-12 rounded-full overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="portrait of a cheerful sports fan wearing a baseball cap with a professional studio lighting setup" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKZY3shYuX6bMVHswBQp5MGa2pvyfHKxutwH44lrDXUjNRt9Lm69h5-AhPOnDlSf7Fib5dRT5j8POuu7K_dhFarOs_pJI1yWEtnZCmrHJuDFXsNvgXYvkksH4YrrM3xwuDSjsUFve1yNXJphmAItC4uYeBdrWtWdWrVGx7u5TDWEZgJKJbEn5E4AdcFQiRi6jaE3f1bjbZe9iYq5WzW2OqwfQ9GY2gUkHMGB-3T2SVz8IRbjpH6WEUyiBvYzInrUpRg-szcAy-hQ"/>
+</div>
+<div>
+<h2 class="text-on-surface font-bold">KBO Fan</h2>
+<p class="text-on-surface-variant text-xs">My Team: Hanwha</p>
+</div>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 bg-surface-container-high text-primary font-semibold rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="text-sm">Chat History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-lowest rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-sm">Player Stats</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-lowest rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="text-sm">Team Standings</span>
+</a>
+<div class="mt-auto pt-8">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-lowest rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm">Settings</span>
+</a>
+</div>
+</nav>
+</div>
+</div>
+</body></html>
