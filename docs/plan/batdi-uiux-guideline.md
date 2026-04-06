@@ -97,6 +97,38 @@
 - 컴포넌트 내 **하드코딩 색상 절대 금지** (`#FFFFFF`, `rgb(...)` 등). 오직 `var(--color-*)`만 사용
 - 팀 컬러는 `data-team` 속성으로 런타임 스위치 — 프로필·랜딩·채팅 컨테이너 루트에 주입
 - 다크모드가 **기본**, 라이트모드는 설정 토글
+- **저명도 팀 컬러 시인성 보정 필수** (아래 §2.1.1 참조)
+
+#### 2.1.1 저명도 팀 컬러 대비 보정 규칙
+
+두산(#131230)·롯데(#041E42) 등 **다크 배경(#0B0B0E)과 명도 차이가 작은 팀 컬러**는 그대로 사용하면 텍스트·버블·뱃지·카드 보더가 식별 불가능해진다.
+
+**원칙**: `--team-primary`가 배경 대비 **WCAG 2.1 AA 기준 명도 대비비(contrast ratio) 3:1 미만**일 경우, 해당 요소에 자동 보정 적용.
+
+**보정 전략 (팀 컬러 자체는 변경하지 않음)**:
+
+| UI 요소 | 기본 (고명도 팀: 한화·기아) | 보정 (저명도 팀: 두산·롯데) |
+|---------|---------------------------|---------------------------|
+| **사용자 채팅 버블** | `--team-primary` 배경 + 흰색 텍스트 | `--team-secondary` 배경 + 흰색 텍스트 |
+| **전송 버튼** | `--team-primary` 배경 | `--team-secondary` 배경 |
+| **상단바 팀명** | `--team-primary` 컬러 텍스트 | `--team-secondary` 컬러 텍스트 |
+| **카드 강조 보더** | `--team-primary` 2px 보더 | `--team-secondary` 2px 보더 |
+| **팀 뱃지 링** | `--team-primary` 링 | `--team-secondary` 링 |
+| **프로그레스 바** | `--team-primary` fill | `--team-secondary` fill |
+| **제안 칩 (선택 상태)** | `--team-primary` 보더/텍스트 | `--team-secondary` 보더/텍스트 |
+
+**구현 방법**: CSS에서 `--team-accent`를 도입하여, 저명도 팀은 secondary로 자동 매핑.
+
+```css
+/* 기본: primary 사용 */
+:root { --team-accent: var(--team-primary); }
+
+/* 저명도 팀: secondary로 폴백 */
+[data-team="doosan"] { --team-accent: var(--team-doosan-secondary); }  /* #C8102E 레드 */
+[data-team="lotte"]  { --team-accent: var(--team-lotte-secondary); }   /* #ED1C24 레드 */
+```
+
+> UI 컴포넌트에서 악센트가 필요한 곳은 `--team-primary` 대신 **`--team-accent`를 참조**한다. `--team-primary`는 팀 로고 배경·그라디언트 등 의도적으로 어두운 색이 필요한 곳에만 직접 사용.
 
 ### 2.2 타이포그래피
 

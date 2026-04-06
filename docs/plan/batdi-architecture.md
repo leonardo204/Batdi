@@ -1051,6 +1051,7 @@ LangGraph 노드 → TraceCollector(in-memory queue)
 | ADR-012 | InputGuardrail 앞 Normalizer 노드 도입 | 정규식 필터 우회 방지(NFKC+자모+이모지+homoglyph). <1ms 오버헤드 |
 | ADR-013 | 모든 프롬프트 XML 태그 구조화 | Instruction Tracking 향상, priority 속성으로 충돌 해결 규칙 명시화 |
 | ADR-014 | 크롤링 데이터 3단계 분리 + healthScore 기반 자동 비활성 | 유지보수 리스크 분산. 세이버 스탯은 선택적, 실패 시 graceful degradation |
+| ADR-015 | 저명도 팀 컬러 `--team-accent` 폴백 도입 | 두산·롯데 네이비가 다크 배경과 대비비 3:1 미만 → 악센트 UI에 secondary 자동 매핑. 상세: uiux-guideline §2.1.1 |
 
 ---
 

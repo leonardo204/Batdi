@@ -71,11 +71,11 @@
 - **Auth/Push Provider 추상화 필수**: `AuthProvider`/`PushProvider` 인터페이스 유지 → P6에 Google OAuth/FCM 어댑터 교체
 - **Langfuse 트레이스 필수**: 모든 LLM 호출·LangGraph 노드·캐시 히트/미스 기록
 - **UI 시각 속성은 토큰만 참조**: 하드코딩 색상/간격 금지. `packages/ui/src/tokens.css` CSS variables만 사용
-- **팀 컬러는 `data-team` 속성 스위치**: `--team-primary` 변수만 참조
+- **팀 컬러는 `data-team` 속성 스위치**: 악센트 UI는 `--team-accent` 참조 (저명도 팀은 secondary 자동 폴백 → [uiux §2.1.1](docs/plan/batdi-uiux-guideline.md))
 - **CopilotKit `useCopilotReadable`로 상태 노출**: user/team/level/profile/game/recent는 자동 컨텍스트, 프롬프트 중복 금지
 - **CopilotKit `useCopilotAction` 툴은 백엔드 검증 API와 1:1 매핑**: LLM 악용 방지
 - **Mermaid 다이어그램 작성 시 [컨벤션](Ref-docs/claude/conventions.md) 준수**: 노드 라벨 `()` 괄호 금지(`—`/쉼표로 대체), `\n` 금지(`<br>` 사용), 마크다운 문법(`#`, `**`, `` ` ``) 금지, 넘버링은 `A.` `B.` 문자 사용. 컨벤션 문서는 코드 룰뿐 아니라 다이어그램 룰도 포함
 
 ---
 
-*최종 업데이트: 2026-04-05*
+*최종 업데이트: 2026-04-06*
