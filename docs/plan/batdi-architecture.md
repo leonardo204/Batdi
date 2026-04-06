@@ -49,6 +49,8 @@ flowchart TB
             S3["NewsGraph"]
             S4["ChatGraph"]
             S5["MemeGraph"]
+            S6["ScheduleGraph"]
+            S7["LineupGraph"]
         end
 
         PA["PersonalAgent Service<br>사용자별 컨텍스트 공급"]
@@ -117,7 +119,9 @@ flowchart TB
               │    │    ├── StatsGraph       │
               │    │    ├── NewsGraph        │
               │    │    ├── ChatGraph        │
-              │    │    └── MemeGraph        │
+              │    │    ├── MemeGraph        │
+              │    │    ├── ScheduleGraph    │
+              │    │    └── LineupGraph      │
               │    ├── TeamPersona Node (4팀)│
               │    ├── UIComposer Node       │
               │    │    ├── Template Path    │
@@ -243,7 +247,7 @@ type CoreState = {
   outputGuardrailResult?: GuardrailResult;
 
   // 라우팅
-  intent: Intent;                      // score | stats | news | chat | schedule | meme | composite
+  intent: Intent;                      // score | stats | news | chat | schedule | lineup | meme | composite
   intentConfidence: 'high' | 'default';
   complexity: 'simple' | 'general' | 'composite';
 
@@ -292,7 +296,7 @@ flowchart TD
 
     CL -->|miss<br>parallel_fetch phase| PAR{{"병렬 실행<br>Promise.all"}}
     PAR --> PC["PersonalContext<br>DB 로드"]
-    PAR --> SS["ServiceSubgraph<br>Score, Stats, News, Chat, Meme"]
+    PAR --> SS["ServiceSubgraph<br>Score, Stats, News, Chat, Meme, Schedule, Lineup"]
     PC --> JOIN[/"Join — 두 결과 대기"/]
     SS --> JOIN
 
@@ -570,6 +574,8 @@ CREATE TABLE a2ui_templates (
 
 **원자 컴포넌트**(범용) + **도메인 widget**(야구 특화) 동시 제공. LLM은 도메인 widget 우선 선택, 없으면 원자로 조합.
 
+> **악센트 UI 요소는 `--team-accent`를 참조**한다. 저명도 팀(두산·롯데)은 secondary로 자동 폴백. 상세: uiux-guideline §2.1.1
+
 ### 5.2 원자 컴포넌트
 
 | 타입 | 프롭 |
@@ -692,6 +698,8 @@ flowchart TB
         SG3["NewsGraph<br>뉴스 검색, 요약"]
         SG4["ChatGraph<br>잡담, 대화"]
         SG5["MemeGraph<br>밈, 유머"]
+        SG6["ScheduleGraph<br>경기 일정 조회"]
+        SG7["LineupGraph<br>선발 라인업 조회"]
     end
 
     subgraph L3["비 CoAgent Services"]
@@ -709,6 +717,8 @@ flowchart TB
     Core -->|invoke| SG3
     Core -->|invoke| SG4
     Core -->|invoke| SG5
+    Core -->|invoke| SG6
+    Core -->|invoke| SG7
 
     PAS -.->|주입| Core
     PAS -.->|주입| SG1
@@ -740,6 +750,8 @@ flowchart TB
 | `NewsGraph` | 뉴스 검색·요약 | `{query, teamId} → NewsData[]` |
 | `ChatGraph` | 잡담 | `{message, personalCtx} → reactionText` |
 | `MemeGraph` | 밈 응답 | `{teamId, trigger} → meme` |
+| `ScheduleGraph` | 경기 일정 조회 | `{teamId, dateRange?} → ScheduleData[]` |
+| `LineupGraph` | 선발 라인업 조회 | `{gameId, teamId} → LineupData` |
 
 각 subgraph는 독립 LangGraph. Core에서 `.invoke()`로 호출.
 
@@ -905,6 +917,18 @@ CREATE TABLE tool_call_logs (
 ALTER TABLE messages
   ADD COLUMN a2ui_envelope JSONB,     -- 저장된 A2UI spec (감사·재생용)
   ADD COLUMN trace_id UUID REFERENCES agent_traces(trace_id);
+```
+
+### 10.2b user_favorites 테이블
+
+```sql
+CREATE TABLE user_favorites (
+  user_id    UUID REFERENCES users(id),
+  player_id  INT  REFERENCES players(id),
+  source     VARCHAR(20),
+  mention_count INT DEFAULT 0,
+  PRIMARY KEY (user_id, player_id)
+);
 ```
 
 ### 10.3 DB 커넥션 풀 전략 (Connection Exhaustion 방지)

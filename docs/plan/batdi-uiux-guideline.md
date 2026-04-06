@@ -422,7 +422,7 @@ LLM이 `useCopilotAction`을 호출할 때 프론트 UI 피드백:
 - `Enter` 전송, `Shift+Enter` 줄바꿈
 - `⌘/` 또는 `Ctrl+/` 단축키 패널
 - `Esc` 모달 닫기, 입력 취소
-- 모든 인터랙티브 요소 `focus-visible` 링 (`outline: 2px solid var(--team-primary)`)
+- 모든 인터랙티브 요소 `focus-visible` 링 (`outline: 2px solid var(--team-accent)`)
 
 ### 5.4 로딩·빈 상태·에러 + Intent별 스켈레톤 높이 예약
 

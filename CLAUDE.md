@@ -27,7 +27,7 @@
 | 프론트 | **Next.js 14+ App Router** + React 18 + Tailwind + **CopilotKit + A2UI** + PWA |
 | 백엔드 | **NestJS** + `copilotRuntimeNestEndpoint` + **LangGraph.js (계층적 CoAgents)** |
 | DB | PostgreSQL 16 단일 (Docker, 포트 `54329`) |
-| LLM | Gemini 2.5 Flash/Lite/Pro + 3 Flash + **Context Caching (75% 할인)** |
+| LLM | Gemini 2.5 Flash/Lite/Pro + 3 Flash · Context Caching은 MVP 보류 (§6.3) |
 | 관측 | **Langfuse 셀프호스팅** (비용 0) |
 | 인프라 (P6+) | 로컬 Linux PC + Cloudflare Tunnel + Pages |
 

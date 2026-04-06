@@ -1193,7 +1193,7 @@ CREATE TABLE conversations (
 CREATE TABLE messages (
   id SERIAL PRIMARY KEY, conversation_id UUID REFERENCES conversations(id),
   role VARCHAR(10), content TEXT NOT NULL,
-  ui_component JSONB, tokens_used INT, created_at TIMESTAMP DEFAULT NOW()
+  a2ui_envelope JSONB, trace_id UUID, tokens_used INT, created_at TIMESTAMP DEFAULT NOW()
 );
 CREATE TABLE personal_agent_state (
   user_id UUID PRIMARY KEY REFERENCES users(id),
