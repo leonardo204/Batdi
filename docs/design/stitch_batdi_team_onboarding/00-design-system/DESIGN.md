@@ -1,3 +1,7 @@
+> **⚠️ 참고용 문서**: 이 파일은 Google Stitch가 자동 생성한 디자인 시스템이며 개발 레퍼런스입니다.
+> 팀 컬러 보정(`--team-accent`), border 정책, surface hover 색상, 타이포그래피 등의 **SSOT는 [`docs/plan/batdi-uiux-guideline.md`](../../plan/batdi-uiux-guideline.md)**를 따릅니다.
+> 이 문서와 uiux-guideline이 충돌할 경우, **uiux-guideline이 우선**합니다.
+
 # Design System Specification: High-End Baseball Intelligence
 
 이 디자인 시스템은 KBO 야구 AI 챗봇 '밧디(Batdi)'를 위한 프리미엄 디지털 가이드라인입니다. 단순히 정보를 전달하는 앱을 넘어, 사용자에게 데이터의 깊이와 스포츠의 역동성을 'Editorial' 관점에서 전달하는 것을 목표로 합니다.

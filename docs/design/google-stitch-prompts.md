@@ -16,7 +16,8 @@ App name: 밧디 (Batdi) — A KBO Korean baseball AI chatbot (mobile-first PWA)
 Design style: Dark mode, minimal, clean. Reference: Linear app, Vercel dashboard, Claude.ai chat UI.
 Background: #0B0B0E. Card/surface: #14151A. Border: #2A2B33.
 Primary text: #E8E8EC. Muted text: #8A8B93. Subtle text: #5A5B63.
-Accent color: Team-specific (Hanwha Orange #F15B2A, Doosan Navy #131230, Kia Red #EA002C, Lotte Navy #041E42).
+Accent color: Team-specific primary (Hanwha Orange #F15B2A, Doosan Navy #131230, Kia Red #EA002C, Lotte Navy #041E42).
+Low-contrast team fix: Doosan and Lotte primary colors are too dark against #0B0B0E background. For user bubbles, send buttons, badges, accent borders, and highlights, use secondary color instead: Doosan Red #C8102E, Lotte Red #ED1C24. Dark primary is only for team logo backgrounds.
 Font: Pretendard for Korean, system sans-serif. Monospace for numbers/stats.
 Border radius: Buttons 10px, Cards 14px, Chat bubbles 20px.
 Spacing: 8px base grid. Shadows: subtle, single-direction, low opacity.
@@ -477,7 +478,7 @@ Team variations:
    - "한화가 이기고 있어유~ 💪"
 
 2. Top-right — 두산 베어스:
-   - Accent: #131230 (navy) with highlights in #C8102E (red). User bubble: navy.
+   - Accent: #131230 (navy) with highlights in #C8102E (red). User bubble: #C8102E (red, dark-primary fallback).
    - "뭐 이 정도면 괜찮지~ 😎"
 
 3. Bottom-left — 기아 타이거즈:
@@ -485,7 +486,7 @@ Team variations:
    - "허맛나! 기아가 쥑이네잉! 🐯"
 
 4. Bottom-right — 롯데 자이언츠:
-   - Accent: #041E42 (deep navy) with #ED1C24 accents. User bubble: navy.
+   - Accent: #041E42 (deep navy) with #ED1C24 accents. User bubble: #ED1C24 (red, dark-primary fallback).
    - "부산 사나이답게 이기고 있다 아이가! 🌊"
 
 Each mini screen:
@@ -560,6 +561,7 @@ This is a reference comparison sheet — show all four at once to compare the te
 3. **입력창 통일**: 마이크·파일첨부(+) 버튼 제거. 텍스트 입력 + 전송 버튼만
 4. **일정 화면 통합**: 04, 07 중 하나 선택 (07 권장 — 더 상세)
 5. **디자인 토큰 기준**: Stitch HTML이 아닌 `docs/plan/batdi-uiux-guideline.md`의 CSS 변수가 SSOT
+6. **설정 메뉴 이모지 제거**: Screen 11 마이페이지의 메뉴 이모지(🏟️💬✏️ 등)는 아이콘 컴포넌트로 교체 (uiux-guideline 안티패턴)
 
 ---
 
