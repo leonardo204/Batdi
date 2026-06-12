@@ -7,6 +7,7 @@ import {
   statSync
 } from "node:fs";
 import { join } from "node:path";
+import { execSync } from "node:child_process";
 import { homedir } from "node:os";
 var C = {
   red: "\x1B[31m",
@@ -20,6 +21,18 @@ var C = {
 var HUD_CACHE_FILE = join(homedir(), ".claude", ".hud_cache");
 var AGENT_CACHE_FILE = join(homedir(), ".claude", ".agent_cache");
 var AGENT_CACHE_TTL = 5e3;
+var STALE_SUBAGENT_MS = Number(process.env.DOTCLAUDE_STALE_SUBAGENT_MS) || 12e4;
+function normalizeStdinLimit(x) {
+  if (!x || x.used_percentage == null) return void 0;
+  let resets_at;
+  if (typeof x.resets_at === "number") {
+    const ms = x.resets_at > 1e12 ? x.resets_at : x.resets_at * 1e3;
+    resets_at = new Date(ms).toISOString();
+  } else if (typeof x.resets_at === "string") {
+    resets_at = x.resets_at;
+  }
+  return { utilization: x.used_percentage, resets_at };
+}
 async function readStdin() {
   if (process.stdin.isTTY) return null;
   const chunks = [];
@@ -96,7 +109,15 @@ function formatDuration(ms) {
   return rh > 0 ? `${d}d${rh}h` : `${d}d`;
 }
 function renderLimit(label, info) {
-  if (!info || info.utilization == null) return null;
+  if (!info || info.utilization == null) {
+    return `${label}:${C.dim}--%${C.reset}`;
+  }
+  if (info.resets_at) {
+    const resetTime = new Date(info.resets_at).getTime();
+    if (resetTime <= Date.now()) {
+      return `${label}:${C.dim}--%${C.reset}`;
+    }
+  }
   const raw = info.utilization;
   const pct = Math.round(raw >= 1 ? raw : raw * 100);
   const resetStr = info.resets_at ? formatDuration(new Date(info.resets_at).getTime() - Date.now()) : null;
@@ -139,17 +160,34 @@ function countSubagents(sessionId) {
           (f) => f.startsWith("agent-") && f.endsWith(".jsonl")
         );
         let active = 0;
+        let live = 0;
+        const now = Date.now();
         for (const f of transcripts) {
+          const fpath = join(sessionDir, f);
+          let isStale = false;
           try {
-            const content = readFileSync(join(sessionDir, f), "utf8").trim();
+            isStale = now - statSync(fpath).mtimeMs > STALE_SUBAGENT_MS;
+          } catch {
+          }
+          try {
+            const content = readFileSync(fpath, "utf8").trim();
             const lastLine = content.split("\n").pop() ?? "";
             const last = JSON.parse(lastLine);
-            if (!last?.message?.stop_reason) active++;
+            const done = Boolean(last?.message?.stop_reason);
+            if (done) {
+              live++;
+            } else if (!isStale) {
+              active++;
+              live++;
+            }
           } catch {
-            active++;
+            if (!isStale) {
+              active++;
+              live++;
+            }
           }
         }
-        result = { active, total: transcripts.length };
+        result = { active, total: live };
         break;
       }
     }
@@ -163,8 +201,8 @@ function countSubagents(sessionId) {
   return result;
 }
 function renderContext(percent) {
-  const color = percent >= 80 ? C.red : percent >= 60 ? C.yellow : C.green;
-  const suffix = percent >= 85 ? " CRITICAL" : percent >= 75 ? " COMPRESS?" : "";
+  const color = percent >= 85 ? C.red : percent >= 70 ? C.yellow : C.green;
+  const suffix = percent >= 90 ? " CRITICAL" : percent >= 80 ? " COMPRESS?" : "";
   return `ctx:${color}${percent}%${suffix}${C.reset}`;
 }
 var HUD_DISABLED_FILE = join(homedir(), ".claude", ".hud_disabled");
@@ -179,23 +217,31 @@ async function main() {
       parts.push(`${C.dim}[CC#${ver}]${C.reset}`);
     }
     const cwd = stdin.workspace?.current_dir ?? stdin.cwd ?? process.cwd();
-    parts.push(`${C.cyan}${shortenCwd(cwd)}${C.reset}`);
-    const cache = loadHudCache();
-    if (cache !== null) {
-      const limitParts = [];
-      if (!cache.five_hour && !cache.seven_day) {
-        limitParts.push(`5h:${C.dim}--%${C.reset} wk:${C.dim}--%${C.reset}`);
-      } else {
-        const fiveH = renderLimit("5h", cache.five_hour);
-        const weekly = renderLimit("wk", cache.seven_day);
-        if (fiveH) limitParts.push(fiveH);
-        if (weekly) limitParts.push(weekly);
-      }
-      if (limitParts.length > 0) {
-        parts.push(limitParts.join(" "));
-      }
-    } else {
-      parts.push(`5h:${C.dim}--%${C.reset} wk:${C.dim}--%${C.reset}`);
+    let branchName = "";
+    try {
+      branchName = execSync("git rev-parse --abbrev-ref HEAD", {
+        cwd,
+        encoding: "utf8",
+        timeout: 2e3,
+        stdio: ["ignore", "pipe", "ignore"]
+      }).trim();
+    } catch {
+    }
+    const branchPart = branchName ? ` ${C.dim}(${C.reset}${C.green}${branchName}${C.reset}${C.dim})${C.reset}` : "";
+    parts.push(`${C.cyan}${shortenCwd(cwd)}${C.reset}${branchPart}`);
+    const sl = stdin.rate_limits;
+    const slFive = normalizeStdinLimit(sl?.five_hour);
+    const slSeven = normalizeStdinLimit(sl?.seven_day);
+    const cache = slFive && slSeven ? null : loadHudCache();
+    const limitParts = [];
+    limitParts.push(renderLimit("5h", slFive ?? cache?.five_hour));
+    limitParts.push(renderLimit("wk", slSeven ?? cache?.seven_day));
+    if (cache && cache._ok === false) {
+      const staleMinutes = cache._ts ? (Date.now() - cache._ts) / 6e4 : Infinity;
+      if (staleMinutes > 10) limitParts.push(`${C.red}auth?${C.reset}`);
+    }
+    if (limitParts.length > 0) {
+      parts.push(limitParts.join(" "));
     }
     const modelName = stdin.model?.display_name;
     if (modelName) {
