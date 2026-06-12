@@ -1,3 +1,14 @@
+---
+id: batdi-architecture
+title: 밧디 시스템 아키텍처
+type: design
+version: 1.0.0
+status: approved
+scope: CopilotKit 풀스택 + LangGraph CoAgents + A2UI + AG-UI 기반 기술 아키텍처 (기술 SSOT)
+related: [batdi-service-plan, batdi-development-plan, batdi-uiux-guideline, batdi-agui-contract, batdi-a2ui-palette-schema, batdi-copilot-actions, batdi-db-schema]
+updated: 2026-04-04
+---
+
 # 밧디(batdi) 시스템 아키텍처 (v1)
 
 > 작성일: 2026-04-04
@@ -153,79 +164,12 @@ flowchart TB
 
 ## 2. AG-UI Protocol 통신 계약
 
-### 2.0 메시지 시퀀스 (Mermaid)
+CopilotKit AG-UI 프로토콜로 프론트↔백엔드가 HTTP+SSE 스트림으로 통신한다.
+사용자 메시지는 `/api/copilotkit` POST + `useCopilotReadable` 자동 컨텍스트로 들어가고,
+백엔드는 `RunStarted`/`StateSnapshot`/`A2UIEnvelope`/`RunFinished` 등 이벤트 스트림으로 응답한다.
+A2UIEnvelope는 surfaceUpdate/dataModelUpdate/beginRendering으로 구성된다. 툴 응답은 `useCopilotAction` 결과를 AG-UI `ToolResult`로 회신한다.
 
-```mermaid
-sequenceDiagram
-    participant U as 사용자
-    participant C as CopilotKit Provider
-    participant R as CopilotRuntime
-    participant G as Core LangGraph
-    participant P as PostgreSQL
-    participant L as Langfuse
-
-    U->>C: 메시지 입력 — 한화 경기 어때
-    C->>R: POST /api/copilotkit<br>useCopilotReadable 자동 포함
-    R->>G: 그래프 실행 시작
-    G-->>C: RunStarted
-    C-->>U: TypingIndicator + Intent별 SkeletonCard 사전 렌더 — CLS 0
-    G-->>C: StateSnapshot intent 확정
-
-    G->>G: InputGuardrail 통과
-    G->>G: IntentRouter — score, general
-    G->>P: CacheLookup L0
-    P-->>G: MISS
-
-    G->>P: ServiceSubgraph ScoreGraph
-    P-->>G: ScoreData
-    G->>G: UIComposer L2 Template 선택
-    G-->>C: StateSnapshot, StateDelta
-    G->>G: UIValidator 통과
-    G->>G: DataBinder DB 값 치환
-    G->>G: TeamPersona 한화 톤
-    G-->>C: A2UIEnvelope<br>surfaceUpdate, dataModelUpdate, beginRendering
-    C-->>U: A2UIRenderer 카드 렌더
-
-    G->>R: LLM 호출 Flash 50 tokens
-    R-->>C: TextMessageChunk stream
-    C-->>U: 리액션 스트리밍 누적
-    G->>G: OutputGuardrail 통과
-    G-->>C: RunFinished
-    C-->>U: TypingIndicator 제거, 입력 활성화
-
-    G->>L: 트레이스 기록<br>노드별 latency, tokens, 비용
-    G->>P: agent_traces 저장
-```
-
-### 2.1 프론트 → 백엔드 (사용자 메시지)
-
-CopilotKit Provider가 `/api/copilotkit` 엔드포인트에 POST, 본문에 `useCopilotReadable`로 등록된 컨텍스트가 자동 포함.
-
-**자동 주입되는 Readable Context**
-- `user.id`, `user.teamId`, `user.level`, `user.persona`
-- `personalAgent.profileSummary`
-- `session.recentMessages` (최근 20건)
-- `currentGame` (실시간 경기 상태, 있을 때만)
-
-### 2.2 백엔드 → 프론트 (AG-UI 메시지 스트림)
-
-| 메시지 타입 | 용도 | 생성자 |
-|-----------|------|--------|
-| `RunStarted` | 그래프 시작 | LangGraph |
-| `StateSnapshot` | Agent 상태 스냅샷 | LangGraph |
-| `StateDelta` | 상태 변화 | LangGraph |
-| `TextMessageChunk` | LLM 스트리밍 텍스트 | UIComposer |
-| `ToolCall` | 프론트 함수 호출 요청 | Agent |
-| `A2UIEnvelope` | `surfaceUpdate`/`dataModelUpdate`/`beginRendering` | UIComposer → DataBinder |
-| `RunFinished` | 그래프 종료 | LangGraph |
-
-### 2.3 프론트 → 백엔드 (툴 응답)
-
-`useCopilotAction`으로 등록한 프론트 함수 호출 결과를 AG-UI `ToolResult`로 회신. 예:
-- `registerFavoritePlayer(playerId)`
-- `toggleNotification(type)`
-- `openPersonaEditor()`
-- `jumpToConversation(id)`
+> 정식 계약 SSOT: [batdi-agui-contract](../interface/batdi-agui-contract.md). 본 절은 개요만 둔다.
 
 ---
 
@@ -506,6 +450,8 @@ CREATE TABLE cache_ui_envelopes (
 CREATE INDEX idx_cache_ui_expires ON cache_ui_envelopes(expires_at);
 ```
 
+> 정식 DDL SSOT: [batdi-db-schema](../interface/batdi-db-schema.md)
+
 **캐시 무효화**
 - 스코어 변경 이벤트 → 해당 경기 관련 envelope 전체 DELETE
 - 5분 배치: 만료 envelope 삭제
@@ -539,6 +485,8 @@ CREATE TABLE a2ui_templates (
 );
 ```
 
+> 정식 DDL SSOT: [batdi-db-schema](../interface/batdi-db-schema.md)
+
 **템플릿 예시 (`score_compact` 템플릿)**
 ```json
 {
@@ -570,76 +518,12 @@ CREATE TABLE a2ui_templates (
 
 ## 5. A2UI Component Palette
 
-### 5.1 팔레트 설계 원칙 (Hybrid)
+Hybrid 팔레트: 원자 컴포넌트(범용) + 야구 도메인 widget 10종(scoreboardWidget·battingLineWidget 등).
+LLM은 도메인 widget을 우선 선택하고 없으면 원자로 조합한다. UIValidator가 화이트리스트·
+JSON Schema(maxDepth 4·maxNodes 30)·`{{bind:...}}`/`{{llm.reaction}}` 바인딩 규칙으로 통제하며,
+검증 실패 시 재호출 없이 L1 Template로 즉시 폴백한다(레이턴시 우선).
 
-**원자 컴포넌트**(범용) + **도메인 widget**(야구 특화) 동시 제공. LLM은 도메인 widget 우선 선택, 없으면 원자로 조합.
-
-> **악센트 UI 요소는 `--team-accent`를 참조**한다. 저명도 팀(두산·롯데)은 secondary로 자동 폴백. 상세: uiux-guideline §2.1.1
-
-### 5.2 원자 컴포넌트
-
-| 타입 | 프롭 |
-|------|------|
-| `column` / `row` / `grid` | children, gap, padding, align |
-| `card` | children, variant(default/emphasized/muted), padding |
-| `text` | content, variant(title/subtitle/body/caption), weight, tone |
-| `badge` / `chip` | label, tone(info/success/warning/danger/team) |
-| `divider` | orientation |
-| `table` | rows, cols, tabularNums |
-| `button` | label, variant, action |
-| `accordion` / `tabs` | items |
-| `image` / `avatar` | src, alt, size |
-
-### 5.3 야구 도메인 widget
-
-| widget | 필수 바인딩 |
-|--------|-----------|
-| `scoreboardWidget` | homeTeam, awayTeam, homeScore, awayScore, inning, status |
-| `battingLineWidget` | player, ab, h, hr, rbi, avg |
-| `pitchingLineWidget` | player, ip, h, er, k, bb, era, pitches |
-| `standingsRowWidget` | rank, team, w, l, pct, gb |
-| `playerChipWidget` | name, team, position, number |
-| `gameScheduleWidget` | date, home, away, venue, time |
-| `trendSparkline` | data[], type(era/avg/war) |
-| `headToHeadWidget` | playerA, playerB, stats |
-| `newsItemWidget` | title, source, url, publishedAt |
-| `levelProgressWidget` | currentLevel, xp, nextLevelXp |
-
-### 5.4 JSON Schema 검증 (UIValidator)
-
-```typescript
-const A2UISchema = {
-  surfaceUpdate: {
-    surfaceId: 'string',
-    components: {
-      type: 'array',
-      maxDepth: 4,                     // 중첩 최대 4단계
-      maxNodes: 30,                    // 총 노드 30개 제한
-      itemSchema: {
-        type: { enum: ALLOWED_TYPES }, // 화이트리스트 외 차단
-        props: 'validated per type'
-      }
-    }
-  },
-  dataModelUpdate: { /* ... */ },
-  beginRendering: { /* ... */ }
-};
-```
-
-**검증 실패 시 Fallback 정책 — 재호출 없음 (레이턴시 우선)**
-
-L3 TTFB가 이미 2~3초인데 LLM 재호출은 5초+ 지연을 유발해 UX를 망친다. 따라서 **재호출 경로 제거**.
-
-1. Schema·팔레트·바인딩 검증 실패 → **즉시** 해당 intent의 L1 기본 Template(scoreboardWidget·newsItemWidget 등)으로 렌더링
-2. 실패한 A2UI JSONL 페이로드는 **Langfuse에 `llm_ui_invalid` 에러 이벤트**로 비동기 기록 (개발자 튜닝용)
-3. 런타임은 사용자 경험(조용한 세련됨)을 지키고, 프롬프트 개선은 오프라인 루프에서 처리
-
-### 5.5 데이터 바인딩 규칙
-
-- 모든 수치·문자열 실값 필드는 `{{bind:"data.path"}}` 또는 `{{llm.reaction}}` 참조만 허용
-- 리터럴 허용: static label (e.g. `"경기 종료"`), styling 값
-- Validator가 모든 value를 정규식 검사: `/\{\{(bind|llm):[^}]+\}\}/` 또는 whitelist
-- 위반 시 차단 + 트레이스 기록
+> 정식 팔레트·스키마 SSOT: [batdi-a2ui-palette-schema](../interface/batdi-a2ui-palette-schema.md). 본 절은 개요만 둔다.
 
 ---
 
@@ -778,21 +662,12 @@ NestJS 프로세스 크래시/재시작 시 인메모리 손실을 막기 위해
 
 ---
 
-## 8. 프론트 `useCopilotAction` 도메인 함수
+## 8. 프론트 useCopilotAction 도메인 함수
 
-LLM이 직접 호출 가능한 프론트 함수 (툴콜):
+LLM이 직접 호출 가능한 프론트 툴콜 7종(registerFavoritePlayer·openPersonaEditor·jumpToConversation·toggleNotification·showPlayerDetail·requestScoreRefresh·showTeamComparison).
+모든 action은 백엔드 검증 API와 1:1 매핑하여 LLM 악용을 방지한다.
 
-| Action | 파라미터 | 효과 |
-|--------|---------|-----|
-| `registerFavoritePlayer` | `playerId` | 관심 선수 등록 + DB 반영 |
-| `openPersonaEditor` | — | 설정 모달 오픈 |
-| `jumpToConversation` | `conversationId` | 대화 페이지 이동 |
-| `toggleNotification` | `type` | 푸시 알림 on/off |
-| `showPlayerDetail` | `playerId` | 선수 상세 오버레이 |
-| `requestScoreRefresh` | `gameId` | 스코어 강제 갱신 |
-| `showTeamComparison` | `teamA, teamB` | 팀 비교 뷰 |
-
-모든 action은 백엔드 검증 API와 1:1 매핑. LLM 악용 방지.
+> 정식 함수 시그니처 SSOT: [batdi-copilot-actions](../interface/batdi-copilot-actions.md). 본 절은 개요만 둔다.
 
 ---
 
@@ -874,91 +749,10 @@ MVP에서는 Context Caching 미사용(§6.3 참조). 전체 프롬프트를 매
 
 ## 10. DB 스키마 (확장)
 
-### 10.1 신규 테이블
+PostgreSQL 16 단일 인스턴스. 신규: cache_ui_envelopes·a2ui_templates(§4 캐시)·agent_traces·tool_call_logs(관측). 확장: messages에 a2ui_envelope/trace_id 추가, user_favorites.
+커넥션은 PgBouncer transaction pooling 경유, 실시간 쓰기(messages·personal_agent_state)는 동기, 관측 쓰기(agent_traces 등)는 1초·100건 비동기 배치로 분리한다.
 
-```sql
--- A2UI 캐시
-CREATE TABLE cache_ui_envelopes (...);
-CREATE TABLE a2ui_templates (...);
-
--- Agent 트레이스 (Langfuse 동기화 전 버퍼)
-CREATE TABLE agent_traces (
-  trace_id       UUID PRIMARY KEY,
-  user_id        UUID REFERENCES users(id),
-  conversation_id UUID REFERENCES conversations(id),
-  intent         VARCHAR(32),
-  complexity     VARCHAR(16),
-  cache_hit      VARCHAR(8),
-  llm_calls      INT DEFAULT 0,
-  tokens_in      INT DEFAULT 0,
-  tokens_out     INT DEFAULT 0,
-  duration_ms    INT,
-  error          TEXT,
-  created_at     TIMESTAMP DEFAULT NOW()
-);
-CREATE INDEX idx_traces_user_created ON agent_traces(user_id, created_at);
-CREATE INDEX idx_traces_intent ON agent_traces(intent);
-
--- 툴콜 로그
-CREATE TABLE tool_call_logs (
-  id             SERIAL PRIMARY KEY,
-  trace_id       UUID REFERENCES agent_traces(trace_id),
-  action_name    VARCHAR(64),
-  params         JSONB,
-  result         JSONB,
-  duration_ms    INT,
-  created_at     TIMESTAMP DEFAULT NOW()
-);
-```
-
-### 10.2 messages 테이블 확장
-
-```sql
-ALTER TABLE messages
-  ADD COLUMN a2ui_envelope JSONB,     -- 저장된 A2UI spec (감사·재생용)
-  ADD COLUMN trace_id UUID REFERENCES agent_traces(trace_id);
-```
-
-### 10.2b user_favorites 테이블
-
-```sql
-CREATE TABLE user_favorites (
-  user_id    UUID REFERENCES users(id),
-  player_id  INT  REFERENCES players(id),
-  source     VARCHAR(20),
-  mention_count INT DEFAULT 0,
-  PRIMARY KEY (user_id, player_id)
-);
-```
-
-### 10.3 DB 커넥션 풀 전략 (Connection Exhaustion 방지)
-
-**문제 시나리오**: 경기 시작 시각 100명 동시 접속 → messages INSERT + personal_agent_state UPDATE(write-through) + LangGraph checkpoint + agent_traces INSERT이 한 요청에 4~6회 DB 트랜잭션 유발. Prisma 기본 풀(connection_limit=10~20)은 즉시 포화 → 대기열 폭증 → 스트리밍 레이턴시 악화.
-
-**계층 전략**
-
-| 계층 | 도구 | 설정 |
-|------|------|------|
-| App ↔ Pooler | Prisma `connection_limit` | NestJS 인스턴스당 20 |
-| Pooler ↔ Postgres | **PgBouncer** (transaction pooling) | `default_pool_size=25`, `max_client_conn=200` |
-| 실시간 쓰기 우선순위 | messages, personal_agent_state(write-through), conversations | 동기 트랜잭션 |
-| 지연 쓰기 (Async Batch) | **agent_traces**, tool_call_logs, Langfuse raw events, cache_ui_envelopes hit_count 증분 | 인메모리 큐 → 1초·100건 배치 flush |
-
-**비동기 배치 경로**
-
-```
-LangGraph 노드 → TraceCollector(in-memory queue)
-                    ↓ (1s OR 100건)
-                 TraceBatchWriter → single bulk INSERT
-                    ↓ 실패 시
-                 local retry buffer (최대 1MB) → 다음 tick
-```
-
-- **Langfuse SDK는 이미 비동기 배치** (out-of-the-box). 자체 `agent_traces` 테이블도 동일 방식 적용.
-- `hit_count` 증분은 `UPDATE ... SET hit_count = hit_count + 1` 개별 트랜잭션 대신 5분 배치 집계 + `UPDATE` (무효화 배치와 동일 job).
-- P6+ 스케일 아웃 시 PgBouncer → Postgres 16 read replica 추가 대비.
-
-**측정**: Langfuse `db_wait_ms` 메트릭 노출, >50ms 지속 시 Admin 알람.
+> 정식 DDL·인덱스·커넥션 풀 전략 SSOT: [batdi-db-schema](../interface/batdi-db-schema.md). 본 절은 개요만 둔다.
 
 ---
 
@@ -1046,7 +840,7 @@ LangGraph 노드 → TraceCollector(in-memory queue)
 | Agent Orchestration | **LangGraph.js** | latest |
 | LLM 기본 | Gemini 2.5 Flash/Flash-Lite + 3 Flash (Context Caching 미적용, §6.3) | — |
 | LLM 어댑터 | `GoogleGenerativeAIAdapter` + MultiLLMAdapter 자체 | latest |
-| DB | **PostgreSQL 16 (단일 인스턴스)** + **PgBouncer** (transaction pooling, §10.3) | 16 |
+| DB | **PostgreSQL 16 (단일 인스턴스)** + **PgBouncer** (transaction pooling, [batdi-db-schema](../interface/batdi-db-schema.md) 참조) | 16 |
 | Observability | **Langfuse (셀프호스팅)** | latest |
 | 크롤링 | Playwright (Stealth) + cheerio | latest |
 | 인증 (로컬) | 이메일 + JWT + AuthProvider 추상화 | — |

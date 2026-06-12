@@ -1,5 +1,5 @@
 > **⚠️ 참고용 문서**: 이 파일은 Google Stitch가 자동 생성한 디자인 시스템이며 개발 레퍼런스입니다.
-> 팀 컬러 보정(`--team-accent`), border 정책, surface hover 색상, 타이포그래피 등의 **SSOT는 [`docs/plan/batdi-uiux-guideline.md`](../../plan/batdi-uiux-guideline.md)**를 따릅니다.
+> 팀 컬러 보정(`--team-accent`), border 정책, surface hover 색상, 타이포그래피 등의 **SSOT는 [`Ref-docs/specs/design/batdi-uiux-guideline.md`](../../../../Ref-docs/specs/design/batdi-uiux-guideline.md)**를 따릅니다.
 > 이 문서와 uiux-guideline이 충돌할 경우, **uiux-guideline이 우선**합니다.
 
 # Design System Specification: High-End Baseball Intelligence

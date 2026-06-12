@@ -55,7 +55,7 @@
 
 > 모든 페르소나는 **일베/혐오/자학 표현을 가드레일에서 차단**합니다. 응원과 기대를 기본 톤으로.
 
-상세 페르소나 설계 → [docs/plan/batdi-service-plan.md §4](docs/plan/batdi-service-plan.md)
+상세 페르소나 설계 → [batdi-persona-guardrail.md §4](Ref-docs/specs/design/batdi-persona-guardrail.md)
 
 ---
 
@@ -103,7 +103,7 @@
 | **P5** 로컬 RC | 2주 | 가드레일·부하·약관 완비, 자가 사용 1주 |
 | **P6** 공개 베타 | 1~2주 | `batdi.kr` 공개, 베타 10명 |
 
-상세 → [docs/plan/batdi-development-plan.md](docs/plan/batdi-development-plan.md)
+상세 → [Ref-docs/specs/impl/batdi-development-plan.md](Ref-docs/specs/impl/batdi-development-plan.md)
 
 **현재 단계: 문서 설계 완료 / P0 시작 전.**
 
@@ -113,19 +113,25 @@
 
 [Next.js 14 App Router] × [CopilotKit + A2UI] × [NestJS + LangGraph.js 계층적 CoAgents] × [Gemini 2.5/3 멀티 모델] × [PostgreSQL 16 단일] × [Langfuse 셀프호스팅]
 
-기술 상세는 [docs/plan/batdi-architecture.md](docs/plan/batdi-architecture.md)가 SSOT입니다.
+기술 상세는 [Ref-docs/specs/design/batdi-architecture.md](Ref-docs/specs/design/batdi-architecture.md)가 SSOT입니다.
 
 ---
 
 ## 문서
 
-| 문서 | 역할 |
-|------|------|
-| [batdi-service-plan.md](docs/plan/batdi-service-plan.md) | 서비스 기획·페르소나·가드레일·DB 스키마 (기획 SSOT) |
-| [batdi-architecture.md](docs/plan/batdi-architecture.md) | AG-UI·LangGraph·A2UI·캐시·ADR (기술 SSOT) |
-| [batdi-development-plan.md](docs/plan/batdi-development-plan.md) | P0~P6 Phase별 태스크·DoD |
-| [batdi-uiux-guideline.md](docs/plan/batdi-uiux-guideline.md) | 디자인 토큰·A2UI 팔레트·핸드오프 |
-| [google-stitch-prompts.md](docs/design/google-stitch-prompts.md) | Stitch 디자인 시안 (레퍼런스) |
+스펙은 SDD 체계로 `Ref-docs/specs/`에 design·impl·interface·test로 분류됩니다. 인덱스: [specs/README](Ref-docs/specs/README.md), 정합성 검토: `/spec-guard`.
+
+| 문서 | 계층 | 역할 |
+|------|------|------|
+| [batdi-service-plan.md](Ref-docs/specs/design/batdi-service-plan.md) | design | 서비스 개요·아키텍처·웹/스택/비용/법무/로드맵 (기획 SSOT 진입점) |
+| [batdi-persona-guardrail.md](Ref-docs/specs/design/batdi-persona-guardrail.md) | design | Personal Agent·팀 페르소나·가드레일·개인화·멀티턴 |
+| [batdi-platform-ops.md](Ref-docs/specs/design/batdi-platform-ops.md) | design | Data Agent·안정성·캐시/DB·회원·레벨·푸시·Admin |
+| [batdi-architecture.md](Ref-docs/specs/design/batdi-architecture.md) | design | LangGraph CoAgents·4단계 캐시·ADR (기술 SSOT) |
+| [batdi-uiux-guideline.md](Ref-docs/specs/design/batdi-uiux-guideline.md) | design | 디자인 토큰·접근성·핸드오프 |
+| [batdi-development-plan.md](Ref-docs/specs/impl/batdi-development-plan.md) | impl | P0~P6 Phase별 태스크·DoD |
+| [interface/](Ref-docs/specs/interface/) | interface | AG-UI 계약·A2UI 팔레트 Schema·useCopilotAction·DB DDL |
+| [batdi-test-plan.md](Ref-docs/specs/test/batdi-test-plan.md) | test | DoD 검증·가드레일·환각·캐시 테스트 계획 |
+| [google-stitch-prompts.md](docs/design/google-stitch-prompts.md) | ref | Stitch 디자인 시안 (레퍼런스) |
 
 ---
 

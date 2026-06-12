@@ -560,7 +560,7 @@ This is a reference comparison sheet — show all four at once to compare the te
 2. **팀 4개로 제한**: 온보딩 팀 선택에서 삼성·LG 제거 (MVP 범위: 한화·두산·기아·롯데)
 3. **입력창 통일**: 마이크·파일첨부(+) 버튼 제거. 텍스트 입력 + 전송 버튼만
 4. **일정 화면 통합**: 04, 07 중 하나 선택 (07 권장 — 더 상세)
-5. **디자인 토큰 기준**: Stitch HTML이 아닌 `docs/plan/batdi-uiux-guideline.md`의 CSS 변수가 SSOT
+5. **디자인 토큰 기준**: Stitch HTML이 아닌 `../../Ref-docs/specs/design/batdi-uiux-guideline.md`의 CSS 변수가 SSOT
 6. **설정 메뉴 이모지 제거**: Screen 11 마이페이지의 메뉴 이모지(🏟️💬✏️ 등)는 아이콘 컴포넌트로 교체 (uiux-guideline 안티패턴)
 
 ---

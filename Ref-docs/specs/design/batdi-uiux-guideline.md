@@ -1,9 +1,21 @@
-# 밧디(batdi) UI/UX 디자인 지침 (v2)
+---
+id: batdi-uiux-guideline
+title: 밧디 UI/UX 디자인 지침
+type: design
+version: 2.1.0
+status: approved
+scope: 디자인 토큰·A2UI 팔레트·CopilotChat 통합·접근성·디자이너 핸드오프
+related: [batdi-architecture, batdi-service-plan, batdi-development-plan]
+updated: 2026-06-12
+---
+
+# 밧디(batdi) UI/UX 디자인 지침 (v2.1)
 
 > 작성일: 2026-04-04 (v2 — CopilotKit A2UI 렌더러 통합)
+> 갱신일: 2026-06-12 (v2.1 — 라이트모드·접근성·widget 스펙 보강)
 > 대상: `apps/web` (Next.js 14+ App Router + React 18 + Tailwind + CopilotKit + A2UI + PWA)
 > 원칙: **Simple is best. 촌스럽지 않게. 디자이너 핸드오프 가능한 구조.**
-> 연결 문서: [service-plan](./batdi-service-plan.md) · [dev-plan](./batdi-development-plan.md) · [architecture](./batdi-architecture.md)
+> 연결 문서: [service-plan](./batdi-service-plan.md) · [dev-plan](../impl/batdi-development-plan.md) · [architecture](./batdi-architecture.md)
 
 ---
 
@@ -32,7 +44,7 @@
 | **Figma Community — "Chat UI" / "Sports Dashboard"** | 카드 레이아웃, 팀 컬러 적용 패턴 |
 | **Radix UI / shadcn/ui** | 접근성·구성 방식 기반 컴포넌트 |
 | **Tailwind UI / Untitled UI** | 폼·모달·리스트 패턴 |
-| **Google Stitch 시안** | 화면별 레이아웃·컴포넌트 구조 참고 → [`docs/design/stitch_batdi_team_onboarding/`](../design/stitch_batdi_team_onboarding/) (레퍼런스용, 그대로 사용 금지) |
+| **Google Stitch 시안** | 화면별 레이아웃·컴포넌트 구조 참고 → [`docs/design/stitch_batdi_team_onboarding/`](../../../docs/design/stitch_batdi_team_onboarding/) (레퍼런스용, 그대로 사용 금지) |
 
 ---
 
@@ -60,6 +72,13 @@
   --color-danger:  #F87171;
   --color-info:    #60A5FA;
 
+  /* Semantic — 상태 (pending/disabled 등 누락분 보완) */
+  --color-pending:        #A78BFA;  /* 진행중·대기 (크롤링 T1 갱신중 등) */
+  --color-disabled-bg:    #1C1D24;  /* 비활성 표면 (= surface-hover) */
+  --color-disabled-text:  #5A5B63;  /* 비활성 텍스트 (= text-subtle) */
+  --color-disabled-border:#2A2B33;  /* 비활성 보더 (= border) */
+  --color-focus-ring:     var(--team-accent);  /* focus-visible 링 (§5.3) */
+
   /* Team Accent (주입식 — 사용자 팀 선택 시 data-team 속성으로 스위치) */
   --team-primary:    var(--team-hanwha-primary);
   --team-secondary:  var(--team-hanwha-secondary);
@@ -83,13 +102,36 @@
   --team-lotte-secondary: #ED1C24;
 }
 
-/* 라이트모드 (선택) */
+/* 라이트모드 (선택) — 다크모드 토큰 전체에 1:1 대응
+   ⚠️ 아래 값은 제안값(구현 시 디자인 리뷰에서 확정).
+   WCAG 2.1 AA(본문 4.5:1, 대형 3:1) 충족을 목표로 산정 — 검증표는 §6.1 참조. */
 [data-theme="light"] {
-  --color-bg:      #FAFAFB;
-  --color-surface: #FFFFFF;
-  --color-border:  #E5E5EA;
-  --color-text:    #14151A;
-  /* ... */
+  /* Neutral */
+  --color-bg:            #FAFAFB;  /* 배경 */
+  --color-surface:       #FFFFFF;  /* 카드·패널 */
+  --color-surface-hover: #F2F2F5;
+  --color-border:        #E5E5EA;
+  --color-text:          #14151A;  /* 주 텍스트 — vs #FFFFFF 약 15.8:1 (AA Pass) */
+  --color-text-muted:    #5A5B63;  /* vs #FFFFFF 약 6.9:1 (AA Pass) */
+  --color-text-subtle:   #8A8B93;  /* vs #FFFFFF 약 3.4:1 — 대형/비본문 한정 사용 */
+
+  /* Semantic — 라이트 표면 위 대비 확보용으로 다크모드보다 채도/명도 하향
+     (밝은 #4ADE80 등은 흰 배경에서 대비 부족 → §6.1 표 참조하여 보정값 사용) */
+  --color-success: #15803D;  /* vs #FFFFFF 약 4.8:1 (AA Pass) */
+  --color-warning: #B45309;  /* vs #FFFFFF 약 4.7:1 (AA Pass) — 아이콘/텍스트용 */
+  --color-danger:  #DC2626;  /* vs #FFFFFF 약 4.5:1 (AA Pass) */
+  --color-info:    #2563EB;  /* vs #FFFFFF 약 5.2:1 (AA Pass) */
+
+  /* Semantic 상태 (pending/disabled) */
+  --color-pending:        #7C3AED;  /* vs #FFFFFF 약 5.7:1 (AA Pass) */
+  --color-disabled-bg:    #F2F2F5;  /* = surface-hover */
+  --color-disabled-text:  #8A8B93;  /* 비활성 텍스트 — 대형/비본문 한정 */
+  --color-disabled-border:#E5E5EA;  /* = border */
+
+  /* Elevation — 라이트모드는 그림자 강도 0.04~0.08로 감소 (§2.3 주석 규칙 반영) */
+  --shadow-sm: 0 1px 2px rgba(16,17,26,0.06);
+  --shadow-md: 0 2px 8px rgba(16,17,26,0.08);
+  --shadow-lg: 0 8px 24px rgba(16,17,26,0.10);
 }
 ```
 
@@ -193,7 +235,7 @@
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.24);
   --shadow-md: 0 2px 8px rgba(0,0,0,0.28);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.32);
-  /* 라이트모드는 0.04~0.08로 감소 적용 */
+  /* 라이트모드 shadow 토큰은 §2.1 [data-theme="light"]에서 0.06~0.10으로 재정의 */
 }
 ```
 
@@ -264,6 +306,72 @@
 | `headToHeadWidget` | 맞대결 비교 | `/head-to-head.tsx` |
 | `newsItemWidget` | 뉴스 1건 | `/news-item.tsx` |
 | `levelProgressWidget` | 레벨·XP 진행바 | `/level-progress.tsx` |
+
+> widget 이름·필수 바인딩은 [architecture §5.3](./batdi-architecture.md)이 SSOT. 위 10종은 architecture §5.3과 1:1 일치한다.
+
+#### 3.3.1 widget props·상태 스펙
+
+각 widget의 주요 props, 데이터 바인딩 경로 예시, loading/error 상태 규약. props 타입은 TS 시그니처 요약이며 모든 실값은 `{{bind:"..."}}`로 주입(리터럴 금지, [architecture §5.5](./batdi-architecture.md)).
+
+**`scoreboardWidget`** — 실시간 스코어
+- props: `homeTeam:string` · `awayTeam:string` · `homeScore:number` · `awayScore:number` · `inning:string` · `status:"scheduled"|"live"|"final"`
+- 바인딩: `{{bind:"game.home.name"}}` · `{{bind:"game.home.score"}}` · `{{bind:"game.inning"}}`
+- loading: `<SkeletonScoreboard>` 140px 정적 박스 (팀명/점수 2슬롯 placeholder, shimmer 없음)
+- error: 폴백 카드 "스코어를 불러오지 못했어유" + refresh 칩 (수치 자리 `—`)
+
+**`battingLineWidget`** — 타자 기록 1행
+- props: `player:string` · `ab:number` · `h:number` · `hr:number` · `rbi:number` · `avg:number`
+- 바인딩: `{{bind:"batting.0.player"}}` · `{{bind:"batting.0.avg"}}`
+- loading: 1행 height(28px) 토큰 색 placeholder bar
+- error: 행 숨김 또는 셀 값 `—` (테이블 전체 폴백 금지, 행 단위 graceful)
+
+**`pitchingLineWidget`** — 투수 기록 1행
+- props: `player:string` · `ip:number` · `h:number` · `er:number` · `k:number` · `bb:number` · `era:number` · `pitches:number`
+- 바인딩: `{{bind:"pitching.0.player"}}` · `{{bind:"pitching.0.era"}}`
+- loading: 1행 height(28px) placeholder bar
+- error: 셀 값 `—`, era 미산출 시 `-.--`
+
+**`standingsRowWidget`** — 순위표 1행
+- props: `rank:number` · `team:string` · `w:number` · `l:number` · `pct:number` · `gb:number|"-"`
+- 바인딩: `{{bind:"standings.3.rank"}}` · `{{bind:"standings.3.gb"}}`
+- loading: 1행 placeholder, rank 칸은 원형 토큰
+- error: 행 숨김 (순위표는 부분 표시 허용)
+
+**`playerChipWidget`** — 선수 요약 칩
+- props: `name:string` · `team:string` · `position:string` · `number:number`
+- 바인딩: `{{bind:"player.name"}}` · `{{bind:"player.number"}}`
+- loading: 칩 형태 placeholder (radius-full, 96px 폭)
+- error: 칩 미렌더 (인라인 텍스트로 대체)
+
+**`gameScheduleWidget`** — 경기 일정 카드
+- props: `date:string` · `home:string` · `away:string` · `venue:string` · `time:string`
+- 바인딩: `{{bind:"schedule.0.date"}}` · `{{bind:"schedule.0.venue"}}`
+- loading: `<SkeletonScheduleList>` 160px (날짜/대진 2슬롯)
+- error: 폴백 "일정을 불러오지 못했어유", 시간 자리 `--:--`
+
+**`trendSparkline`** — 추이 미니차트
+- props: `data:number[]` · `type:"era"|"avg"|"war"`
+- 바인딩: `{{bind:"trend.era.data"}}`
+- loading: baseline 1px 점선 placeholder (높이 고정 40px)
+- error: 차트 숨김 + caption "추이 데이터 없음" (축소된 빈 상태)
+
+**`headToHeadWidget`** — 맞대결 비교
+- props: `playerA:{name,stats}` · `playerB:{name,stats}` · `stats:string[]`
+- 바인딩: `{{bind:"h2h.playerA.name"}}` · `{{bind:"h2h.stats"}}`
+- loading: 좌우 2컬럼 placeholder (대칭)
+- error: 한쪽 데이터 결손 시 해당 컬럼 `—`, 양쪽 결손 시 폴백 카드
+
+**`newsItemWidget`** — 뉴스 1건
+- props: `title:string` · `source:string` · `url:string` · `publishedAt:string`
+- 바인딩: `{{bind:"news.0.title"}}` · `{{bind:"news.0.source"}}`
+- loading: `<SkeletonNewsList>` 220px (3건 기본, 제목 2줄 placeholder)
+- error: 항목 숨김 (뉴스 0건이면 빈 상태 단문 1줄)
+
+**`levelProgressWidget`** — 레벨·XP 진행바
+- props: `currentLevel:number` · `xp:number` · `nextLevelXp:number`
+- 바인딩: `{{bind:"profile.level"}}` · `{{bind:"profile.xp"}}`
+- loading: 진행바 트랙만(fill 0) placeholder, 24px
+- error: fill 0 + 텍스트 "레벨 정보 동기화 중" (pending 토큰 `--color-pending` 적용)
 
 ### 3.4 CopilotKit 셸 컴포넌트 (프론트 전용)
 
@@ -452,6 +560,52 @@ LLM이 `useCopilotAction`을 호출할 때 프론트 UI 피드백:
 - 포커스 순서 논리적, skip-to-content 링크
 - `prefers-reduced-motion`, `prefers-color-scheme` 존중
 
+### 6.1 시맨틱 색상 × 배경 대비비 표
+
+본문 텍스트로 쓰려면 ≥4.5:1, 대형 텍스트·아이콘·UI 경계로 쓰려면 ≥3:1. 아래 비율은 sRGB 상대 휘도 기반 산정값(제안값, 구현 시 axe/Contrast 도구로 재검증).
+
+**다크모드** (bg `#0B0B0E`, surface `#14151A`)
+
+| 시맨틱 | 값 | vs bg #0B0B0E | vs surface #14151A | 본문(4.5) | 대형/UI(3.0) |
+|--------|-----|---------------|--------------------|-----------|--------------|
+| success | `#4ADE80` | 약 11.0:1 | 약 9.8:1 | ✓ | ✓ |
+| warning | `#FBBF24` | 약 11.6:1 | 약 10.4:1 | ✓ | ✓ |
+| danger | `#F87171` | 약 6.2:1 | 약 5.5:1 | ✓ | ✓ |
+| info | `#60A5FA` | 약 6.6:1 | 약 5.9:1 | ✓ | ✓ |
+| pending | `#A78BFA` | 약 6.0:1 | 약 5.4:1 | ✓ | ✓ |
+
+**라이트모드** (bg `#FAFAFB`, surface `#FFFFFF`) — 밝은 원색은 흰 배경에서 대비 부족하므로 §2.1 라이트 토큰의 보정값 사용
+
+| 시맨틱(다크 원색) | 라이트 보정값 | vs surface #FFFFFF | 본문(4.5) | 대형/UI(3.0) |
+|--------|-----|--------------------|-----------|--------------|
+| success `#4ADE80` ✗(약 1.5:1) | `#15803D` | 약 4.8:1 | ✓ | ✓ |
+| warning `#FBBF24` ✗(약 1.4:1) | `#B45309` | 약 4.7:1 | ✓ | ✓ |
+| danger `#F87171` ✗(약 2.9:1) | `#DC2626` | 약 4.5:1 | ✓ | ✓ |
+| info `#60A5FA` ✗(약 2.6:1) | `#2563EB` | 약 5.2:1 | ✓ | ✓ |
+| pending `#A78BFA` ✗(약 2.7:1) | `#7C3AED` | 약 5.7:1 | ✓ | ✓ |
+
+> 다크 원색(#4ADE80 등)을 라이트 표면 위 **본문 텍스트**로 직접 쓰면 모두 ✗. 따라서 라이트모드는 §2.1 보정 토큰을 적용한다. 다크 원색은 라이트모드에서도 큰 배지 **배경 fill** 위 흰 텍스트 조합으로만 제한 사용.
+
+### 6.2 접근성 검증 체크리스트 (개발 시 적용)
+
+각 widget·화면 머지 전 확인:
+
+- [ ] **키보드 포커스 가시성**: 모든 인터랙티브 요소에 `focus-visible` 링(`outline: 2px solid var(--color-focus-ring)`, §5.3). 마우스 클릭 시 링 숨김, Tab 진입 시 표시
+- [ ] **포커스 순서·트랩**: Tab 순서가 시각 순서와 일치. 모달/Bottom sheet 오픈 시 포커스 트랩 + `Esc` 닫기, 닫을 때 트리거로 포커스 복귀
+- [ ] **스크린리더 라벨**: 아이콘 버튼 `aria-label`, 이미지 `alt`, 스코어/스탯 widget에 `role`·`aria-label`("한화 3 대 2 두산, 7회 말"). 라이브 갱신 영역은 `aria-live="polite"`
+- [ ] **명도 대비**: 본문 ≥4.5:1, 대형/아이콘/UI 경계 ≥3:1 (§6.1 표 기준). 팀 악센트는 `--team-accent`로 저명도 폴백(§2.1.1) 후 재측정
+- [ ] **모션 축소**: `prefers-reduced-motion: reduce` 시 모든 전환 `0.01ms`(§2.4), fade-in·refresh 애니메이션 제거. 정보 전달을 모션에만 의존 금지
+- [ ] **터치 타겟**: 모든 탭 가능 요소 최소 44×44px (전송 버튼·탭바·칩·하트). 시각 크기가 작으면 투명 hit-area 확장
+- [ ] **색에만 의존 금지**: 성공/위험을 색만으로 구분하지 않고 아이콘·텍스트 병행 (색맹 대응)
+- [ ] **빈/에러 상태 접근성**: 폴백 메시지가 스크린리더로 읽힘. 에러 Toast는 `role="alert"`
+- [ ] **테마 존중**: `prefers-color-scheme` 초기값 반영 + 수동 토글 우선(§2.1)
+- [ ] **skip-to-content**: 페이지 최상단 skip 링크, 포커스 시 노출
+
+### 6.3 검증 도구·게이트
+
+- 자동: `axe-core`(jest-axe) CI 게이트 + Lighthouse a11y 점수. dev-plan P5 목표 **WCAG AA 95+**(§8)
+- 수동: 키보드 only 순회, VoiceOver(iOS)/TalkBack(Android) 스폿 체크, 명도 대비 도구로 §6.1 값 재확인
+
 ---
 
 ## 7. 디자이너 핸드오프 전략
@@ -462,7 +616,7 @@ LLM이 `useCopilotAction`을 호출할 때 프론트 UI 피드백:
 1. **토큰 단일 파일** (`packages/ui/src/tokens.css` + `tailwind.config.ts`)
 2. **컴포넌트 스토리북** — Phase 3에서 Storybook 도입 결정 (시간 되면)
 3. **Figma 파일 최소 스펙** — 디자이너 합류 시 토큰을 Figma Variables로 1:1 미러링
-4. **디자인 리뷰 체크리스트** — `docs/plan/design-review-checklist.md` (Phase 4에 작성)
+4. **디자인 리뷰 체크리스트** — `../impl/design-review-checklist.md` (Phase 4에 작성)
 
 **원칙**: 개발자가 Tailwind 클래스를 중구난방 작성하지 않는다. 공통 시각 규칙은 항상 토큰 → 컴포넌트 → 사용처 순으로 흐른다.
 
@@ -510,4 +664,4 @@ LLM이 `useCopilotAction`을 호출할 때 프론트 UI 피드백:
 
 ---
 
-*v2 — CopilotKit + A2UI 렌더러 통합 반영. 디자이너 합류 시 Figma Variables와 1:1 동기화 재설계.*
+*v2.1 — 라이트모드·접근성·widget 스펙 보강 (2026-06-12). 라이트모드 토큰 완성(제안값)·시맨틱 상태 토큰(pending/disabled) 추가·§6.1 대비비 표·§6.2 a11y 체크리스트·§3.3.1 widget 10종 props/상태 스펙. 디자이너 합류 시 Figma Variables와 1:1 동기화 재설계.*

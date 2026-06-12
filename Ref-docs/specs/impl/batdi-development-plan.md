@@ -1,9 +1,22 @@
+---
+id: batdi-development-plan
+title: 밧디 개발 계획서
+type: impl
+version: 2.0.0
+status: approved
+scope: P0~P6 Phase별 태스크·DoD·의존성 (Mac 로컬 + P6 이관)
+related: [batdi-architecture, batdi-service-plan, batdi-uiux-guideline]
+updated: 2026-06-12
+---
+
 # 밧디(batdi) 개발 계획서 (Dev Plan v2)
 
 > 작성일: 2026-04-04 (v2 — CopilotKit·LangGraph·A2UI 전면 채택)
-> 근거 문서: [batdi-service-plan.md](./batdi-service-plan.md) v8, [batdi-architecture.md](./batdi-architecture.md), [batdi-uiux-guideline.md](./batdi-uiux-guideline.md)
+> 근거 문서: [batdi-service-plan.md](../design/batdi-service-plan.md) v8, [batdi-architecture.md](../design/batdi-architecture.md), [batdi-uiux-guideline.md](../design/batdi-uiux-guideline.md)
 > 총 기간: **14~18주** (Mac 로컬 P0~P5) + **P6 인프라 이관 1~2주**
 > 작업자: 1인 사이드 프로젝트 (장기 설계 우선, 압박 없음)
+>
+> **📍 현재 상태 (2026-06-12): 설계 완료 · 구현 미착수.** 모든 Phase(P0~P6) 완료 조건은 미충족(`[ ]`)이다. 본 repo에는 아직 구현 코드(`apps/`·`packages/`)가 없으며, `Ref-docs/specs/` 설계 문서만 존재한다. 각 Phase 완료 시 해당 완료 조건을 `[x]`로 갱신한다.
 
 ### 개발 환경 전략
 
@@ -52,9 +65,9 @@ CopilotKit + LangGraph + A2UI + Gemini 통합 최소 경로를 검증하고, 기
 | 0.11 | ADR 문서 초안 확정 | `batdi-architecture.md` ADR 섹션 업데이트 |
 
 ### P0 완료 조건
-- [x] 4개 PoC 모두 성공
-- [x] 기술 스택 확정, ADR 기록 완료
-- [x] `pnpm dev`로 전 스택 1-command 기동
+- [ ] 4개 PoC 모두 성공
+- [ ] 기술 스택 확정, ADR 기록 완료
+- [ ] `pnpm dev`로 전 스택 1-command 기동
 
 ---
 
@@ -87,7 +100,7 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 
 ### W3: 프론트 스켈레톤 + 이메일 Auth + CopilotChat
 
-> **디자인 참고**: [`docs/design/stitch_batdi_team_onboarding/`](../design/stitch_batdi_team_onboarding/) — Google Stitch 시안 (레퍼런스용, 그대로 사용 금지. 토큰 기준은 uiux-guideline §2)
+> **디자인 참고**: [`docs/design/stitch_batdi_team_onboarding/`](../../../docs/design/stitch_batdi_team_onboarding/) — Google Stitch 시안 (레퍼런스용, 그대로 사용 금지. 토큰 기준은 uiux-guideline §2)
 
 | # | DoD |
 |---|-----|
@@ -100,9 +113,9 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 | 3.6 | PWA manifest + 서비스워커 등록 | Lighthouse PWA installability 통과 |
 
 ### P1 완료 조건 (M1)
-- [x] 로컬 로그인 → 팀 선택 → `/chat` → "안녕" 전송 → Core 그래프 실행 → A2UI envelope 수신 → 카드 렌더
-- [x] Langfuse에서 그래프 실행 트레이스 조회 가능
-- [x] 토큰/비용이 trace 단위로 기록됨
+- [ ] 로컬 로그인 → 팀 선택 → `/chat` → "안녕" 전송 → Core 그래프 실행 → A2UI envelope 수신 → 카드 렌더
+- [ ] Langfuse에서 그래프 실행 트레이스 조회 가능
+- [ ] 토큰/비용이 trace 단위로 기록됨
 
 ---
 
@@ -147,10 +160,10 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 | 6.6 | `OutputGuardrail` — 출력 팩트체크 + 일베/비속어 재검증 | 수치 환각 샘플 자동 교체 |
 
 ### P2 완료 조건 (M2)
-- [x] 한화 팬이 "지금 경기 어때?" → L0/L1/L2 3경로 시나리오 모두 왕복 성공
-- [x] 일베 표현 차단 + 페르소나 fallback 정상
-- [x] TTFB: L0 HIT <200ms / L2 <800ms
-- [x] Langfuse에서 L0/L1/L2 분포 확인 가능
+- [ ] 한화 팬이 "지금 경기 어때?" → L0/L1/L2 3경로 시나리오 모두 왕복 성공
+- [ ] 일베 표현 차단 + 페르소나 fallback 정상
+- [ ] TTFB: L0 HIT <200ms / L2 <800ms
+- [ ] Langfuse에서 L0/L1/L2 분포 확인 가능
 
 ---
 
@@ -191,10 +204,10 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 | 9.5 | 지식 레벨 적응 UI: 초보→용어 설명 카드, 코어→세이버 카드 | profile.knowledgeLevel 기반 분기 |
 
 ### P3 완료 조건 (M3)
-- [x] 4팀 모두 전 Service Subgraph 정상
-- [x] 10종 A2UI widget 전부 렌더 가능
-- [x] L3 UIComposer가 복합 질의에서 실제 동적 UI 생성
-- [x] 세션 간 PersonalAgent 프로필 학습·반영
+- [ ] 4팀 모두 전 Service Subgraph 정상
+- [ ] 10종 A2UI widget 전부 렌더 가능
+- [ ] L3 UIComposer가 복합 질의에서 실제 동적 UI 생성
+- [ ] 세션 간 PersonalAgent 프로필 학습·반영
 
 ---
 
@@ -222,9 +235,9 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 | 11.3 | `registerFavoritePlayer` 액션 → DB `user_favorites` + 활약 감지 알림 | E2E 시나리오 통과 |
 
 ### P4 완료 조건 (M4)
-- [x] LLM이 프론트 액션 7종 모두 호출 성공
-- [x] 레벨 Lv1→Lv2→Lv3 진행 가능
-- [x] 로컬 푸시 4종 트리거 수신
+- [ ] LLM이 프론트 액션 7종 모두 호출 성공
+- [ ] 레벨 Lv1→Lv2→Lv3 진행 가능
+- [ ] 로컬 푸시 4종 트리거 수신
 
 ---
 
@@ -256,11 +269,11 @@ CopilotKit Provider ↔ Core LangGraph ↔ A2UI 렌더링의 **최소 end-to-end
 | 13.7 | `v1.0-rc` 태그 + P6 이관 체크리스트 | 태그 생성 |
 
 ### P5 완료 조건 (M5 — 로컬 RC)
-- [x] 자가 사용 안정
-- [x] 월 LLM 비용 예상 ≤ ₩15,000
-- [x] 일베/아동 탐지 0건 유출
-- [x] Langfuse + Admin 대시보드 정상
-- [x] `v1.0-rc` 태그
+- [ ] 자가 사용 안정
+- [ ] 월 LLM 비용 예상 ≤ ₩15,000
+- [ ] 일베/아동 탐지 0건 유출
+- [ ] Langfuse + Admin 대시보드 정상
+- [ ] `v1.0-rc` 태그
 
 ---
 
@@ -284,10 +297,10 @@ Mac 로컬 RC를 Linux PC + 공개 도메인으로 이관, 베타 10명 오픈.
 | 14.9 | 1주 모니터링 → `v1.0` 태그 | 치명 버그 0건 |
 
 ### P6 완료 조건 (M6)
-- [x] `https://batdi.kr` 공개
-- [x] OAuth + FCM 실 동작
-- [x] 베타 10명 1주 안정 사용
-- [x] `v1.0` 정식 태그
+- [ ] `https://batdi.kr` 공개
+- [ ] OAuth + FCM 실 동작
+- [ ] 베타 10명 1주 안정 사용
+- [ ] `v1.0` 정식 태그
 
 ---
 
@@ -333,8 +346,8 @@ P6 인프라 이관 (1~2주) — Linux PC+도메인+CF+OAuth+FCM+v1.0 공개
 1. **빌드/타입체크**: `pnpm build`, `tsc --noEmit` 에러 0건
 2. **테스트**: 해당 기능 유닛테스트 존재 + 통과
 3. **Langfuse 트레이스**: LLM 호출은 모두 Langfuse에 기록
-4. **문서 근거**: 구현이 [service-plan](./batdi-service-plan.md) + [architecture](./batdi-architecture.md)와 일치. 충돌 시 architecture 먼저 갱신
-5. **UI 토큰**: 시각 속성은 [uiux-guideline](./batdi-uiux-guideline.md) 토큰만 참조
+4. **문서 근거**: 구현이 [service-plan](../design/batdi-service-plan.md) + [architecture](../design/batdi-architecture.md)와 일치. 충돌 시 architecture 먼저 갱신
+5. **UI 토큰**: 시각 속성은 [uiux-guideline](../design/batdi-uiux-guideline.md) 토큰만 참조
 6. **실기기 확인**: 프론트 변경은 Chrome + 모바일 에뮬레이터 동작 확인 (P6에 Android 실기기)
 
 ---
@@ -353,4 +366,4 @@ P0~P6 범위 밖:
 
 ---
 
-*v2 — CopilotKit·LangGraph·A2UI 전면 채택. 기술 세부는 [architecture](./batdi-architecture.md), UI 세부는 [uiux-guideline](./batdi-uiux-guideline.md) 참조.*
+*v2 — CopilotKit·LangGraph·A2UI 전면 채택. 기술 세부는 [architecture](../design/batdi-architecture.md), UI 세부는 [uiux-guideline](../design/batdi-uiux-guideline.md) 참조.*
