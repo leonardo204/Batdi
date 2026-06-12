@@ -46,6 +46,8 @@ class CrawlerHealthManager {
 
 ### 9.3 자체 통계 DB
 
+> 정식 DDL SSOT: [batdi-db-schema](../interface/batdi-db-schema.md) (C. 도메인 데이터). 아래는 설계 맥락 예시.
+
 ```sql
 CREATE TABLE players (
   id SERIAL PRIMARY KEY, name VARCHAR(50), team_id VARCHAR(20),
@@ -410,6 +412,8 @@ CREATE TABLE agent_traces (
 첫 방문 → 밧디 소개 → 회원가입 (Google OAuth 또는 이메일) → 온보딩 (팀 선택, 페르소나 스타일, 푸시 허용) → PersonalAgent 생성 → 밧디와 첫 대화 시작
 
 ### 12.2 사용자 DB
+
+> 정식 DDL SSOT: [batdi-db-schema](../interface/batdi-db-schema.md) (A. 사용자·대화 / B. Personal Agent). 아래는 설계 맥락 예시이며, 통합본에 ON DELETE 정책(LAW-2)·인덱스가 추가되어 있다.
 
 ```sql
 CREATE TABLE users (

@@ -158,6 +158,8 @@ class PersonalAgentManager {
 
 ### 3.4 DB 스키마
 
+> 정식 DDL SSOT: [batdi-db-schema](../interface/batdi-db-schema.md). 아래는 설계 맥락 예시이며, 통합본(B. Personal Agent 그룹)에 `last_active` 컬럼·인덱스·ON DELETE 정책이 추가되어 있다.
+
 ```sql
 CREATE TABLE personal_agent_state (
   user_id          UUID PRIMARY KEY REFERENCES users(id),
