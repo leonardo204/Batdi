@@ -10,6 +10,14 @@
 .claude/.project_root
 .claude/.messenger_enabled
 
+# Secrets / env (G0-1 — 코드 착수 전 선반영)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
 # macOS
 .DS_Store
 **/.DS_Store
