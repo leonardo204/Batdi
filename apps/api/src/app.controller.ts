@@ -19,7 +19,10 @@ export class AppController {
       service: 'batdi-api',
       note: '백엔드 API입니다. 채팅 UI는 web(3000)에서 여세요.',
       ui: 'http://localhost:3000/chat',
-      endpoints: { health: '/health', copilotkit: '/copilotkit (CopilotKit 런타임, POST)' },
+      endpoints: {
+        health: '/health',
+        copilotkit: '/copilotkit/* (CopilotKit v2 런타임 — /info, /threads, /agent/:id/run)',
+      },
     };
   }
 }
