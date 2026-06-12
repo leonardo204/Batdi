@@ -1,0 +1,73 @@
+# 밧디 (batdi) — 로컬 개발 스택
+# DoD: `docker compose config -q` 유효성만 검증 (이미지 pull/run 불필요)
+#
+# TODO(P1): PgBouncer (transaction pooling) 추가 — agent_traces·tool_call_logs·
+#           Langfuse 는 비동기 배치(1초·100건 bulk insert)로 분리. architecture §10.3
+
+services:
+  # ── 애플리케이션 DB (PostgreSQL 16, 호스트 포트 54329 고정) ──
+  postgres:
+    image: postgres:16
+    container_name: batdi-postgres
+    restart: unless-stopped
+    ports:
+      - "54329:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-batdi}
+      POSTGRES_USER: ${POSTGRES_USER:-batdi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-batdi}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-batdi} -d ${POSTGRES_DB:-batdi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - batdi-net
+
+  # ── Langfuse (셀프호스팅 관측, 비용 0) ──
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: batdi-langfuse
+    restart: unless-stopped
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    ports:
+      - "3010:3000"
+    environment:
+      DATABASE_URL: postgresql://${LANGFUSE_DB_USER:-langfuse}:${LANGFUSE_DB_PASSWORD:-langfuse}@langfuse-db:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3010
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-changeme-nextauth-secret}
+      SALT: ${LANGFUSE_SALT:-changeme-salt}
+      TELEMETRY_ENABLED: "false"
+    networks:
+      - batdi-net
+
+  # ── Langfuse 전용 DB (내부 네트워크, 외부 미노출) ──
+  langfuse-db:
+    image: postgres:16
+    container_name: batdi-langfuse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_USER: ${LANGFUSE_DB_USER:-langfuse}
+      POSTGRES_PASSWORD: ${LANGFUSE_DB_PASSWORD:-langfuse}
+    volumes:
+      - langfuse-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LANGFUSE_DB_USER:-langfuse} -d langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - batdi-net
+
+volumes:
+  pgdata:
+  langfuse-pgdata:
+
+networks:
+  batdi-net:
+    driver: bridge

@@ -18,6 +18,29 @@
 **/.env.*
 !**/.env.example
 
+# Dependencies
+node_modules
+**/node_modules
+
+# Build artifacts
+.next
+**/.next
+dist
+**/dist
+.turbo
+**/.turbo
+*.tsbuildinfo
+**/*.tsbuildinfo
+coverage
+**/coverage
+out
+**/out
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
 # macOS
 .DS_Store
 **/.DS_Store

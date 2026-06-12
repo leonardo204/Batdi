@@ -1,0 +1,13 @@
+/* @batdi/ui 디자인 토큰 (CSS variable SSOT) */
+@import '@batdi/ui/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}

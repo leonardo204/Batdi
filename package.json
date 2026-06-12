@@ -1,0 +1,25 @@
+{
+  "name": "batdi",
+  "version": "0.0.0",
+  "private": true,
+  "description": "밧디 (batdi) — KBO 야구 전문 Agentic Chatbot. 너의 야구 친구.",
+  "packageManager": "pnpm@10.6.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev --filter=@batdi/web --filter=@batdi/api",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.18.1"
+  }
+}

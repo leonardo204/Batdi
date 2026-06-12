@@ -1,0 +1,152 @@
+/* packages/ui/src/tokens.css — 디자이너가 편집하는 단일 진입점
+ *
+ * SSOT: Ref-docs/specs/design/batdi-uiux-guideline.md §2 (디자인 토큰)
+ * ⚠️ 토큰 값을 임의 생성하지 말 것. uiux 가이드라인 §2 와 1:1 동기화 유지.
+ * 컴포넌트 내 하드코딩 색상 절대 금지 — 오직 var(--*) 만 사용.
+ */
+
+:root {
+  /* ── Color · Neutral (중성 그레이스케일) — 기본(다크모드) ── */
+  --color-bg:            #0B0B0E;  /* 배경 (다크모드 기본) */
+  --color-surface:       #14151A;  /* 카드·패널 */
+  --color-surface-hover: #1C1D24;
+  --color-border:        #2A2B33;
+  --color-text:          #E8E8EC;  /* 주 텍스트 */
+  --color-text-muted:    #8A8B93;
+  --color-text-subtle:   #5A5B63;
+
+  /* ── Color · Semantic ── */
+  --color-success: #4ADE80;
+  --color-warning: #FBBF24;
+  --color-danger:  #F87171;
+  --color-info:    #60A5FA;
+
+  /* ── Color · Semantic 상태 (pending/disabled) ── */
+  --color-pending:        #A78BFA;  /* 진행중·대기 (크롤링 T1 갱신중 등) */
+  --color-disabled-bg:    #1C1D24;  /* 비활성 표면 (= surface-hover) */
+  --color-disabled-text:  #5A5B63;  /* 비활성 텍스트 (= text-subtle) */
+  --color-disabled-border:#2A2B33;  /* 비활성 보더 (= border) */
+  --color-focus-ring:     var(--team-accent);  /* focus-visible 링 (§5.3) */
+
+  /* ── Team Accent (주입식 — 사용자 팀 선택 시 data-team 속성으로 스위치) ── */
+  --team-primary:    var(--team-hanwha-primary);
+  --team-secondary:  var(--team-hanwha-secondary);
+
+  /* 기본: primary 사용 (저명도 팀은 아래에서 secondary 폴백) */
+  --team-accent: var(--team-primary);
+
+  /* ── Typography ── */
+  --font-sans: 'Pretendard Variable', 'Pretendard', -apple-system,
+               'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+  --font-mono: 'JetBrains Mono', 'D2Coding', monospace;
+
+  /* Scale (Perfect Fourth 1.333) */
+  --text-xs:   0.75rem;   /* 12 */
+  --text-sm:   0.875rem;  /* 14 */
+  --text-base: 1rem;      /* 16 — 본문 기본 */
+  --text-lg:   1.125rem;  /* 18 */
+  --text-xl:   1.333rem;  /* 21 */
+  --text-2xl:  1.777rem;  /* 28 */
+  --text-3xl:  2.369rem;  /* 38 */
+
+  /* Weight */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold: 600;
+  --fw-bold:    700;
+
+  /* Line-height */
+  --lh-tight: 1.25;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.7;   /* 채팅 버블 기본 */
+
+  /* ── Spacing (8px 베이스 스케일) ── */
+  --space-1: 0.25rem;  /* 4 */
+  --space-2: 0.5rem;   /* 8 */
+  --space-3: 0.75rem;  /* 12 */
+  --space-4: 1rem;     /* 16 */
+  --space-5: 1.5rem;   /* 24 */
+  --space-6: 2rem;     /* 32 */
+  --space-7: 3rem;     /* 48 */
+  --space-8: 4rem;     /* 64 */
+
+  /* ── Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;   /* 버튼·인풋 기본 */
+  --radius-lg: 14px;   /* 카드 기본 */
+  --radius-xl: 20px;   /* 메시지 버블 */
+  --radius-full: 9999px;
+
+  /* ── Elevation (단일 방향, 낮은 강도) ── */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.24);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.28);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.32);
+
+  /* ── Motion ── */
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast:   120ms;
+  --duration-normal: 200ms;
+  --duration-slow:   360ms;
+}
+
+/* ── 팀별 컬러 (공식 팀 컬러 기반 — 채도 약간 낮춤) ── */
+[data-team="hanwha"] {
+  --team-hanwha-primary:   #F15B2A;  /* 한화 오렌지 */
+  --team-hanwha-secondary: #FFD200;
+}
+[data-team="doosan"] {
+  --team-doosan-primary:   #131230;  /* 두산 네이비 */
+  --team-doosan-secondary: #C8102E;
+}
+[data-team="kia"] {
+  --team-kia-primary:   #EA002C;    /* 기아 레드 */
+  --team-kia-secondary: #06141F;
+}
+[data-team="lotte"] {
+  --team-lotte-primary:   #041E42;  /* 롯데 네이비 */
+  --team-lotte-secondary: #ED1C24;
+}
+
+/* ── 저명도 팀 컬러 대비 보정 (§2.1.1): secondary 로 자동 폴백 ── */
+[data-team="doosan"] { --team-accent: var(--team-doosan-secondary); }  /* #C8102E 레드 */
+[data-team="lotte"]  { --team-accent: var(--team-lotte-secondary); }   /* #ED1C24 레드 */
+
+/* ── 라이트모드 (선택) — 다크모드 토큰 전체에 1:1 대응 ──
+   ⚠️ 제안값(구현 시 디자인 리뷰에서 확정). WCAG 2.1 AA 목표 — §6.1 검증표 참조. */
+[data-theme="light"] {
+  /* Neutral */
+  --color-bg:            #FAFAFB;  /* 배경 */
+  --color-surface:       #FFFFFF;  /* 카드·패널 */
+  --color-surface-hover: #F2F2F5;
+  --color-border:        #E5E5EA;
+  --color-text:          #14151A;  /* 주 텍스트 — vs #FFFFFF 약 15.8:1 (AA Pass) */
+  --color-text-muted:    #5A5B63;  /* vs #FFFFFF 약 6.9:1 (AA Pass) */
+  --color-text-subtle:   #8A8B93;  /* vs #FFFFFF 약 3.4:1 — 대형/비본문 한정 */
+
+  /* Semantic — 라이트 표면 위 대비 확보용 (채도/명도 하향) */
+  --color-success: #15803D;  /* vs #FFFFFF 약 4.8:1 (AA Pass) */
+  --color-warning: #B45309;  /* vs #FFFFFF 약 4.7:1 (AA Pass) — 아이콘/텍스트용 */
+  --color-danger:  #DC2626;  /* vs #FFFFFF 약 4.5:1 (AA Pass) */
+  --color-info:    #2563EB;  /* vs #FFFFFF 약 5.2:1 (AA Pass) */
+
+  /* Semantic 상태 (pending/disabled) */
+  --color-pending:        #7C3AED;  /* vs #FFFFFF 약 5.7:1 (AA Pass) */
+  --color-disabled-bg:    #F2F2F5;  /* = surface-hover */
+  --color-disabled-text:  #8A8B93;  /* 비활성 텍스트 — 대형/비본문 한정 */
+  --color-disabled-border:#E5E5EA;  /* = border */
+
+  /* Elevation — 라이트모드는 그림자 강도 0.04~0.10 으로 감소 */
+  --shadow-sm: 0 1px 2px rgba(16,17,26,0.06);
+  --shadow-md: 0 2px 8px rgba(16,17,26,0.08);
+  --shadow-lg: 0 8px 24px rgba(16,17,26,0.10);
+}
+
+/* prefers-reduced-motion 존중 — 모든 모션 축소 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast:   0.01ms;
+    --duration-normal: 0.01ms;
+    --duration-slow:   0.01ms;
+  }
+}
