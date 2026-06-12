@@ -2,7 +2,7 @@
 id: batdi-pre-dev-checklist
 title: 밧디 개발 착수 전 결정·준비 체크리스트
 type: impl
-version: 0.4.0
+version: 0.5.0
 status: draft
 scope: P0 코드 착수 전 확정·준비해야 할 설계공백·환경·테스트·보안 항목 종합 게이트
 related: [batdi-development-plan, batdi-architecture, batdi-agui-contract, batdi-a2ui-palette-schema, batdi-copilot-actions, batdi-db-schema, batdi-persona-guardrail, batdi-platform-ops, batdi-test-plan]
@@ -25,8 +25,8 @@ updated: 2026-06-12
 
 | # | 항목 | 현재 공백 | 해야 할 일 | 관점 |
 |---|------|-----------|-----------|------|
-| G1-1 | ✅ **CopilotKit + A2UI 렌더러 실존성** | **해소(2026-06-12)**: `@copilotkit/a2ui-renderer`의 `createA2UIMessageRenderer` 실존, CopilotKit가 A2UI 정식 지원(`renderActivityMessages`). 우리 envelope 명명(surfaceUpdate/dataModelUpdate/beginRendering)이 렌더러와 일치 | ~~PoC 전 검증~~ 완료. 잔여: A2UI 표준 v1.0은 RC라 패키지 버전 핀만 P0에서(G1-3) | architect·planner |
-| G1-2 | ✅ **LangGraph 통합 = HTTP (PoC FEASIBLE)** | **PoC 실증 완료(2026-06-12)**: 순수 JS 풀 라운드트립 성공. 정정: 연결은 `LangGraphAgent({deploymentUrl, graphId})`(HttpAgent 아님), 서버는 `langgraphjs dev`, serviceAdapter=EmptyAdapter, threadId/runId UUID 강제 | **ADR-016 확정**. 잔여: `langgraphjs build`(Docker 프로덕션) 검증, A2UI emit은 LLM 키 필요(후속 스파이크) | architect·planner |
+| G1-1 | ✅ **CopilotKit + A2UI 렌더러 실존성** | **해소(2026-06-12)**: `createA2UIMessageRenderer`(react-core) + `@copilotkit/a2ui-renderer` 실존. PoC #2 실측으로 실제 포맷은 A2UI **표준 3-op**(createSurface/updateComponents/updateDataModel) 확인 — ADR-017 정정 | ~~PoC 전 검증~~ 완료. 잔여: 버전 핀(G1-3) | architect·planner |
+| G1-2 | ✅ **LangGraph 통합 = HTTP (PoC FEASIBLE)** | **PoC 실증 완료(2026-06-12)**: 순수 JS 풀 라운드트립 성공. 정정: 연결은 `LangGraphAgent({deploymentUrl, graphId})`(HttpAgent 아님), 서버는 `langgraphjs dev`, serviceAdapter=EmptyAdapter, threadId/runId UUID 강제 | **ADR-016 확정** + **A2UI emit 스파이크 완료(PoC #2 FEASIBLE)**: gemini-2.5-flash로 A2UI 표준 3-op emit + bind-분리(환각차단) 적대조건까지 실증(ADR-017·019). 잔여: `langgraphjs build`(Docker) 검증, 픽셀 렌더·커스텀 카탈로그·`getA2UITools` 후속 | architect·planner |
 | G1-3 | 🔄 **의존성 버전 핀** | **PoC로 실버전 확보** → architecture §13.1 핀표. (CopilotKit 1.60.0·@langchain/langgraph 1.4.1·Next 14.2.35 등) | 본 개발 착수 시 lockfile 동결 + Gemini 어댑터 버전만 추가 확인 | planner |
 
 > P0 PoC DoD(dev-plan §0.5~0.7)를 "동작 확인"이 아니라 **G1-2 LangGraph-over-HTTP 검증 게이트**로 강화 권장. G1-1은 검증 완료.
@@ -35,8 +35,8 @@ updated: 2026-06-12
 
 | # | 항목 | 현재 공백 | 해야 할 일 | 관점 |
 |---|------|-----------|-----------|------|
-| G2-1 | ✅ **A2UI Envelope 실 스키마** | **완료(2026-06-12)**: agui-contract §2.2.1에 검증된 3-메시지 골든 JSONL(surfaceUpdate→dataModelUpdate→beginRendering) 수록, palette-schema 1.0화. CopilotKit 연결 스니펫 포함 | 잔여: scoreboardWidget 외 widget별 골든 샘플은 P1 템플릿 작성 시 | architect |
-| G2-2 | 🔄 **바인딩 = A2UI JSON Pointer (문법 확정)** | **확정(ADR-017)**: `{{bind:"home.score"}}`(L1 템플릿) → emit 시 A2UI `"binding":"/home/score"` JSON Pointer로 컴파일. palette-schema §5.5.1 명문화 | 잔여: `data.*` 네임스페이스↔ServiceDataStore 키 1:1 매핑·누락 fallback은 P0/P1 DataBinder 구현 시 확정 | architect |
+| G2-1 | ✅ **A2UI Envelope 실 스키마** | **완료(2026-06-12, PoC #2 실측 정정)**: agui-contract §2.2.1에 **표준** 골든 JSONL(createSurface→updateComponents→updateDataModel, component키, `{path:}`) 수록 | 잔여: widget별 골든 샘플·커스텀 카탈로그는 P1 | architect |
+| G2-2 | 🔄 **바인딩 = A2UI 값 슬롯 `{path:}`** | **확정(ADR-017)**: `{{bind:"home.score"}}`(L1 템플릿) → emit 시 A2UI 값 슬롯 `{"path":"/home/score"}`로 컴파일. 값은 `updateDataModel`로 주입. palette-schema §5.5.1 | 잔여: `data.*` 네임스페이스↔ServiceDataStore 키 매핑은 P0/P1 DataBinder 구현 시 | architect |
 | G2-3 | ✅ **DB 단일 SSOT 완성** | **완료(ADR-018)**: db-schema 1.0에 16개 테이블(사용자·도메인·캐시·관측) 통합, design 문서 DDL은 포인터. Prisma는 이 문서만 입력 | 잔여: ON DELETE 정책 일부 TBD(법무 검토, LAW-2 연동) | architect |
 | G2-4 | ✅ **IntentRouter enum·complexity** | **완료**: [batdi-routing](../interface/batdi-routing.md) 신설 — intent 7종 단일화(`standings`→`stats` 하위, `composite`는 complexity 축으로), complexity 판정 규칙·키워드 사전 구조 명문화 | architecture가 SSOT, design 섹션에 포인터 | architect |
 | G2-5 | ✅ **MultiLLMAdapter 결정표** | **완료**: batdi-routing에 모델 결정표 7행(`selectModel`)·무료할당 폴백 체인(3 Flash→2.5 Flash→Lite)·사용처별 기본 모델. model id 문자열은 구현 시 확인 | architecture §6.2·persona-guardrail §5.2 중복 → routing으로 통합 | architect |
@@ -91,10 +91,12 @@ updated: 2026-06-12
 
 ---
 
-## 즉시 착수 권고 (Top 5)
+## 즉시 착수 권고 (Top 5 — 2026-06-12 갱신)
 
-1. **G0-1 `.env` gitignore + `.env.example`** — 가장 싸고 가장 치명적. 첫 커밋 전 필수.
-2. **G1-1 CopilotKit/A2UI 패키지 실존성 검증** — 미존재 시 전체 아키텍처 전제가 흔들림. PoC 0순위.
-3. **G2-3 db-schema 단일 SSOT 완성** — Prisma 스키마(P1 1.1)의 직접 입력. interface `1.0`화.
-4. **G0-3 크롤링 약관 1차 조사** — 첫 크롤링 전 ALLOW/DENY 확정.
-5. **ENV-1~5 monorepo+Docker 스캐폴드** — P0 모든 PoC의 토대.
+> ✅ 완료: G0-1(.env gitignore)·ENV-1~5(스캐폴드)·G1-1/G1-2(PoC FEASIBLE)·G1-3(실버전)·G2-1~7(인터페이스). 아래는 **다음 차례**.
+
+1. **실제 P0/P1 구현 착수** — 검증된 토대 위 LangGraph.js 별도 프로세스(`langgraphjs dev`) + NestJS `copilotRuntimeNestEndpoint` + `LangGraphAgent` 배선(ADR-016대로).
+2. **🔑 노출된 Gemini 키 폐기(rotate)** — 채팅 평문 노출. AI Studio에서 삭제·재발급 + 일일 상한·알림(G0-2).
+3. **G0-3 크롤링 약관 1차 조사** — 첫 크롤링 전 ALLOW/DENY(미완).
+4. **SEC-1~5 동시 구현 강제** — 해당 모듈과 한 묶음(검증/가드레일/캐시 Poisoning).
+5. **db-schema 갭 보강** — `push_subscriptions` 테이블 추가(G2-6 갭) + ON DELETE 정책 확정(LAW-2).

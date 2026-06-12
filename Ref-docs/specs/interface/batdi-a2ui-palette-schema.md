@@ -2,34 +2,36 @@
 id: batdi-a2ui-palette-schema
 title: 밧디 A2UI 컴포넌트 팔레트 & JSON Schema
 type: interface
-version: 1.0.1
+version: 1.1.0
 status: approved
-scope: A2UI 화이트리스트 팔레트 — 원자 컴포넌트·야구 도메인 widget 10종·UIValidator JSON Schema·데이터 바인딩 규칙. A2UI v1.0 RC 준거
+scope: A2UI 화이트리스트 팔레트 — 원자 컴포넌트·야구 도메인 widget 10종·검증(validateA2UIComponents)·데이터 바인딩 규칙. A2UI 표준 포맷(PoC #2 실측) 준거
 related: [batdi-architecture, batdi-uiux-guideline]
 updated: 2026-06-12
 ---
 
-## A2UI 준거 (검증)
+## A2UI 준거 (PoC #2 실측 확정)
 
-> Context7 + A2UI v1.0 스펙으로 검증한 사실. 본 문서의 envelope 명명·바인딩 규칙은 이 사실에 정합한다.
+> **PoC #2(2026-06-12)에서 실제 설치 패키지로 emit→검증→바인딩 해소까지 라이브 통과**한 사실. 이전 버전(1.0.x)은 `surfaceUpdate`/`dataModelUpdate`/`beginRendering` 다이얼렉트를 가정했으나, **실측 렌더 엔진 `@a2ui/web_core`(MessageProcessor) + emit 검증기 `@ag-ui/a2ui-toolkit`(validateA2UIComponents)는 A2UI 표준 포맷을 사용**한다. 표준 포맷을 정본(canonical)으로 채택하고, 본 문서의 envelope 명명·바인딩 규칙을 이에 정합시킨다.
 
-**1. A2UI 표준(a2ui.org) v1.0 = Release Candidate.** 프로덕션 권장은 v0.9.1. 표준 메시지셋은 `createSurface` / `updateComponents` / `updateDataModel` / `deleteSurface` / `actionResponse` / `callFunction` (각 메시지에 `"version":"v1.0"`). 컴포넌트는 인접 리스트(루트 id는 `"root"`, 각 노드는 `id` + `component` + 타입별 props). 바인딩은 **JSON Pointer(RFC 6901)** `{"path":"/user/name"}` — 상대경로·`formatString`(`${/path}` 보간)·`@index` 지원.
-
-**2. MVP 타깃 = CopilotKit `@copilotkit/a2ui-renderer` 다이얼렉트.** 실제 우리가 사용할 렌더러는 `createA2UIMessageRenderer({theme})`를 `CopilotKitProvider`의 `renderActivityMessages`에 연결한다. 렌더러가 소비하는 JSONL 다이얼렉트:
+**1. 표준 메시지(op) 3종 — 정본.** 렌더 흐름은 항상 다음 순서다.
 
 ```jsonl
-{"surfaceUpdate":{"surfaceId":"s1","components":[{"id":"col","type":"column","children":["name-field"]},{"id":"name-field","type":"textInput","label":"이름","binding":"/name"}]}}
-{"dataModelUpdate":{"surfaceId":"s1","path":"/","contents":[{"key":"name","value":""}]}}
-{"beginRendering":{"surfaceId":"s1","root":"col","styles":{"theme":"light"}}}
+{"createSurface":{"surfaceId":"s1","catalogId":"basic"}}
+{"updateComponents":{"surfaceId":"s1","components":[{"id":"root","component":"Column","children":["name-field"]},{"id":"name-field","component":"TextField","label":"이름","value":{"path":"/name"}}]}}
+{"updateDataModel":{"surfaceId":"s1","path":"/","value":{"name":""}}}
 ```
 
-즉 컴포넌트는 `id` + `type` + `children` + `binding`(JSON Pointer), 데이터는 `dataModelUpdate.contents:[{key,value}]`.
+- `createSurface{surfaceId, catalogId}` → `updateComponents{surfaceId, components[]}` → `updateDataModel{surfaceId, path:"/", value:{...}}`. (이전 `surfaceUpdate`/`beginRendering` 아님)
+- **컴포넌트 키 = `component`** (NOT `type`). `children`은 **자식 id 문자열 배열**. **루트는 반드시 `id:"root"`**.
+- **값 슬롯 = `{"path":"/json/pointer"}`** (DataBinding 객체, JSON Pointer RFC 6901 절대경로) 또는 리터럴. 정적 라벨만 리터럴(`"vs"`). 예: `{"id":"homeScore","component":"Text","text":{"path":"/home/score"},"variant":"h2"}`.
 
-**3. 정합 결론.** 우리 envelope 명명(`surfaceUpdate` / `dataModelUpdate` / `beginRendering`)은 CopilotKit 렌더러와 일치하므로 **유지**한다. 단, **바인딩은 우리 `{{bind:"path"}}` 표기 → A2UI JSON Pointer(`"binding":"/path"`)로 컴파일**한다. `{{bind:}}`는 L1 템플릿 authoring 표기로만 유지하고, DataBinder가 emit 시 A2UI JSON Pointer로 변환한다.
+**2. 렌더 가능 최소 카탈로그 = 5종.** 실측 `basicCatalog`이 렌더하는 컴포넌트는 **{Text, Row, Column, Button, TextField}**(basicCatalog 전체가 아님). 우리 도메인 widget(§5.3, 10종)은 basicCatalog에 없으므로 **커스텀 카탈로그 등록 대상**이다(→ §5.3 주).
 
-**4. MVP vs 표준 마이그레이션.** MVP는 CopilotKit 다이얼렉트(`surfaceUpdate` / `dataModelUpdate` / `beginRendering`)를 타깃한다. A2UI 표준 v1.0(`createSurface` / `updateComponents` / ...)이 RC를 졸업하면 마이그레이션 대상이다.
+**3. 데이터 주입 = updateDataModel 1 op.** LLM은 **구조 + 바인딩만** emit한다. 실제 값은 `updateDataModel{path:"/", value: DBObject}` 단일 op로 주입되어 바인딩이 해소된다. PoC #2에서 `/home/score → 5`가 **DB에서만** 왔고 LLM 생성이 아님을 실증.
 
-**5. PoC 실측 패키지(2026-06-12, → architecture §13.1).** 프론트 렌더: `@copilotkit/react-core@1.60.0`(`createA2UIMessageRenderer`) + `@copilotkit/a2ui-renderer@1.60.0`(`A2UIRenderer`/`A2UIProvider`/`basicCatalog`). 그래프측 A2UI emit: `@ag-ui/a2ui-toolkit@0.0.2`(`buildA2UIEnvelope`) + `@ag-ui/langgraph@0.0.41`(`getA2UITools`). ⚠️ A2UI emit→render 경로는 LLM 키 필요(PoC 미실증, 후속 스파이크).
+**4. 환각 차단 = 2단 게이트.** PoC #2에서 gemini-2.5-flash는 **적대 입력(유저가 수치를 직접 제시)에도 값을 인라인하지 않고 바인딩을 유지**했다. 유일한 실패모드는 키 드리프트(`component`↔`type`)였고, 프롬프트로 키를 명시하면 교정됐다. 결론: (a) 프롬프트(생성 통제) + (b) `validateA2UIComponents`(결정론 게이트) 2단 — §5.4·§5.5.2.
+
+**5. PoC 실측 패키지(2026-06-12, → architecture §13.1).** 그래프측 A2UI emit 검증: `@ag-ui/a2ui-toolkit`(`validateA2UIComponents`). 렌더 엔진: `@a2ui/web_core`(MessageProcessor). 프론트 렌더 어댑터: `@copilotkit/react-core`(`createA2UIMessageRenderer`) + `@copilotkit/a2ui-renderer`(`A2UIRenderer`/`A2UIProvider`/`basicCatalog`). gemini-2.5-flash로 emit→validateA2UIComponents→바인딩 해소까지 통과 확인.
 
 ---
 
@@ -55,11 +57,13 @@ updated: 2026-06-12
 | `accordion` / `tabs` | items |
 | `image` / `avatar` | src, alt, size |
 
-> **A2UI 컴포넌트 모델**: 각 노드는 `id` + `type` + `children`(자식 id 배열) + `binding`(값 필드는 JSON Pointer). 루트 노드는 `beginRendering.root`로 지정한다. 위 원자 `type` 명은 CopilotKit 다이얼렉트의 컴포넌트 `type`으로 그대로 emit된다 (예: `column`, `card`, `text`, `table`, `button`).
+> **A2UI 컴포넌트 모델(표준, PoC #2 실측)**: 각 노드는 `id` + **`component`**(타입 키, NOT `type`) + `children`(자식 id 배열) + 값 슬롯(`text`/`label` 등)에 `{"path":"/json/pointer"}`. **루트는 `id:"root"`**. ⚠️ **렌더 가능 최소 카탈로그는 {Text, Row, Column, Button, TextField} 5종**뿐 — 위 표의 `card`/`badge`/`chip`/`table`/`grid` 등 나머지 원자와 §5.3 도메인 widget은 **커스텀 카탈로그 등록 후** 렌더된다.
 
 ### 5.3 야구 도메인 widget
 
-| widget | 필수 바인딩 | A2UI 매핑 (type + binding) |
+> 표기: 아래 `binding:"/x"`는 표준 값 슬롯 `{"path":"/x"}`를 뜻하고, 컴포넌트 타입 키는 `component`다. **이 10종은 basicCatalog에 없으므로 커스텀 카탈로그(`createA2UICatalog`)에 등록해야 렌더된다** — MVP는 5종 기본 카탈로그(Text/Row/Column/Button/TextField) 조합으로 우선 구현하고 도메인 widget은 점진 등록.
+
+| widget | 필수 바인딩 | A2UI 매핑 (component + 값슬롯 `{path:}`) |
 |--------|-----------|---------------------------|
 | `scoreboardWidget` | homeTeam, awayTeam, homeScore, awayScore, inning, status | `card`>`row`/`text` 조합; 각 값은 `binding:"/home/score"` 등 JSON Pointer |
 | `battingLineWidget` | player, ab, h, hr, rbi, avg | `table` row; 셀 값 `binding:"/batting/avg"` 등 |
@@ -72,25 +76,18 @@ updated: 2026-06-12
 | `newsItemWidget` | title, source, url, publishedAt | `card`>`text`; `binding:"/news/title"` 등 |
 | `levelProgressWidget` | currentLevel, xp, nextLevelXp | `card`>`row`; `binding:"/level/xp"` 등 |
 
-### 5.4 JSON Schema 검증 (UIValidator)
+### 5.4 검증 (UIValidator)
+
+**검증기는 자체 구현하지 않고 `@ag-ui/a2ui-toolkit`의 `validateA2UIComponents`를 채택**한다(PoC #2 실측). 구조·카탈로그·바인딩 해소를 결정론적으로 검사하고 `unresolved_binding`/`unknown_component`/`missing_component_type` 같은 머신리더블 에러를 반환한다. 우리 UIValidator는 이 검증기 위에 ① 화이트리스트(카탈로그 등록 컴포넌트만) ② 깊이/노드 제한(§5.4.1) ③ 바인딩 강제(§5.5)를 게이트로 얹는다.
 
 ```typescript
-const A2UISchema = {
-  surfaceUpdate: {
-    surfaceId: 'string',
-    components: {
-      type: 'array',
-      maxDepth: 4,                     // 중첩 최대 4단계
-      maxNodes: 30,                    // 총 노드 30개 제한
-      itemSchema: {
-        type: { enum: ALLOWED_TYPES }, // 화이트리스트 외 차단
-        props: 'validated per type'
-      }
-    }
-  },
-  dataModelUpdate: { /* ... */ },
-  beginRendering: { /* ... */ }
-};
+// updateComponents.components 에 적용 (표준 포맷)
+const result = validateA2UIComponents(components, {
+  catalog,                 // 등록된 컴포넌트만 허용 (기본 5종 + 커스텀)
+  validateBindings: true,  // 모든 {path:} 가 updateDataModel 주입 후 해소되는지
+});
+// + 추가 게이트: maxDepth=4 / maxNodes=30 (§5.4.1), {{bind}} 강제 (§5.5)
+// result 에러 → 재호출 없이 L1 Template 폴백
 ```
 
 #### 5.4.1 깊이(depth)·노드(node) 제한 검증 알고리즘
@@ -99,7 +96,7 @@ const A2UISchema = {
 
 **깊이(depth) 산정 정의**
 
-- A2UI 컴포넌트 트리는 `surfaceUpdate.components`의 인접 리스트로 표현된다. 각 노드는 `id` + `type` + `children`(자식 id 배열)이며, **루트는 `beginRendering.root`가 가리키는 노드**다.
+- A2UI 컴포넌트 트리는 `updateComponents.components`의 인접 리스트로 표현된다. 각 노드는 `id` + `component` + `children`(자식 id 배열)이며, **루트는 `id:"root"` 노드**다.
 - depth는 루트로부터의 children 중첩 단계로 정의한다. **루트 노드 = 깊이 1**, 루트의 직계 자식 = 깊이 2, 그 자식 = 깊이 3 … 식으로 1씩 증가한다.
 - 트리 전체의 depth는 도달 가능한 모든 노드 중 **최대 깊이값**이다. `maxDepth=4`는 이 최대값이 4를 넘으면(즉 깊이 5 노드가 존재하면) 위반이다.
 
@@ -145,7 +142,7 @@ function validateTree(components, rootId):
 
 depth/node 한도 위반은 §5.4의 폴백 정책과 동일 경로다. 초과 노드만 잘라내는 **부분 절단을 하지 않는다** — 트리 구조가 깨진 채 렌더되는 위험을 피하고 레이턴시를 보장하기 위해, 해당 intent의 **전체 A2UI 페이로드를 폐기하고 L1 기본 Template으로 통째 폴백**한다(LLM 재호출 없음). 위반 페이로드는 §5.4의 `llm_ui_invalid` 이벤트로 Langfuse에 비동기 기록한다.
 
-> 화이트리스트(허용 `type` 외 차단, §5.4 `ALLOWED_TYPES`)·바인딩 규칙(§5.5) 위반도 **동일한 전체 L1 Template 폴백 경로**를 따른다.
+> 화이트리스트(카탈로그 미등록 `component` 차단, `validateA2UIComponents` `unknown_component`)·바인딩 규칙(§5.5) 위반도 **동일한 전체 L1 Template 폴백 경로**를 따른다.
 
 **검증 실패 시 Fallback 정책 — 재호출 없음 (레이턴시 우선)**
 
@@ -164,13 +161,13 @@ L3 TTFB가 이미 2~3초인데 LLM 재호출은 5초+ 지연을 유발해 UX를 
 
 #### 5.5.1 Authoring 표기 → A2UI JSON Pointer emit 컴파일
 
-`{{bind:}}`/`{{llm.reaction}}`는 **L1 템플릿 authoring 표기**다. DataBinder가 emit 시 A2UI **JSON Pointer(RFC 6901)** `"binding":"/path"`로 컴파일한다. 점(`.`) 구분 경로는 슬래시(`/`) 구분 + 선행 슬래시로 변환한다.
+`{{bind:}}`/`{{llm.reaction}}`는 **L1 템플릿 authoring 표기**다. DataBinder가 emit 시 A2UI **값 슬롯 DataBinding 객체** `{"path":"/json/pointer"}`(JSON Pointer RFC 6901)로 컴파일한다. 점(`.`) 구분 경로는 슬래시(`/`) 구분 + 선행 슬래시로 변환한다. 값 자체는 LLM이 만들지 않고 `updateDataModel{path:"/", value}`로 주입된다.
 
-| authoring 표기 (L1 템플릿) | emit 결과 (A2UI 컴포넌트) |
+| authoring 표기 (L1 템플릿) | emit 결과 (A2UI 값 슬롯) |
 |---------------------------|--------------------------|
-| `{{bind:"home.score"}}` | `"binding":"/home/score"` |
-| `{{bind:"standings.0.pct"}}` | `"binding":"/standings/0/pct"` (또는 `@index`) |
-| `{{llm.reaction}}` | `"binding":"/llm/reaction"` — dataModelUpdate `contents`에 `{key:"reaction", value:<LLM 생성 슬롯 텍스트>}` 로 주입 |
+| `text: {{bind:"home.score"}}` | `"text": {"path":"/home/score"}` |
+| `{{bind:"standings.0.pct"}}` | `{"path":"/standings/0/pct"}` |
+| `{{llm.reaction}}` | `{"path":"/llm/reaction"}` — `updateDataModel{path:"/", value}`의 `value.llm.reaction`에 LLM 생성 슬롯 텍스트로 주입 |
 
 - `{{llm.reaction}}` 슬롯도 동일하게 JSON Pointer로 emit하되, **값은 LLM 리액션 텍스트 전용**이며 수치를 포함할 수 없다(OutputGuardrail 재검증).
 - emit된 `binding` 값은 항상 선행 슬래시로 시작하는 JSON Pointer여야 한다. Validator는 emit 단계에서 `^/` 정규식으로 형식을 재확인한다.

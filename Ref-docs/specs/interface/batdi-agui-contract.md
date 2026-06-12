@@ -2,9 +2,9 @@
 id: batdi-agui-contract
 title: 밧디 AG-UI Protocol 통신 계약
 type: interface
-version: 1.0.0
+version: 1.1.0
 status: approved
-scope: CopilotKit AG-UI 프로토콜 — 프론트↔백엔드 메시지 시퀀스·이벤트 타입·툴 응답 계약
+scope: CopilotKit AG-UI 프로토콜 — 프론트↔백엔드 메시지 시퀀스·이벤트 타입·툴 응답 계약 + A2UI 표준 3-op(PoC #2 실측)
 related: [batdi-architecture]
 updated: 2026-06-12
 ---
@@ -41,7 +41,7 @@ sequenceDiagram
     G->>G: UIValidator 통과
     G->>G: DataBinder DB 값 치환
     G->>G: TeamPersona 한화 톤
-    G-->>C: A2UIEnvelope<br>surfaceUpdate, dataModelUpdate, beginRendering
+    G-->>C: A2UI ops<br>createSurface, updateComponents, updateDataModel
     C-->>U: A2UIRenderer 카드 렌더
 
     G->>R: LLM 호출 Flash 50 tokens
@@ -74,22 +74,22 @@ CopilotKit Provider가 `/api/copilotkit` 엔드포인트에 POST, 본문에 `use
 | `StateDelta` | 상태 변화 | LangGraph |
 | `TextMessageChunk` | LLM 스트리밍 텍스트 | UIComposer |
 | `ToolCall` | 프론트 함수 호출 요청 | Agent |
-| `A2UIEnvelope` | `surfaceUpdate`/`dataModelUpdate`/`beginRendering` | UIComposer → DataBinder |
+| A2UI ops | `createSurface`/`updateComponents`/`updateDataModel` (표준, PoC #2) | UIComposer → DataBinder |
 | `RunFinished` | 그래프 종료 | LangGraph |
 
 #### 2.2.1 A2UI 골든 샘플 (검증된 3-메시지 JSONL)
 
-CopilotKit `@copilotkit/a2ui-renderer` 다이얼렉트의 검증된 메시지 흐름. 순서는 항상 `surfaceUpdate` → `dataModelUpdate` → `beginRendering`. 아래는 scoreboard 예시.
+A2UI **표준 포맷**의 검증된 메시지 흐름(PoC #2, gemini-2.5-flash + `@a2ui/web_core`·`@ag-ui/a2ui-toolkit`로 실측). 순서는 `createSurface` → `updateComponents` → `updateDataModel`. 아래는 scoreboard 예시.
 
 ```jsonl
-{"surfaceUpdate":{"surfaceId":"score-1","components":[{"id":"card","type":"card","children":["row"]},{"id":"row","type":"row","children":["home","away"]},{"id":"home","type":"text","binding":"/home/score"},{"id":"away","type":"text","binding":"/away/score"}]}}
-{"dataModelUpdate":{"surfaceId":"score-1","path":"/","contents":[{"key":"home","value":{"score":5}},{"key":"away","value":{"score":3}}]}}
-{"beginRendering":{"surfaceId":"score-1","root":"card","styles":{"theme":"light"}}}
+{"createSurface":{"surfaceId":"score-1","catalogId":"basic"}}
+{"updateComponents":{"surfaceId":"score-1","components":[{"id":"root","component":"Column","children":["row"]},{"id":"row","component":"Row","children":["home","away"]},{"id":"home","component":"Text","text":{"path":"/home/score"}},{"id":"away","component":"Text","text":{"path":"/away/score"}}]}}
+{"updateDataModel":{"surfaceId":"score-1","path":"/","value":{"home":{"score":5},"away":{"score":3}}}}
 ```
 
-- 컴포넌트 노드: `id` + `type` + `children`(자식 id 배열) + `binding`(JSON Pointer, RFC 6901).
-- 데이터: `dataModelUpdate.contents:[{key,value}]`. 값 필드는 `binding`이 가리키는 JSON Pointer로 해석된다.
-- 루트: `beginRendering.root`로 지정(`"card"`).
+- 컴포넌트 노드: `id` + **`component`**(타입 키) + `children`(자식 id 배열) + 값 슬롯(`text` 등)에 `{"path":"/json/pointer"}`(RFC 6901). **루트 id는 `"root"`**.
+- 데이터: `updateDataModel{path:"/", value:{...}}` 한 op로 주입 → 값 슬롯의 path가 해소(`/home/score → 5`). **값은 LLM이 만들지 않고 데이터에서만** 옴(bind-분리, PoC #2 적대조건까지 검증).
+- ⚠️ 이전 1.0 문서의 `surfaceUpdate`/`beginRendering` 다이얼렉트는 실측과 달라 폐기 — 표준 3-op가 정본.
 - 바인딩 출처: L1 템플릿 `{{bind:"home.score"}}` → DataBinder가 `"binding":"/home/score"`로 컴파일 (→ [a2ui-palette-schema §5.5.1](./batdi-a2ui-palette-schema.md)).
 
 #### 2.2.2 CopilotKit 렌더러 연결
