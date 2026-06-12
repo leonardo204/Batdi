@@ -14,7 +14,6 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": ".",
-    "incremental": true,
     "skipLibCheck": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
