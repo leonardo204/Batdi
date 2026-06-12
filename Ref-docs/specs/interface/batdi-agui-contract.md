@@ -2,7 +2,7 @@
 id: batdi-agui-contract
 title: 밧디 AG-UI Protocol 통신 계약
 type: interface
-version: 0.1.0
+version: 1.0.0
 status: approved
 scope: CopilotKit AG-UI 프로토콜 — 프론트↔백엔드 메시지 시퀀스·이벤트 타입·툴 응답 계약
 related: [batdi-architecture]
@@ -76,6 +76,56 @@ CopilotKit Provider가 `/api/copilotkit` 엔드포인트에 POST, 본문에 `use
 | `ToolCall` | 프론트 함수 호출 요청 | Agent |
 | `A2UIEnvelope` | `surfaceUpdate`/`dataModelUpdate`/`beginRendering` | UIComposer → DataBinder |
 | `RunFinished` | 그래프 종료 | LangGraph |
+
+#### 2.2.1 A2UI 골든 샘플 (검증된 3-메시지 JSONL)
+
+CopilotKit `@copilotkit/a2ui-renderer` 다이얼렉트의 검증된 메시지 흐름. 순서는 항상 `surfaceUpdate` → `dataModelUpdate` → `beginRendering`. 아래는 scoreboard 예시.
+
+```jsonl
+{"surfaceUpdate":{"surfaceId":"score-1","components":[{"id":"card","type":"card","children":["row"]},{"id":"row","type":"row","children":["home","away"]},{"id":"home","type":"text","binding":"/home/score"},{"id":"away","type":"text","binding":"/away/score"}]}}
+{"dataModelUpdate":{"surfaceId":"score-1","path":"/","contents":[{"key":"home","value":{"score":5}},{"key":"away","value":{"score":3}}]}}
+{"beginRendering":{"surfaceId":"score-1","root":"card","styles":{"theme":"light"}}}
+```
+
+- 컴포넌트 노드: `id` + `type` + `children`(자식 id 배열) + `binding`(JSON Pointer, RFC 6901).
+- 데이터: `dataModelUpdate.contents:[{key,value}]`. 값 필드는 `binding`이 가리키는 JSON Pointer로 해석된다.
+- 루트: `beginRendering.root`로 지정(`"card"`).
+- 바인딩 출처: L1 템플릿 `{{bind:"home.score"}}` → DataBinder가 `"binding":"/home/score"`로 컴파일 (→ [a2ui-palette-schema §5.5.1](./batdi-a2ui-palette-schema.md)).
+
+#### 2.2.2 CopilotKit 렌더러 연결
+
+```tsx
+import { CopilotKitProvider } from "@copilotkit/react";
+import { createA2UIMessageRenderer } from "@copilotkit/a2ui-renderer";
+
+const a2uiRenderer = createA2UIMessageRenderer({ theme: "light" });
+
+export function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <CopilotKitProvider
+      runtimeUrl="/api/copilotkit"
+      renderActivityMessages={a2uiRenderer}
+    >
+      {children}
+    </CopilotKitProvider>
+  );
+}
+```
+
+#### 2.2.3 A2UI 표준 v1.0 RC ↔ CopilotKit 다이얼렉트 대응 (마이그레이션 참조)
+
+MVP는 CopilotKit 다이얼렉트를 타깃한다. A2UI 표준 v1.0(a2ui.org, 현재 Release Candidate — 프로덕션 권장 v0.9.1)이 RC를 졸업하면 아래 대응에 따라 마이그레이션한다.
+
+| A2UI 표준 v1.0 RC 메시지 | CopilotKit 다이얼렉트 | 비고 |
+|--------------------------|----------------------|------|
+| `createSurface` | `surfaceUpdate` (신규 surface) | 표준은 `"version":"v1.0"` 필드 포함 |
+| `updateComponents` | `surfaceUpdate` (components 갱신) | 컴포넌트 인접 리스트 갱신 |
+| `updateDataModel` | `dataModelUpdate` | 표준 `{"path","contents"}` ≈ 다이얼렉트 동형 |
+| `deleteSurface` | (surface 제거) | MVP 미사용 |
+| `actionResponse` | `ToolResult` (AG-UI) | 툴 응답 회신 |
+| `callFunction` | `ToolCall` (AG-UI) | 프론트 함수 호출 요청 |
+| (표준 루트 id `"root"`) | `beginRendering.root` | 다이얼렉트는 root를 명시 지정 |
+| 바인딩 `{"path":"/user/name"}` | `"binding":"/user/name"` | 양쪽 모두 JSON Pointer(RFC 6901) |
 
 ### 2.3 프론트 → 백엔드 (툴 응답)
 

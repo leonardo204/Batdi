@@ -856,20 +856,23 @@ PostgreSQL 16 단일 인스턴스. 신규: cache_ui_envelopes·a2ui_templates(§
 | # | 결정 | 근거 |
 |---|------|------|
 | ADR-001 | CopilotKit 풀스택 채택 | 확장성·표준·생태계. UI 구조 LLM 결정권은 데이터 환각과 무관 |
-| ADR-002 | LangGraph 전면 전환 | CoAgents 1급 지원, state machine 표현력, CopilotKit 통합 밀도 |
+| ADR-002 | LangGraph 전면 전환 | CoAgents 1급 지원, state machine 표현력, CopilotKit 통합 밀도. ⚠️ 통합 방식은 ADR-016으로 보정(HTTP endpoint) |
 | ADR-003 | Next.js 14+ App Router | CopilotKit 공식 예제 중심, SSR/RSC, 장기 확장성 |
 | ADR-004 | A2UI Hybrid 팔레트 | 원자+도메인 widget 동시 제공, LLM 선택 효율성 |
 | ADR-005 | 계층적 CoAgent | Core 상위 그래프 + Service subgraph, 개별 복잡도 분리 |
 | ADR-006 | MultiLLMAdapter | Gemini 기본, 장기 멀티 LLM 교체 용이성 |
 | ADR-007 | Langfuse 셀프호스팅 | 오픈소스·비용 0·프라이버시 |
 | ADR-008 | 4단계 캐시 구조 | LLM 호출 60~70% 감소, 비용·latency 동시 최적화 |
-| ADR-009 | 데이터 바인딩 강제 (`{{bind:...}}`) | LLM 리터럴 값 차단으로 환각 원천 봉쇄 |
+| ADR-009 | 데이터 바인딩 강제 (`{{bind:...}}`) | LLM 리터럴 값 차단으로 환각 원천 봉쇄. emit 시 A2UI JSON Pointer로 컴파일(ADR-017) |
 | ADR-010 | Semantic Cache / Persona Reaction Cache 미도입 (MVP) | 검증 부족. Phase 6 이후 효용 측정 후 재검토 |
 | ADR-011 | CacheLookup MISS 이후 PersonalContext·ServiceSubgraph 병렬 실행 | TTFB 단축. 의존성 없는 I/O는 Promise.all. 예상 L2 800→600ms, L3 3s→2s |
 | ADR-012 | InputGuardrail 앞 Normalizer 노드 도입 | 정규식 필터 우회 방지(NFKC+자모+이모지+homoglyph). <1ms 오버헤드 |
 | ADR-013 | 모든 프롬프트 XML 태그 구조화 | Instruction Tracking 향상, priority 속성으로 충돌 해결 규칙 명시화 |
 | ADR-014 | 크롤링 데이터 3단계 분리 + healthScore 기반 자동 비활성 | 유지보수 리스크 분산. 세이버 스탯은 선택적, 실패 시 graceful degradation |
 | ADR-015 | 저명도 팀 컬러 `--team-accent` 폴백 도입 | 두산·롯데 네이비가 다크 배경과 대비비 3:1 미만 → 악센트 UI에 secondary 자동 매핑. 상세: uiux-guideline §2.1.1 |
+| ADR-016 | LangGraph는 별도 JS 프로세스 + HTTP endpoint로 통합 | **검증(2026-06-12)**: CopilotKit `agents`는 `LangGraphAgent({deploymentUrl})`/`LangGraphHttpAgent({url})`로 **원격 LangGraph를 HTTP 연결**하는 패턴만 문서화됨. NestJS 인프로세스 LangGraph.js 직접 등록 예시 없음. → LangGraph.js를 별도 Node 프로세스(@langchain/langgraph 서버)로 띄우고 CopilotRuntime이 HTTP로 연결(전원 JS 유지, Python 미사용). ADR-002의 "인프로세스" 가정 폐기. P0 PoC 2에서 최종 검증 |
+| ADR-017 | A2UI v1.0 RC 준거 + JSON Pointer 바인딩 | **검증(2026-06-12)**: A2UI 표준 v1.0은 RC(프로덕션 v0.9.1). 실사용 `@copilotkit/a2ui-renderer`는 `surfaceUpdate`/`dataModelUpdate`/`beginRendering` 다이얼렉트 + **JSON Pointer 바인딩**(`"binding":"/path"`). 우리 envelope 명명은 일치(유지), `{{bind:}}`는 템플릿 authoring 표기로 유지하되 emit 시 JSON Pointer로 컴파일. 표준 RC 졸업 시 `createSurface`/`updateComponents`로 마이그레이션. 상세: interface/batdi-a2ui-palette-schema §A2UI 준거 |
+| ADR-018 | DB 단일 SSOT = interface/batdi-db-schema | 도메인·사용자·캐시·관측 16개 테이블 DDL을 db-schema 1.0으로 통합. design 문서의 DDL은 설계 맥락(포인터). Prisma 스키마는 이 문서만 입력 |
 
 ---
 

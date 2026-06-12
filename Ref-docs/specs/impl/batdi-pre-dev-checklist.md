@@ -2,7 +2,7 @@
 id: batdi-pre-dev-checklist
 title: 밧디 개발 착수 전 결정·준비 체크리스트
 type: impl
-version: 0.1.0
+version: 0.2.0
 status: draft
 scope: P0 코드 착수 전 확정·준비해야 할 설계공백·환경·테스트·보안 항목 종합 게이트
 related: [batdi-development-plan, batdi-architecture, batdi-agui-contract, batdi-a2ui-palette-schema, batdi-copilot-actions, batdi-db-schema, batdi-persona-guardrail, batdi-platform-ops, batdi-test-plan]
@@ -25,19 +25,19 @@ updated: 2026-06-12
 
 | # | 항목 | 현재 공백 | 해야 할 일 | 관점 |
 |---|------|-----------|-----------|------|
-| G1-1 | **CopilotKit + A2UI 렌더러 실존성** | `@copilotkit/a2ui-renderer`·A2UI JSONL 스펙의 npm 실존·버전·성숙도 미확인. **전체 UI 파이프라인의 토대이자 단일 실패점** | PoC 착수 전 Context7/npm으로 패키지명·버전·A2UI 지원 확인. 미존재/미성숙이면 PoC 3에서 즉시 대안(자체 JSONL 렌더러) 결정 + ADR-016 | architect·planner |
-| G1-2 | **LangGraph.js 인프로세스 등록 가능성** | CopilotRuntime이 JS LangGraph(NestJS 인프로세스)를 1급 지원하는지 미검증(통상 Python/별도서버 가정) | PoC 2에서 최우선 검증. 불가 시 LangGraph 별도 프로세스 아키텍처로 ADR-002 수정 | architect·planner |
-| G1-3 | **의존성 버전 핀 (latest 금지)** | architecture §13 전부 "latest" — CLAUDE.md "버전 고정" 규칙 위반 | PoC 결과로 Next.js·NestJS·React·LangGraph.js·CopilotKit·Gemini 어댑터 실호환 버전 확정 → §13/ADR 갱신, lockfile 동결 | planner |
+| G1-1 | ✅ **CopilotKit + A2UI 렌더러 실존성** | **해소(2026-06-12)**: `@copilotkit/a2ui-renderer`의 `createA2UIMessageRenderer` 실존, CopilotKit가 A2UI 정식 지원(`renderActivityMessages`). 우리 envelope 명명(surfaceUpdate/dataModelUpdate/beginRendering)이 렌더러와 일치 | ~~PoC 전 검증~~ 완료. 잔여: A2UI 표준 v1.0은 RC라 패키지 버전 핀만 P0에서(G1-3) | architect·planner |
+| G1-2 | 🔴 **LangGraph 통합 = HTTP endpoint (인프로세스 아님)** | **검증(2026-06-12)**: CopilotKit `agents`는 `LangGraphAgent({deploymentUrl})`/`LangGraphHttpAgent({url})`로 **원격 LangGraph를 HTTP 연결**만 문서화. NestJS 인프로세스 직접 등록 예시 없음 → ADR-002 가정 폐기 | **ADR-016 채택**: LangGraph.js를 별도 Node 프로세스(@langchain/langgraph 서버)+HTTP로(전원 JS 유지). **P0 PoC 2에서 최종 검증** | architect·planner |
+| G1-3 | **의존성 버전 핀 (latest 금지)** | architecture §13 전부 "latest". A2UI v1.0=RC(프로덕션 v0.9.1) — 어느 버전 핀할지 결정 필요 | PoC 결과로 Next.js·NestJS·React·LangGraph.js·`@copilotkit/{react,runtime,a2ui-renderer}`·Gemini 어댑터·A2UI(렌더러 버전) 핀 → §13/ADR 갱신, lockfile 동결 | planner |
 
-> P0 PoC DoD(dev-plan §0.5~0.7)를 "동작 확인"이 아니라 **G1-1·G1-2 실존성 검증 게이트**로 강화 권장.
+> P0 PoC DoD(dev-plan §0.5~0.7)를 "동작 확인"이 아니라 **G1-2 LangGraph-over-HTTP 검증 게이트**로 강화 권장. G1-1은 검증 완료.
 
 ## 🟡 게이트 2 — P1(기반) 착수 전 인터페이스 SSOT 완결
 
 | # | 항목 | 현재 공백 | 해야 할 일 | 관점 |
 |---|------|-----------|-----------|------|
-| G2-1 | **A2UI Envelope 실 스키마** | `surfaceUpdate`/`dataModelUpdate`/`beginRendering` 필드 레벨 정식 스키마 부재(palette-schema §5.4 빈 칸). PoC 3·태스크 2.4가 손으로 envelope 생성 | `scoreboardWidget` 1종 round-trip 골든 JSONL 샘플 확정 → agui-contract/palette-schema `1.0`화 | architect |
-| G2-2 | **`{{bind:...}}` 경로 해석 규약** | DataBinder의 path 네임스페이스·타입 강제·누락 시 동작 미정. ServiceSummary↔full payload 키 구조 통일 규칙 부재 | `bind` root 네임스페이스(`data.*`)와 ServiceDataStore 객체 형태 1:1 고정 + fallback 규칙 명문화 | architect |
-| G2-3 | **기존 테이블 DDL이 DB SSOT에 부재** | db-schema는 신규/확장만 담음. `users`·`conversations`·`messages`·`personal_agent_state`·`players`는 platform-ops에만 → SSOT 이원화, 컬럼/FK 충돌 위험 | 기존 테이블 DDL을 db-schema로 흡수해 단일 SSOT 완성(Prisma 1.1이 이 한 문서만 보고 작성 가능하게) | architect |
+| G2-1 | ✅ **A2UI Envelope 실 스키마** | **완료(2026-06-12)**: agui-contract §2.2.1에 검증된 3-메시지 골든 JSONL(surfaceUpdate→dataModelUpdate→beginRendering) 수록, palette-schema 1.0화. CopilotKit 연결 스니펫 포함 | 잔여: scoreboardWidget 외 widget별 골든 샘플은 P1 템플릿 작성 시 | architect |
+| G2-2 | 🔄 **바인딩 = A2UI JSON Pointer (문법 확정)** | **확정(ADR-017)**: `{{bind:"home.score"}}`(L1 템플릿) → emit 시 A2UI `"binding":"/home/score"` JSON Pointer로 컴파일. palette-schema §5.5.1 명문화 | 잔여: `data.*` 네임스페이스↔ServiceDataStore 키 1:1 매핑·누락 fallback은 P0/P1 DataBinder 구현 시 확정 | architect |
+| G2-3 | ✅ **DB 단일 SSOT 완성** | **완료(ADR-018)**: db-schema 1.0에 16개 테이블(사용자·도메인·캐시·관측) 통합, design 문서 DDL은 포인터. Prisma는 이 문서만 입력 | 잔여: ON DELETE 정책 일부 TBD(법무 검토, LAW-2 연동) | architect |
 | G2-4 | **IntentRouter enum 불일치 + complexity 규칙** | architecture intent(8종)와 platform-ops 사전(`standings` 별도/`composite` 없음) 불일치. `complexity(simple/general/composite)` 판정 규칙 부재(캐시 분기 핵심) | intent enum을 architecture 기준 단일화 + complexity 판정 규칙 명문화(태스크 4.4 "정확도 95%" 전제) | architect |
 | G2-5 | **MultiLLMAdapter 라우팅 구체 규칙** | "사용처→모델" 표만 있고 런타임 분기 함수·모델 ID 문자열·무료할당 소진 폴백 체인 미정 | intent/complexity/quota → 모델 ID 결정 테이블 1함수 명세 + 폴백 체인 | architect |
 | G2-6 | **Auth/Push Provider 인터페이스 시그니처** | "추상화 유지"만 반복, 메서드 시그니처 부재 → P6 교체 안전성이 P1 설계 품질에 의존 | `AuthProvider`(verify/issue/mergeIdentity)·`PushProvider`(subscribe/send) 최소 시그니처를 interface 문서로 추가 | architect·reviewer |
