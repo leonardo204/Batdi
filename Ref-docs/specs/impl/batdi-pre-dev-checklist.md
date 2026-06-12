@@ -2,7 +2,7 @@
 id: batdi-pre-dev-checklist
 title: 밧디 개발 착수 전 결정·준비 체크리스트
 type: impl
-version: 0.2.0
+version: 0.3.0
 status: draft
 scope: P0 코드 착수 전 확정·준비해야 할 설계공백·환경·테스트·보안 항목 종합 게이트
 related: [batdi-development-plan, batdi-architecture, batdi-agui-contract, batdi-a2ui-palette-schema, batdi-copilot-actions, batdi-db-schema, batdi-persona-guardrail, batdi-platform-ops, batdi-test-plan]
@@ -26,8 +26,8 @@ updated: 2026-06-12
 | # | 항목 | 현재 공백 | 해야 할 일 | 관점 |
 |---|------|-----------|-----------|------|
 | G1-1 | ✅ **CopilotKit + A2UI 렌더러 실존성** | **해소(2026-06-12)**: `@copilotkit/a2ui-renderer`의 `createA2UIMessageRenderer` 실존, CopilotKit가 A2UI 정식 지원(`renderActivityMessages`). 우리 envelope 명명(surfaceUpdate/dataModelUpdate/beginRendering)이 렌더러와 일치 | ~~PoC 전 검증~~ 완료. 잔여: A2UI 표준 v1.0은 RC라 패키지 버전 핀만 P0에서(G1-3) | architect·planner |
-| G1-2 | 🔴 **LangGraph 통합 = HTTP endpoint (인프로세스 아님)** | **검증(2026-06-12)**: CopilotKit `agents`는 `LangGraphAgent({deploymentUrl})`/`LangGraphHttpAgent({url})`로 **원격 LangGraph를 HTTP 연결**만 문서화. NestJS 인프로세스 직접 등록 예시 없음 → ADR-002 가정 폐기 | **ADR-016 채택**: LangGraph.js를 별도 Node 프로세스(@langchain/langgraph 서버)+HTTP로(전원 JS 유지). **P0 PoC 2에서 최종 검증** | architect·planner |
-| G1-3 | **의존성 버전 핀 (latest 금지)** | architecture §13 전부 "latest". A2UI v1.0=RC(프로덕션 v0.9.1) — 어느 버전 핀할지 결정 필요 | PoC 결과로 Next.js·NestJS·React·LangGraph.js·`@copilotkit/{react,runtime,a2ui-renderer}`·Gemini 어댑터·A2UI(렌더러 버전) 핀 → §13/ADR 갱신, lockfile 동결 | planner |
+| G1-2 | ✅ **LangGraph 통합 = HTTP (PoC FEASIBLE)** | **PoC 실증 완료(2026-06-12)**: 순수 JS 풀 라운드트립 성공. 정정: 연결은 `LangGraphAgent({deploymentUrl, graphId})`(HttpAgent 아님), 서버는 `langgraphjs dev`, serviceAdapter=EmptyAdapter, threadId/runId UUID 강제 | **ADR-016 확정**. 잔여: `langgraphjs build`(Docker 프로덕션) 검증, A2UI emit은 LLM 키 필요(후속 스파이크) | architect·planner |
+| G1-3 | 🔄 **의존성 버전 핀** | **PoC로 실버전 확보** → architecture §13.1 핀표. (CopilotKit 1.60.0·@langchain/langgraph 1.4.1·Next 14.2.35 등) | 본 개발 착수 시 lockfile 동결 + Gemini 어댑터 버전만 추가 확인 | planner |
 
 > P0 PoC DoD(dev-plan §0.5~0.7)를 "동작 확인"이 아니라 **G1-2 LangGraph-over-HTTP 검증 게이트**로 강화 권장. G1-1은 검증 완료.
 

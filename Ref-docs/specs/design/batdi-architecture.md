@@ -849,6 +849,24 @@ PostgreSQL 16 단일 인스턴스. 신규: cache_ui_envelopes·a2ui_templates(§
 | 푸시 (P6+) | FCM 어댑터 교체 | — |
 | 인프라 (P6+) | Cloudflare Tunnel + Pages, 로컬 Linux PC | — |
 
+### 13.1 검증 버전 핀 (PoC 2026-06-12, G1-3)
+
+PoC(worktree)에서 실제 설치·실행 확인된 버전. 본 개발 착수 시 lockfile 동결 기준. 전부 Python 의존 0.
+
+| 패키지 | 버전 | 역할 |
+|--------|------|------|
+| `@copilotkit/runtime` | 1.60.0 | CopilotRuntime + `/langgraph` export (`copilotRuntimeNestEndpoint`·`LangGraphAgent`·`EmptyAdapter`) |
+| `@copilotkit/react-core` / `react-ui` | 1.60.0 | 프론트 훅·UI + `createA2UIMessageRenderer`(v2) |
+| `@copilotkit/a2ui-renderer` | 1.60.0 | `A2UIRenderer`·`A2UIProvider`·`basicCatalog` |
+| `@ag-ui/langgraph` | 0.0.41 | LangGraphAgent 실구현(runtime 내부), `getA2UITools` |
+| `@ag-ui/a2ui-toolkit` | 0.0.2 | 그래프측 A2UI emit(`buildA2UIEnvelope`) |
+| `@langchain/langgraph` | 1.4.1 | StateGraph 정의 |
+| `@langchain/langgraph-api` / `-cli` | 1.3.0 | `langgraphjs dev` 서버(hono) + CLI |
+| `@langchain/langgraph-sdk` | 1.9.21 | LangGraphAgent 내부 클라이언트 |
+| Next.js / React / NestJS / TypeScript | 14.2.35 / 18.3.1 / 10.4.22 / 5.9.3 | ENV 스캐폴드 검증본 |
+
+- **LangGraph 프로세스**: 개발 `langgraphjs dev --port 8123`, 프로덕션 `langgraphjs build`(Docker). NestJS는 `LANGGRAPH_URL` env로 주입. PG `54329`와 무충돌.
+
 ---
 
 ## 14. 결정 이력 (ADR 요약)
@@ -870,8 +888,8 @@ PostgreSQL 16 단일 인스턴스. 신규: cache_ui_envelopes·a2ui_templates(§
 | ADR-013 | 모든 프롬프트 XML 태그 구조화 | Instruction Tracking 향상, priority 속성으로 충돌 해결 규칙 명시화 |
 | ADR-014 | 크롤링 데이터 3단계 분리 + healthScore 기반 자동 비활성 | 유지보수 리스크 분산. 세이버 스탯은 선택적, 실패 시 graceful degradation |
 | ADR-015 | 저명도 팀 컬러 `--team-accent` 폴백 도입 | 두산·롯데 네이비가 다크 배경과 대비비 3:1 미만 → 악센트 UI에 secondary 자동 매핑. 상세: uiux-guideline §2.1.1 |
-| ADR-016 | LangGraph는 별도 JS 프로세스 + HTTP endpoint로 통합 | **검증(2026-06-12)**: CopilotKit `agents`는 `LangGraphAgent({deploymentUrl})`/`LangGraphHttpAgent({url})`로 **원격 LangGraph를 HTTP 연결**하는 패턴만 문서화됨. NestJS 인프로세스 LangGraph.js 직접 등록 예시 없음. → LangGraph.js를 별도 Node 프로세스(@langchain/langgraph 서버)로 띄우고 CopilotRuntime이 HTTP로 연결(전원 JS 유지, Python 미사용). ADR-002의 "인프로세스" 가정 폐기. P0 PoC 2에서 최종 검증 |
-| ADR-017 | A2UI v1.0 RC 준거 + JSON Pointer 바인딩 | **검증(2026-06-12)**: A2UI 표준 v1.0은 RC(프로덕션 v0.9.1). 실사용 `@copilotkit/a2ui-renderer`는 `surfaceUpdate`/`dataModelUpdate`/`beginRendering` 다이얼렉트 + **JSON Pointer 바인딩**(`"binding":"/path"`). 우리 envelope 명명은 일치(유지), `{{bind:}}`는 템플릿 authoring 표기로 유지하되 emit 시 JSON Pointer로 컴파일. 표준 RC 졸업 시 `createSurface`/`updateComponents`로 마이그레이션. 상세: interface/batdi-a2ui-palette-schema §A2UI 준거 |
+| ADR-016 | LangGraph는 별도 JS 프로세스 + HTTP로 통합 (**PoC 실증 FEASIBLE**) | **PoC 검증 완료(2026-06-12, worktree poc/feasibility)**: 순수 JS(Python 0)로 풀 라운드트립 실증(RUN_STARTED→TEXT_MESSAGE→RUN_FINISHED). ① 연결은 `new LangGraphAgent({deploymentUrl, graphId})` (`@copilotkit/runtime/langgraph`) — **`LangGraphHttpAgent`는 langgraphjs dev에 404(루트 POST), 사용 금지**. ② LangGraph.js 서버 = `langgraphjs dev`(@langchain/langgraph-api, hono) + `langgraph.json`. ③ `serviceAdapter=EmptyAdapter`, LLM은 LangGraph 노드 안에서만(계층형 CoAgents와 정합). ④ **threadId/runId는 UUID 강제**(아니면 ZodError). ADR-002 인프로세스 가정 폐기 확정. 잔여: `langgraphjs build`(Docker 프로덕션) 별도 검증 |
+| ADR-017 | A2UI v1.0 RC 준거 + JSON Pointer 바인딩 | **검증(2026-06-12)**: A2UI 표준 v1.0은 RC(프로덕션 v0.9.1). 실사용 CopilotKit 렌더러는 `surfaceUpdate`/`dataModelUpdate`/`beginRendering` 다이얼렉트 + **JSON Pointer 바인딩**(`"binding":"/path"`). 우리 envelope 명명 일치(유지), `{{bind:}}`는 템플릿 표기로 유지·emit 시 JSON Pointer 컴파일. **PoC 정정**: 프론트 렌더러 export `createA2UIMessageRenderer`는 `@copilotkit/react-core`(v2)에 있고, `@copilotkit/a2ui-renderer`는 `A2UIRenderer`/`A2UIProvider`/`basicCatalog` 제공. 그래프측 A2UI emit은 `@ag-ui/a2ui-toolkit`(`buildA2UIEnvelope` 등)+`@ag-ui/langgraph getA2UITools`. **A2UI emit→render는 LLM 키 필요(미실증, 후속 스파이크)**. 표준 RC 졸업 시 `createSurface`로 마이그레이션 |
 | ADR-018 | DB 단일 SSOT = interface/batdi-db-schema | 도메인·사용자·캐시·관측 16개 테이블 DDL을 db-schema 1.0으로 통합. design 문서의 DDL은 설계 맥락(포인터). Prisma 스키마는 이 문서만 입력 |
 
 ---

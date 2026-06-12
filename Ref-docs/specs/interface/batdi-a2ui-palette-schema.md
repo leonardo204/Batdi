@@ -27,7 +27,9 @@ updated: 2026-06-12
 
 **3. 정합 결론.** 우리 envelope 명명(`surfaceUpdate` / `dataModelUpdate` / `beginRendering`)은 CopilotKit 렌더러와 일치하므로 **유지**한다. 단, **바인딩은 우리 `{{bind:"path"}}` 표기 → A2UI JSON Pointer(`"binding":"/path"`)로 컴파일**한다. `{{bind:}}`는 L1 템플릿 authoring 표기로만 유지하고, DataBinder가 emit 시 A2UI JSON Pointer로 변환한다.
 
-**4. MVP vs 표준 마이그레이션.** MVP는 CopilotKit 다이얼렉트(`surfaceUpdate` / `dataModelUpdate` / `beginRendering`)를 타깃한다. A2UI 표준 v1.0(`createSurface` / `updateComponents` / ...)이 RC를 졸업하면 마이그레이션 대상이다. 패키지(확인): `@copilotkit/react`, `@copilotkit/runtime`, `@copilotkit/a2ui-renderer`.
+**4. MVP vs 표준 마이그레이션.** MVP는 CopilotKit 다이얼렉트(`surfaceUpdate` / `dataModelUpdate` / `beginRendering`)를 타깃한다. A2UI 표준 v1.0(`createSurface` / `updateComponents` / ...)이 RC를 졸업하면 마이그레이션 대상이다.
+
+**5. PoC 실측 패키지(2026-06-12, → architecture §13.1).** 프론트 렌더: `@copilotkit/react-core@1.60.0`(`createA2UIMessageRenderer`) + `@copilotkit/a2ui-renderer@1.60.0`(`A2UIRenderer`/`A2UIProvider`/`basicCatalog`). 그래프측 A2UI emit: `@ag-ui/a2ui-toolkit@0.0.2`(`buildA2UIEnvelope`) + `@ag-ui/langgraph@0.0.41`(`getA2UITools`). ⚠️ A2UI emit→render 경로는 LLM 키 필요(PoC 미실증, 후속 스파이크).
 
 ---
 
