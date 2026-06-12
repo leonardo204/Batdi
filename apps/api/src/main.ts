@@ -1,3 +1,5 @@
+// ⚠️ 반드시 최상단: @copilotkit/runtime require 전에 텔레메트리 env 설정.
+import './bootstrap-env';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';

@@ -1,0 +1,7 @@
+{
+  "node_version": "22",
+  "graphs": {
+    "batdi": "./src/graph.ts:graph"
+  },
+  "env": "../../.env"
+}

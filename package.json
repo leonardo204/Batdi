@@ -8,7 +8,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "turbo run dev --filter=@batdi/web --filter=@batdi/api",
+    "dev": "turbo run dev --filter=@batdi/web --filter=@batdi/api --filter=@batdi/agent",
+    "dev:agent": "turbo run dev --filter=@batdi/agent",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
