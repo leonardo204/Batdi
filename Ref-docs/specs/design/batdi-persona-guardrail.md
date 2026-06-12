@@ -316,6 +316,8 @@ Gemini·Claude 모두 XML 태그 경계 인식력이 높다. 다층 프롬프트
 
 ## 5. 스마트 모델 라우팅 (MultiLLMAdapter)
 
+> 정식 모델 결정표 SSOT: [batdi-routing](../interface/batdi-routing.md) §G2-5. 본 절은 설계 맥락.
+
 ### 5.1 모델 비교
 
 | 항목 | 2.5 Flash | 2.5 Flash-Lite | 2.5 Pro | 3 Flash |

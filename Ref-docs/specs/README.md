@@ -29,6 +29,8 @@
 | `batdi-a2ui-palette-schema` | [batdi-a2ui-palette-schema.md](interface/batdi-a2ui-palette-schema.md) | A2UI 팔레트·widget 10종·UIValidator JSON Schema·바인딩 규칙 |
 | `batdi-copilot-actions` | [batdi-copilot-actions.md](interface/batdi-copilot-actions.md) | useCopilotAction 툴콜 7종 시그니처·백엔드 검증 매핑 |
 | `batdi-db-schema` | [batdi-db-schema.md](interface/batdi-db-schema.md) | PostgreSQL 16 스키마 DDL·인덱스·커넥션 풀 전략 (DB SSOT) |
+| `batdi-routing` | [batdi-routing.md](interface/batdi-routing.md) | IntentRouter intent enum·complexity + MultiLLMAdapter 모델 결정표·폴백 (라우팅 SSOT) |
+| `batdi-provider-interfaces` | [batdi-provider-interfaces.md](interface/batdi-provider-interfaces.md) | AuthProvider/PushProvider 시그니처 — 로컬 + P6 어댑터 교체 계약 |
 
 ### test/ — 테스트 계획
 | id | 문서 | scope |

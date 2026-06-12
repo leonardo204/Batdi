@@ -126,6 +126,8 @@ class DataFallbackHandler {
 
 ### 10.2 레이턴시 최적화 — 체감 속도 관리
 
+> 정식 IntentRouter intent enum·complexity·키워드 사전 SSOT: [batdi-routing](../interface/batdi-routing.md) §G2-4. 아래 `standings`는 routing에서 `stats` 하위(`statType='standings'`)로 통일됨 — 본 절 코드는 설계 맥락.
+
 에이전트 체이닝(Intent 분류 → 컨텍스트 로드 → 데이터 획득 → 페르소나 응답)으로 여러 홉을 거치면 체감 속도가 느려진다.
 
 **원칙: LLM 호출 횟수를 최소화하고, 첫 토큰 도달 시간(TTFB)을 줄인다.**

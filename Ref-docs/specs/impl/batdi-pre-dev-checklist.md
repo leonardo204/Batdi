@@ -2,7 +2,7 @@
 id: batdi-pre-dev-checklist
 title: 밧디 개발 착수 전 결정·준비 체크리스트
 type: impl
-version: 0.3.0
+version: 0.4.0
 status: draft
 scope: P0 코드 착수 전 확정·준비해야 할 설계공백·환경·테스트·보안 항목 종합 게이트
 related: [batdi-development-plan, batdi-architecture, batdi-agui-contract, batdi-a2ui-palette-schema, batdi-copilot-actions, batdi-db-schema, batdi-persona-guardrail, batdi-platform-ops, batdi-test-plan]
@@ -38,10 +38,10 @@ updated: 2026-06-12
 | G2-1 | ✅ **A2UI Envelope 실 스키마** | **완료(2026-06-12)**: agui-contract §2.2.1에 검증된 3-메시지 골든 JSONL(surfaceUpdate→dataModelUpdate→beginRendering) 수록, palette-schema 1.0화. CopilotKit 연결 스니펫 포함 | 잔여: scoreboardWidget 외 widget별 골든 샘플은 P1 템플릿 작성 시 | architect |
 | G2-2 | 🔄 **바인딩 = A2UI JSON Pointer (문법 확정)** | **확정(ADR-017)**: `{{bind:"home.score"}}`(L1 템플릿) → emit 시 A2UI `"binding":"/home/score"` JSON Pointer로 컴파일. palette-schema §5.5.1 명문화 | 잔여: `data.*` 네임스페이스↔ServiceDataStore 키 1:1 매핑·누락 fallback은 P0/P1 DataBinder 구현 시 확정 | architect |
 | G2-3 | ✅ **DB 단일 SSOT 완성** | **완료(ADR-018)**: db-schema 1.0에 16개 테이블(사용자·도메인·캐시·관측) 통합, design 문서 DDL은 포인터. Prisma는 이 문서만 입력 | 잔여: ON DELETE 정책 일부 TBD(법무 검토, LAW-2 연동) | architect |
-| G2-4 | **IntentRouter enum 불일치 + complexity 규칙** | architecture intent(8종)와 platform-ops 사전(`standings` 별도/`composite` 없음) 불일치. `complexity(simple/general/composite)` 판정 규칙 부재(캐시 분기 핵심) | intent enum을 architecture 기준 단일화 + complexity 판정 규칙 명문화(태스크 4.4 "정확도 95%" 전제) | architect |
-| G2-5 | **MultiLLMAdapter 라우팅 구체 규칙** | "사용처→모델" 표만 있고 런타임 분기 함수·모델 ID 문자열·무료할당 소진 폴백 체인 미정 | intent/complexity/quota → 모델 ID 결정 테이블 1함수 명세 + 폴백 체인 | architect |
-| G2-6 | **Auth/Push Provider 인터페이스 시그니처** | "추상화 유지"만 반복, 메서드 시그니처 부재 → P6 교체 안전성이 P1 설계 품질에 의존 | `AuthProvider`(verify/issue/mergeIdentity)·`PushProvider`(subscribe/send) 최소 시그니처를 interface 문서로 추가 | architect·reviewer |
-| G2-7 | **A2UI 깊이/노드 제한 검증 알고리즘** | maxDepth 4·maxNodes 30 수치만 있고 카운트 산정 방식·위반 시 처리 미정 | depth/node 카운트 정의 + 위반 시 전체 L1 폴백(재호출 없음) 고정 | architect |
+| G2-4 | ✅ **IntentRouter enum·complexity** | **완료**: [batdi-routing](../interface/batdi-routing.md) 신설 — intent 7종 단일화(`standings`→`stats` 하위, `composite`는 complexity 축으로), complexity 판정 규칙·키워드 사전 구조 명문화 | architecture가 SSOT, design 섹션에 포인터 | architect |
+| G2-5 | ✅ **MultiLLMAdapter 결정표** | **완료**: batdi-routing에 모델 결정표 7행(`selectModel`)·무료할당 폴백 체인(3 Flash→2.5 Flash→Lite)·사용처별 기본 모델. model id 문자열은 구현 시 확인 | architecture §6.2·persona-guardrail §5.2 중복 → routing으로 통합 | architect |
+| G2-6 | ✅ **Auth/Push Provider 시그니처** | **완료**: [batdi-provider-interfaces](../interface/batdi-provider-interfaces.md) — AuthProvider 4메서드·PushProvider 4메서드·공유 타입 7종, P6 어댑터 교체 계약. 갭: `push_subscriptions` 테이블 db-schema 미존재(후속) | architect·reviewer |
+| G2-7 | ✅ **A2UI 깊이/노드 검증** | **완료**: a2ui-palette-schema §5.4.1 — depth(루트=1)/node(도달가능) 정의 + BFS 의사코드 + 위반 시 전체 L1 폴백(재호출 없음·부분절단 아님) | architect |
 
 ## 🔵 게이트 1~2 — 환경·인프라 스캐폴딩 (P0 0.2~0.4)
 

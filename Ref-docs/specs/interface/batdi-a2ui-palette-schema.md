@@ -2,7 +2,7 @@
 id: batdi-a2ui-palette-schema
 title: 밧디 A2UI 컴포넌트 팔레트 & JSON Schema
 type: interface
-version: 1.0.0
+version: 1.0.1
 status: approved
 scope: A2UI 화이트리스트 팔레트 — 원자 컴포넌트·야구 도메인 widget 10종·UIValidator JSON Schema·데이터 바인딩 규칙. A2UI v1.0 RC 준거
 related: [batdi-architecture, batdi-uiux-guideline]
@@ -92,6 +92,60 @@ const A2UISchema = {
   beginRendering: { /* ... */ }
 };
 ```
+
+#### 5.4.1 깊이(depth)·노드(node) 제한 검증 알고리즘
+
+`maxDepth=4` / `maxNodes=30`은 LLM 동적 구조 선택을 통제하는 두 상한이다. 산정 기준을 다음과 같이 명문화한다.
+
+**깊이(depth) 산정 정의**
+
+- A2UI 컴포넌트 트리는 `surfaceUpdate.components`의 인접 리스트로 표현된다. 각 노드는 `id` + `type` + `children`(자식 id 배열)이며, **루트는 `beginRendering.root`가 가리키는 노드**다.
+- depth는 루트로부터의 children 중첩 단계로 정의한다. **루트 노드 = 깊이 1**, 루트의 직계 자식 = 깊이 2, 그 자식 = 깊이 3 … 식으로 1씩 증가한다.
+- 트리 전체의 depth는 도달 가능한 모든 노드 중 **최대 깊이값**이다. `maxDepth=4`는 이 최대값이 4를 넘으면(즉 깊이 5 노드가 존재하면) 위반이다.
+
+**노드(node) 카운트 정의**
+
+- nodeCount는 **루트에서 children을 따라 도달 가능한 컴포넌트의 총 개수**다(고아 노드는 카운트에서 제외하고 별도 경고 대상).
+- 동일 id 중복·순환 참조는 카운트 이전에 트리 무결성 위반으로 즉시 폴백한다(아래 알고리즘의 `visited` 가드).
+- `maxNodes=30`은 도달 가능 노드 수가 30을 초과하면 위반이다.
+
+**검증 알고리즘 (BFS, 의사코드)**
+
+```text
+function validateTree(components, rootId):
+    index   = mapById(components)        # id → node
+    visited = {}                         # 순환/중복 가드
+    nodeCount = 0
+    maxDepthSeen = 0
+    queue = [ (rootId, depth=1) ]
+
+    while queue not empty:
+        (id, depth) = queue.pop_front()
+        if id not in index:        return VIOLATION("dangling child ref")
+        if id in visited:          return VIOLATION("cycle or dup id")
+        visited.add(id)
+
+        nodeCount += 1
+        maxDepthSeen = max(maxDepthSeen, depth)
+
+        # 조기 종료: 한도 초과가 확정되는 즉시 중단
+        if depth     > MAX_DEPTH (=4):  return VIOLATION("maxDepth exceeded")
+        if nodeCount > MAX_NODES (=30): return VIOLATION("maxNodes exceeded")
+
+        for childId in node.children ?? []:
+            queue.push_back( (childId, depth + 1) )
+
+    return OK   # maxDepthSeen ≤ 4 AND nodeCount ≤ 30
+```
+
+- depth·nodeCount **둘 중 하나라도** 상한을 초과하면 위반이다(AND 통과만 OK).
+- DFS로 구현해도 동일 결과다. depth는 children 진입 시 +1, nodeCount는 방문 시 +1로 동형이다.
+
+**위반 시 처리 — 전체 L1 Template 폴백 (부분 절단 아님)**
+
+depth/node 한도 위반은 §5.4의 폴백 정책과 동일 경로다. 초과 노드만 잘라내는 **부분 절단을 하지 않는다** — 트리 구조가 깨진 채 렌더되는 위험을 피하고 레이턴시를 보장하기 위해, 해당 intent의 **전체 A2UI 페이로드를 폐기하고 L1 기본 Template으로 통째 폴백**한다(LLM 재호출 없음). 위반 페이로드는 §5.4의 `llm_ui_invalid` 이벤트로 Langfuse에 비동기 기록한다.
+
+> 화이트리스트(허용 `type` 외 차단, §5.4 `ALLOWED_TYPES`)·바인딩 규칙(§5.5) 위반도 **동일한 전체 L1 Template 폴백 경로**를 따른다.
 
 **검증 실패 시 Fallback 정책 — 재호출 없음 (레이턴시 우선)**
 
