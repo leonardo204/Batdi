@@ -90,7 +90,7 @@ A2UI **표준 포맷**의 검증된 메시지 흐름(PoC #2, gemini-2.5-flash + 
 - 컴포넌트 노드: `id` + **`component`**(타입 키) + `children`(자식 id 배열) + 값 슬롯(`text` 등)에 `{"path":"/json/pointer"}`(RFC 6901). **루트 id는 `"root"`**.
 - 데이터: `updateDataModel{path:"/", value:{...}}` 한 op로 주입 → 값 슬롯의 path가 해소(`/home/score → 5`). **값은 LLM이 만들지 않고 데이터에서만** 옴(bind-분리, PoC #2 적대조건까지 검증).
 - ⚠️ 이전 1.0 문서의 `surfaceUpdate`/`beginRendering` 다이얼렉트는 실측과 달라 폐기 — 표준 3-op가 정본.
-- 바인딩 출처: L1 템플릿 `{{bind:"home.score"}}` → DataBinder가 `"binding":"/home/score"`로 컴파일 (→ [a2ui-palette-schema §5.5.1](./batdi-a2ui-palette-schema.md)).
+- 바인딩 출처: L1 템플릿 `{{bind:"home.score"}}` → DataBinder가 값 슬롯 `{"path":"/home/score"}`로 컴파일 (→ [a2ui-palette-schema §5.5.1](./batdi-a2ui-palette-schema.md)).
 
 #### 2.2.2 CopilotKit 렌더러 연결
 
@@ -116,18 +116,15 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
 #### 2.2.3 A2UI 표준 v1.0 RC ↔ CopilotKit 다이얼렉트 대응 (마이그레이션 참조)
 
-MVP는 CopilotKit 다이얼렉트를 타깃한다. A2UI 표준 v1.0(a2ui.org, 현재 Release Candidate — 프로덕션 권장 v0.9.1)이 RC를 졸업하면 아래 대응에 따라 마이그레이션한다.
+**A2UI 표준 포맷이 정본**(PoC #2 실측). 초기 문서가 가정했던 `surfaceUpdate`/`dataModelUpdate`/`beginRendering` 다이얼렉트는 실제 패키지(`@a2ui/web_core`·`@ag-ui/a2ui-toolkit`)에 없어 **폐기**했다. 표준 메시지셋(a2ui.org v1.0 RC, 프로덕션 v0.9.1):
 
-| A2UI 표준 v1.0 RC 메시지 | CopilotKit 다이얼렉트 | 비고 |
-|--------------------------|----------------------|------|
-| `createSurface` | `surfaceUpdate` (신규 surface) | 표준은 `"version":"v1.0"` 필드 포함 |
-| `updateComponents` | `surfaceUpdate` (components 갱신) | 컴포넌트 인접 리스트 갱신 |
-| `updateDataModel` | `dataModelUpdate` | 표준 `{"path","contents"}` ≈ 다이얼렉트 동형 |
-| `deleteSurface` | (surface 제거) | MVP 미사용 |
-| `actionResponse` | `ToolResult` (AG-UI) | 툴 응답 회신 |
-| `callFunction` | `ToolCall` (AG-UI) | 프론트 함수 호출 요청 |
-| (표준 루트 id `"root"`) | `beginRendering.root` | 다이얼렉트는 root를 명시 지정 |
-| 바인딩 `{"path":"/user/name"}` | `"binding":"/user/name"` | 양쪽 모두 JSON Pointer(RFC 6901) |
+| A2UI 표준 메시지 | 역할 | 비고 |
+|------------------|------|------|
+| `createSurface` | 새 surface 초기화 | `catalogId` 지정 |
+| `updateComponents` | 컴포넌트 트리 갱신 | `component` 키·`children`(id 배열)·루트 `id:"root"` |
+| `updateDataModel` | 데이터 주입 | `{path:"/", value:{...}}`, 값 슬롯 `{path:}` 해소 |
+| `deleteSurface` | surface 제거 | MVP 미사용 |
+| `actionResponse` / `callFunction` | 툴 응답 / 호출 | AG-UI `ToolResult` / `ToolCall`에 매핑 |
 
 ### 2.3 프론트 → 백엔드 (툴 응답)
 

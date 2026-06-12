@@ -48,7 +48,7 @@
 
 - **기술 결정은 architecture.md가 SSOT**: 기술·구조 변경은 [architecture](Ref-docs/specs/design/batdi-architecture.md) 먼저 갱신 후 구현. ADR 섹션에 결정 기록
 - **기획 결정은 service-plan.md가 SSOT**: 페르소나·가드레일은 [persona-guardrail](Ref-docs/specs/design/batdi-persona-guardrail.md), 서비스 개요·플로우는 [service-plan](Ref-docs/specs/design/batdi-service-plan.md) 먼저 갱신
-- **팩트(수치)는 절대 LLM이 생성 금지**: DB → DataBinder → `{{bind:"path"}}` 템플릿 참조만(emit 시 A2UI JSON Pointer `"binding":"/path"`로 컴파일 → [a2ui-palette-schema](Ref-docs/specs/interface/batdi-a2ui-palette-schema.md)). LLM 리터럴 값 출력 시 UIValidator 차단
+- **팩트(수치)는 절대 LLM이 생성 금지**: DB → DataBinder → `{{bind:"path"}}` 템플릿 참조만(emit 시 A2UI 값 슬롯 `{"path":"/path"}`로 컴파일, 값은 `updateDataModel` 주입 → [a2ui-palette-schema](Ref-docs/specs/interface/batdi-a2ui-palette-schema.md)). LLM 리터럴 값 출력 시 `validateA2UIComponents` 차단(ADR-019)
 - **UI 구조는 LLM이 동적 선택 가능**: 단, A2UI 화이트리스트 팔레트 + JSON Schema + 깊이 제한(4단계, 30노드)으로 통제
 - **감정 리액션은 `{{llm.reaction}}` 슬롯만**: 텍스트에 수치 언급 금지 (프롬프트 + OutputGuardrail 이중 검증)
 - **4단계 캐시 우선순위**: L0 Envelope → L1 Template → L2 Partial → L3 Full. 항상 상위 레벨부터 시도

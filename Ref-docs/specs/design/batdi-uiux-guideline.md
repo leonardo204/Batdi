@@ -491,7 +491,7 @@ CopilotKit AG-UI Protocol 이벤트를 직접 사용:
 
 1. **`RunStarted` 수신 (0ms)** → `<TypingIndicator>` + **intent 기반 `<SkeletonCard>` 사전 렌더**로 DOM 공간 선점 (CLS 0)
 2. **`StateSnapshot`/`StateDelta`** (intent 확정) → 스켈레톤 종류 확정 (scoreboard/news/stats/...)
-3. **`A2UIEnvelope` 수신** → `surfaceUpdate`가 스켈레톤 슬롯을 **in-place 교체** (레이아웃 이동 없이 fade-in)
+3. **A2UI ops 수신** → `updateComponents`가 스켈레톤 슬롯을 **in-place 교체** (레이아웃 이동 없이 fade-in)
 4. **`TextMessageChunk` 스트리밍** → A2UI `{{llm.reaction}}` 슬롯에 문자 단위 누적
 5. **`RunFinished`** → TypingIndicator 제거, 입력창 활성화
 

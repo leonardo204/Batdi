@@ -218,7 +218,7 @@ CREATE INDEX idx_cache_ui_expires ON cache_ui_envelopes(expires_at);
 CREATE TABLE a2ui_templates (
   template_id    VARCHAR(64) PRIMARY KEY,
   intent         VARCHAR(32) NOT NULL,
-  component_tree JSONB NOT NULL,                -- A2UI surfaceUpdate 구조 (바인딩 플레이스홀더 포함)
+  component_tree JSONB NOT NULL,                -- A2UI updateComponents 트리 (L1 authoring, {{bind}} 플레이스홀더)
   bind_schema    JSONB NOT NULL,                -- 필요한 데이터 경로 명세
   variants       JSONB,                         -- compact/emphasized 등
   version        INT DEFAULT 1,

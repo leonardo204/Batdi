@@ -167,7 +167,7 @@ flowchart TB
 CopilotKit AG-UI 프로토콜로 프론트↔백엔드가 HTTP+SSE 스트림으로 통신한다.
 사용자 메시지는 `/api/copilotkit` POST + `useCopilotReadable` 자동 컨텍스트로 들어가고,
 백엔드는 `RunStarted`/`StateSnapshot`/`A2UIEnvelope`/`RunFinished` 등 이벤트 스트림으로 응답한다.
-A2UIEnvelope는 surfaceUpdate/dataModelUpdate/beginRendering으로 구성된다. 툴 응답은 `useCopilotAction` 결과를 AG-UI `ToolResult`로 회신한다.
+A2UI는 표준 3-op(`createSurface`/`updateComponents`/`updateDataModel`)로 구성된다(PoC #2 실측, ADR-017). 툴 응답은 `useCopilotAction` 결과를 AG-UI `ToolResult`로 회신한다.
 
 > 정식 계약 SSOT: [batdi-agui-contract](../interface/batdi-agui-contract.md). 본 절은 개요만 둔다.
 
@@ -477,7 +477,7 @@ CREATE INDEX idx_cache_ui_expires ON cache_ui_envelopes(expires_at);
 CREATE TABLE a2ui_templates (
   template_id    VARCHAR(64) PRIMARY KEY,
   intent         VARCHAR(32) NOT NULL,
-  component_tree JSONB NOT NULL,     -- A2UI surfaceUpdate 구조 (바인딩 플레이스홀더 포함)
+  component_tree JSONB NOT NULL,     -- A2UI updateComponents 트리 (L1 authoring, {{bind}} 플레이스홀더)
   bind_schema    JSONB NOT NULL,     -- 필요한 데이터 경로 명세
   variants       JSONB,              -- compact/emphasized 등
   version        INT DEFAULT 1,
@@ -487,10 +487,10 @@ CREATE TABLE a2ui_templates (
 
 > 정식 DDL SSOT: [batdi-db-schema](../interface/batdi-db-schema.md)
 
-**템플릿 예시 (`score_compact` 템플릿)**
+**템플릿 예시 (`score_compact` 템플릿)** — L1 authoring 표현(도메인 widget + `{{bind}}`). emit 시 A2UI 표준 `updateComponents`(component 키·`{path:}`)로 컴파일 → [a2ui-palette-schema](../interface/batdi-a2ui-palette-schema.md).
 ```json
 {
-  "surfaceUpdate": {
+  "updateComponents": {
     "surfaceId": "result",
     "components": [
       {"id":"sb","type":"scoreboardWidget","props":{
@@ -829,6 +829,8 @@ PostgreSQL 16 단일 인스턴스. 신규: cache_ui_envelopes·a2ui_templates(§
 ---
 
 ## 13. 기술 스택 확정
+
+> 아래 "버전"의 `latest`는 미확정 표기다. **CopilotKit·LangGraph·A2UI·Next/Nest 등 PoC 검증 버전은 §13.1 핀표가 정본**(G1-3). 본 개발 착수 시 §13.1로 lockfile 동결.
 
 | 영역 | 선택 | 버전 |
 |------|------|------|
