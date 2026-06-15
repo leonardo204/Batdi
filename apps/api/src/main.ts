@@ -15,9 +15,9 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  // CopilotKit v2 런타임 라우터 마운트 (/copilotkit/*).
-  // v2/express 핸들러가 /info, /threads, /agent/:id/run|connect|stop 등을
-  // basePath('/copilotkit') 하위에서 직접 라우팅한다.
+  // CopilotKit v2 런타임 라우터 마운트 (single-route).
+  // v2/express 핸들러가 basePath('/copilotkit') 단일 POST 엔드포인트에서
+  // {method,params,body} envelope 를 info/agent.run/... 로 디스패치한다.
   app.use(createCopilotKitRouter());
 
   const port = process.env.API_PORT ?? 3001;
