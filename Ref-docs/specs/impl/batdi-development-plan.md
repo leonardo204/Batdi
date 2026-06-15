@@ -16,7 +16,11 @@ updated: 2026-06-12
 > 총 기간: **14~18주** (Mac 로컬 P0~P5) + **P6 인프라 이관 1~2주**
 > 작업자: 1인 사이드 프로젝트 (장기 설계 우선, 압박 없음)
 >
-> **📍 현재 상태 (2026-06-12): 설계 완료 · 구현 미착수.** 모든 Phase(P0~P6) 완료 조건은 미충족(`[ ]`)이다. 본 repo에는 아직 구현 코드(`apps/`·`packages/`)가 없으며, `Ref-docs/specs/` 설계 문서만 존재한다. 각 Phase 완료 시 해당 완료 조건을 `[x]`로 갱신한다.
+> **📍 현재 상태 (2026-06-15): 설계 완료 · P0~P1 배선 E2E 동작 · 형식 DoD 일부 진행.**
+> - **동작 확인**: monorepo 스캐폴드(0.2, `pnpm install`/`dev`/`typecheck` green) · CopilotKit↔LangGraph↔Gemini 채팅 E2E(0.5/0.6 대체경로, 2.3) — `/chat`에서 "안녕" → 그래프 실행 → Gemini 실응답 렌더까지 브라우저 실증.
+> - **⚠️ ADR-016이 대체한 태스크**: 0.5/1.3의 `copilotRuntimeNestEndpoint` + `GoogleGenerativeAIAdapter` 경로는 폐기됨. 실제 배선은 **CopilotRuntime v2 + `createCopilotExpressHandler`(single-route) + `LangGraphAgent`(HTTP) + 그래프 노드 내부 LLM 호출**(serviceAdapter 없음). 해당 셀의 DoD 문구는 ADR-016 기준으로 읽을 것.
+> - **미충족(형식 DoD)**: Prisma 스키마/마이그레이션(1.1), Auth/JWT(3.2), Langfuse 트레이스(1.5/P1조건), A2UI 실렌더(2.4/P1조건), PgBouncer(1.6)·TraceCollector(1.7) 등. 따라서 P0/P1 완료 조건은 아직 `[ ]` 유지.
+> - 각 Phase 완료 시 해당 완료 조건을 `[x]`로 갱신한다.
 
 ### 개발 환경 전략
 
