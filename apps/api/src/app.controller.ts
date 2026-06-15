@@ -21,7 +21,7 @@ export class AppController {
       ui: 'http://localhost:3000/chat',
       endpoints: {
         health: '/health',
-        copilotkit: '/copilotkit/* (CopilotKit v2 런타임 — /info, /threads, /agent/:id/run)',
+        copilotkit: '/copilotkit (CopilotKit v2 single-route — POST {method:info|agent/run}) · GET /copilotkit/threads(목록 스텁)',
       },
     };
   }
