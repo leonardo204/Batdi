@@ -1,0 +1,22 @@
+# Docker 빌드 컨텍스트 제외 — 이미지 빌드 속도·크기 최적화.
+# node_modules/dist 는 컨테이너 안에서 pnpm install·nest build 로 새로 생성한다.
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/*.tsbuildinfo
+**/coverage
+**/out
+.git
+.git/**
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+.claude
+Ref-docs
+docs
+**/*.log
+.DS_Store
+**/.DS_Store

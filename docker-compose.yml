@@ -105,6 +105,33 @@ services:
     networks:
       - batdi-net
 
+  # ── KBO 크롤러 (전용 컨테이너, HTTP 없음 — 스케줄/백필 전용) ──
+  # apps/api 의 KBO 모듈만 standalone 으로 부팅(crawler-main). 1일 1회 04:00 KST 크롤 +
+  # 최초 부팅 시 시즌 데이터 없으면 전체 시즌 백필(순차·요청간격 10초·robots 준수).
+  # ⚠️ 온디맨드 크롤링 없음. DB 는 같은 네트워크의 postgres/pgbouncer(내부 기본 포트) 사용.
+  #    외부 포트 미노출(크롤러는 외부 접근 불필요).
+  kbo-crawler:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: batdi-kbo-crawler
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    environment:
+      KBO_CRAWLER_ENABLED: "true"
+      NODE_ENV: production
+      TZ: Asia/Seoul
+      # 컨테이너→DB 는 docker 네트워크 내부 호스트/기본 포트(postgres:5432, pgbouncer:6432).
+      # 런타임은 PgBouncer 경유(transaction pooling), 마이그레이션은 PG 직결(DIRECT_URL).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-batdi}:${POSTGRES_PASSWORD:-batdi}@pgbouncer:6432/${POSTGRES_DB:-batdi}?pgbouncer=true
+      DIRECT_URL: postgresql://${POSTGRES_USER:-batdi}:${POSTGRES_PASSWORD:-batdi}@postgres:5432/${POSTGRES_DB:-batdi}
+    networks:
+      - batdi-net
+
 volumes:
   pgdata:
   langfuse-pgdata:
