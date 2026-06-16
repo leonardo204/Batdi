@@ -4,8 +4,8 @@
  * SSOT: Ref-docs/specs/design/batdi-architecture.md §3.2 (노드 흐름),
  *       Ref-docs/specs/interface/batdi-routing.md (IntentRouter)
  *
- * 직선 파이프라인 (결정론, LLM은 chat fallthrough + W6 리액션에서만):
- *   START → Normalizer → InputGuardrail → IntentRouter → CacheLookup
+ * 직선 파이프라인 (결정론, LLM은 chat fallthrough + W6 리액션 + W4.3 의미 가드레일에서만):
+ *   START → Normalizer → InputGuardrail → SemanticGuardrail → IntentRouter → CacheLookup
  *         → UIComposer → DataBinder → TeamPersona → OutputGuardrail → EmitA2UI → END
  *
  * 보존 계약:
@@ -22,6 +22,7 @@ import { END, START, StateGraph } from '@langchain/langgraph';
 import { CoreStateAnnotation } from './state';
 import { normalizer } from './nodes/normalizer';
 import { inputGuardrail } from './nodes/input-guardrail';
+import { semanticGuardrail } from './nodes/semantic-guardrail';
 import { intentRouter } from './nodes/intent-router';
 import { cacheLookup } from './nodes/cache-lookup';
 import { uiComposer } from './nodes/ui-composer';
@@ -34,6 +35,7 @@ import { emitA2UI } from './nodes/emit-a2ui';
 export const graph = new StateGraph(CoreStateAnnotation)
   .addNode('normalizer', normalizer)
   .addNode('inputGuardrail', inputGuardrail)
+  .addNode('semanticGuardrail', semanticGuardrail)
   .addNode('intentRouter', intentRouter)
   .addNode('cacheLookup', cacheLookup)
   .addNode('uiComposer', uiComposer)
@@ -43,10 +45,21 @@ export const graph = new StateGraph(CoreStateAnnotation)
   .addNode('emitA2UI', emitA2UI)
   .addEdge(START, 'normalizer')
   .addEdge('normalizer', 'inputGuardrail')
-  // W4: 입력 가드레일 차단 시 intentRouter~outputGuardrail 우회 → 곧장 emitA2UI 로
-  //   fallbackResponse 를 단일 Text 카드로 방출(조기 fallback). 통과 시 정상 흐름.
+  // W4: 입력 가드레일(1단계 rule-based) 차단 시 곧장 emitA2UI 로 fallbackResponse 를
+  //   단일 Text 카드로 방출(조기 fallback). 통과 시 2단계 SemanticGuardrail 로.
   .addConditionalEdges(
     'inputGuardrail',
+    (state) =>
+      state.inputGuardrailResult?.pass === false
+        ? 'emitA2UI'
+        : 'semanticGuardrail',
+    { emitA2UI: 'emitA2UI', semanticGuardrail: 'semanticGuardrail' },
+  )
+  // W4.3: 2단계 의미 가드레일(Flash-Lite). 의심 신호 있을 때만 LLM 호출(없으면 통과).
+  //   차단(우회 위협/비하) 시 inputGuardrailResult.pass=false 갱신 → 1단계와 동일하게
+  //   emitA2UI fallback 으로 라우팅. 통과 시 정상 흐름(intentRouter). (SSOT §6.2-E)
+  .addConditionalEdges(
+    'semanticGuardrail',
     (state) =>
       state.inputGuardrailResult?.pass === false ? 'emitA2UI' : 'intentRouter',
     { emitA2UI: 'emitA2UI', intentRouter: 'intentRouter' },
