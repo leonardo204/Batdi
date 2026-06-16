@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   buildReactionPrompt,
   resolveTeamPersona,
-  CANNED_REACTION_HANWHA,
+  cannedReactionFor,
 } from '../src/utils/prompt-builder';
+import type { TeamId } from '@batdi/types';
 
 describe('PromptBuilder.buildReactionPrompt — XML 블록 구조 (§9.1)', () => {
   const prompt = buildReactionPrompt({
@@ -49,25 +50,66 @@ describe('PromptBuilder.buildReactionPrompt — XML 블록 구조 (§9.1)', () =
   });
 });
 
-describe('PromptBuilder.resolveTeamPersona — 폴백', () => {
-  it('hanwha → hanwha 페르소나', () => {
-    expect(resolveTeamPersona('hanwha').team).toBe('hanwha');
-  });
-
-  it('미구현 팀(lotte) → hanwha 폴백 (W6 중립)', () => {
-    expect(resolveTeamPersona('lotte').team).toBe('hanwha');
+describe('PromptBuilder.resolveTeamPersona — W7 4팀 + 폴백', () => {
+  const teams: TeamId[] = ['hanwha', 'doosan', 'kia', 'lotte'];
+  it.each(teams)('%s → 자기 팀 페르소나(폴백 아님)', (team) => {
+    expect(resolveTeamPersona(team).team).toBe(team);
   });
 
   it('undefined → hanwha 폴백', () => {
     expect(resolveTeamPersona(undefined).team).toBe('hanwha');
   });
+
+  it('각 팀 본문은 서로 다르다(고유 페르소나)', () => {
+    const bodies = teams.map((t) => resolveTeamPersona(t).body);
+    expect(new Set(bodies).size).toBe(teams.length);
+  });
 });
 
-describe('PromptBuilder.CANNED_REACTION_HANWHA — 수치 미포함', () => {
-  it('캔드 리액션에 숫자가 없다', () => {
-    expect(CANNED_REACTION_HANWHA).not.toMatch(/[0-9]/);
+describe('PromptBuilder.buildReactionPrompt — 팀별 말투 주입', () => {
+  it('doosan → 서울말 여유 톤 + <team>doosan</team>', () => {
+    const p = buildReactionPrompt({
+      teamId: 'doosan',
+      scoreSummary: '두산 0 : 0 키움',
+      userMessage: '어때?',
+    });
+    expect(p).toContain('<team>doosan</team>');
+    expect(p).toMatch(/가을|여유|괜찮지/);
   });
-  it('한화 사투리 톤', () => {
-    expect(CANNED_REACTION_HANWHA).toMatch(/유|여/);
+
+  it('kia → 전라도 사투리 + <team>kia</team>', () => {
+    const p = buildReactionPrompt({
+      teamId: 'kia',
+      scoreSummary: '기아 0 : 0 삼성',
+      userMessage: '어때?',
+    });
+    expect(p).toContain('<team>kia</team>');
+    expect(p).toMatch(/당께|부러|쥑이/);
+  });
+
+  it('lotte → 부산 사투리 + <team>lotte</team>', () => {
+    const p = buildReactionPrompt({
+      teamId: 'lotte',
+      scoreSummary: '롯데 0 : 0 NC',
+      userMessage: '어때?',
+    });
+    expect(p).toContain('<team>lotte</team>');
+    expect(p).toMatch(/아이가|카이|기라/);
+  });
+});
+
+describe('PromptBuilder.cannedReactionFor — 팀 톤 + 수치 미포함', () => {
+  const teams: TeamId[] = ['hanwha', 'doosan', 'kia', 'lotte'];
+  it.each(teams)('%s 캔드 리액션에 숫자가 없다', (team) => {
+    expect(cannedReactionFor(team)).not.toMatch(/[0-9]/);
+  });
+
+  it('팀마다 캔드 리액션이 다르다', () => {
+    const canned = teams.map((t) => cannedReactionFor(t));
+    expect(new Set(canned).size).toBe(teams.length);
+  });
+
+  it('undefined → hanwha 캔드 폴백', () => {
+    expect(cannedReactionFor(undefined)).toBe(cannedReactionFor('hanwha'));
   });
 });

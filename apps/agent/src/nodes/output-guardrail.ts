@@ -22,15 +22,9 @@ import type { CoreGraphState, CoreGraphUpdate } from '../state';
 import type { GuardrailResult } from '@batdi/types';
 import { checkOutputGuardrail } from './input-guardrail';
 import { toNormalizedForm } from './normalizer';
-import { CANNED_REACTION_HANWHA } from '../utils/prompt-builder';
+import { cannedReactionFor } from '../utils/prompt-builder';
 
-/**
- * 수치 팩트체크용 안전 캔드 문구 (숫자 없는 한화 톤 고정 응원).
- * 리액션에 아라비아 숫자가 새어 들어왔을 때 이 문구로 교체한다.
- */
-const CANNED_REACTION_NO_NUMBER = CANNED_REACTION_HANWHA;
-
-/** 일베/비속어 출력 위반 시 교체할 안전 문구 (수치 없음) */
+/** 일베/비속어 출력 위반 시 교체할 안전 문구 (수치 없음, 팀 중립) */
 const CANNED_REACTION_SAFE = '우리 즐겁게 야구 얘기하자~ 끝까지 응원이여! 화이팅!';
 
 /** 아라비아 숫자 포함 여부 (수치 환각 탐지) */
@@ -69,9 +63,10 @@ export function outputGuardrail(state: CoreGraphState): CoreGraphUpdate {
   }
 
   // ── 2) 수치 팩트체크 (아라비아 숫자 차단) ──
+  // 수치가 새어 들어오면 숫자 없는 팀 톤 캔드 문구로 교체(LLM 재호출 없음).
   if (hasArabicDigit(reaction)) {
     return {
-      reaction: CANNED_REACTION_NO_NUMBER,
+      reaction: cannedReactionFor(state.teamId),
       outputGuardrailResult: {
         pass: false,
         violationType: 'numeric_hallucination',

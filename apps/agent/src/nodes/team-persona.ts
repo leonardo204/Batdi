@@ -32,7 +32,7 @@ import { getStubScoreData, scoreSummaryText } from '../databind/compile';
 import { getLangfuseHandler } from '../utils/langfuse';
 import {
   buildReactionPrompt,
-  CANNED_REACTION_HANWHA,
+  cannedReactionFor,
 } from '../utils/prompt-builder';
 
 /**
@@ -51,8 +51,8 @@ async function generateReaction(
 ): Promise<string> {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (apiKey === undefined || apiKey.trim() === '') {
-    // 키 없음 → 캔드 리액션(수치 없는 한화 톤 고정 문구).
-    return CANNED_REACTION_HANWHA;
+    // 키 없음 → 캔드 리액션(수치 없는 팀 톤 고정 문구).
+    return cannedReactionFor(state.teamId);
   }
 
   try {
@@ -80,10 +80,10 @@ async function generateReaction(
       typeof content === 'string' ? content : JSON.stringify(content);
     const trimmed = text.trim();
     // 빈 응답 방어 → 캔드 폴백.
-    return trimmed === '' ? CANNED_REACTION_HANWHA : trimmed;
+    return trimmed === '' ? cannedReactionFor(state.teamId) : trimmed;
   } catch {
     // 리액션 LLM 호출 실패 → 캔드 문구로 graceful (전체 응답 실패 금지).
-    return CANNED_REACTION_HANWHA;
+    return cannedReactionFor(state.teamId);
   }
 }
 

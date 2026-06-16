@@ -14,15 +14,27 @@
  *    리액션 텍스트에 숫자 언급 금지를 system_base(priority=1)에서 강하게 지시(1차 방어).
  *  - Context Caching 미사용(§6.3) — 전체 프롬프트를 매 요청마다 주입.
  *
- * ⚠️ teamId 별 분기는 설계상 확장 가능하나, 이번(W6)엔 hanwha 만 구현한다.
- *   미구현 팀(lotte/doosan/kia)은 W7 까지 hanwha 페르소나로 폴백한다(중립 폴백).
+ * W7: 우선 지원 4팀(hanwha/doosan/kia/lotte) 페르소나를 모두 구현한다.
+ *   미지정(undefined)·범위 외 teamId 는 hanwha 페르소나로 폴백한다(중립 폴백).
  */
 import type { TeamId } from '@batdi/types';
 import { ChildSafetyGuardrail } from '../nodes/child-safety';
 import {
   HANWHA_PERSONA_BODY,
   HANWHA_STYLE,
+  HANWHA_CANNED,
 } from '../templates/personas/hanwha';
+import {
+  DOOSAN_PERSONA_BODY,
+  DOOSAN_STYLE,
+  DOOSAN_CANNED,
+} from '../templates/personas/doosan';
+import { KIA_PERSONA_BODY, KIA_STYLE, KIA_CANNED } from '../templates/personas/kia';
+import {
+  LOTTE_PERSONA_BODY,
+  LOTTE_STYLE,
+  LOTTE_CANNED,
+} from '../templates/personas/lotte';
 
 /** team_persona 블록 조립용 페르소나 레코드 */
 interface TeamPersona {
@@ -32,28 +44,55 @@ interface TeamPersona {
   style: string;
   /** 페르소나 프롬프트 본문 */
   body: string;
+  /** 키 미설정/폴백용 팀 톤 캔드 리액션 (수치 없음) */
+  canned: string;
 }
 
 /**
- * teamId → TeamPersona 매핑.
- * W6: hanwha 만 구현. (W7 에 lotte/doosan/kia 추가 예정)
+ * teamId → TeamPersona 매핑 (W7: 우선 지원 4팀 전부).
  */
-const PERSONA_BY_TEAM: Partial<Record<TeamId, TeamPersona>> = {
+const PERSONA_BY_TEAM: Record<TeamId, TeamPersona> = {
   hanwha: {
     team: 'hanwha',
     style: HANWHA_STYLE,
     body: HANWHA_PERSONA_BODY,
+    canned: HANWHA_CANNED,
+  },
+  doosan: {
+    team: 'doosan',
+    style: DOOSAN_STYLE,
+    body: DOOSAN_PERSONA_BODY,
+    canned: DOOSAN_CANNED,
+  },
+  kia: {
+    team: 'kia',
+    style: KIA_STYLE,
+    body: KIA_PERSONA_BODY,
+    canned: KIA_CANNED,
+  },
+  lotte: {
+    team: 'lotte',
+    style: LOTTE_STYLE,
+    body: LOTTE_PERSONA_BODY,
+    canned: LOTTE_CANNED,
   },
 };
 
 /**
  * teamId 에 매핑된 TeamPersona 를 반환한다.
- * 미구현 팀이면 hanwha 페르소나로 폴백(W6 중립 폴백 — W7 에서 팀별 분리).
+ * 미지정(undefined)·범위 외면 hanwha 페르소나로 폴백(중립 폴백).
  */
 export function resolveTeamPersona(teamId: TeamId | undefined): TeamPersona {
   const persona = teamId ? PERSONA_BY_TEAM[teamId] : undefined;
-  // PERSONA_BY_TEAM.hanwha 는 항상 존재 — 폴백 안전.
-  return persona ?? (PERSONA_BY_TEAM.hanwha as TeamPersona);
+  return persona ?? PERSONA_BY_TEAM.hanwha;
+}
+
+/**
+ * teamId 에 맞는 팀 톤 캔드 리액션을 반환한다(수치 없음).
+ * GOOGLE_API_KEY 미설정·LLM 실패·OutputGuardrail 교체 시의 graceful 폴백용.
+ */
+export function cannedReactionFor(teamId: TeamId | undefined): string {
+  return resolveTeamPersona(teamId).canned;
 }
 
 /** system_base(priority=1) 의 리액션 전용 지시 — 수치 금지 강제(1차 방어) */
@@ -114,6 +153,3 @@ ${persona.body}
 team_persona(priority=4) 스타일보다 system_base 의 수치 금지 지시가 항상 우선한다.
 </priority_rules>`;
 }
-
-/** 키 미설정 시 사용할 한화 톤 캔드 리액션 (수치 없음) */
-export const CANNED_REACTION_HANWHA = '오 좋은데유~ 끝까지 응원해유! 화이팅이여!';
