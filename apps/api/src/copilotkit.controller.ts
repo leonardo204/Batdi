@@ -42,6 +42,21 @@ export function createCopilotKitRouter(): Router {
         graphId: 'batdi',
       }),
     },
+    // A2UI 렌더 transport (ADR-020). a2ui 설정 시 A2UIMiddleware 가 agents 에
+    // 자동 적용된다("Auto-apply A2UIMiddleware to agents", runtime v2).
+    // injectA2UITool:false → LLM 에 render_a2ui 툴을 주입하지 않고, 에이전트가
+    // 스스로 만든 A2UI JSON(`{a2ui_operations:[...]}`)을 이벤트 스트림 텍스트에서
+    // tryParseA2UIOperations 로 감지해 `a2ui-surface` activity 로 렌더한다.
+    // (밧디 그래프 EmitA2UI 가 wrapAsOperationsEnvelope 로 결정론 op 를 방출)
+    // injectA2UITool:false → LLM 에 render_a2ui 툴을 주입하지 않는다(밧디는 결정론
+    // 그래프가 직접 render_a2ui 툴콜을 방출). 미들웨어는 a2uiToolNames(기본
+    // ["render_a2ui"]) 이름의 툴콜을 가로채 args{surfaceId,components,data}로 surface
+    // 를 빌드한다. defaultCatalogId 는 render_a2ui args 에 catalogId 가 없을 때 사용.
+    a2ui: {
+      injectA2UITool: false,
+      defaultCatalogId:
+        'https://a2ui.org/specification/v0_9/basic_catalog.json',
+    },
   });
 
   return createCopilotExpressHandler({

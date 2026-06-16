@@ -29,10 +29,20 @@ if (typeof globalThis !== 'undefined' && typeof globalThis.fetch === 'function')
  *   하위 v2 멀티라우트(/info, /threads, /agent/:id/run|connect|stop)로 프록시된다.
  * - agent="batdi": api 측 CopilotRuntime(v2).agents 의 키와 1:1 일치.
  * - threadId / runId(UUID)는 CopilotKit 클라이언트가 자동 생성한다.
+ * - a2ui: A2UI 렌더 활성화(ADR-020). 백엔드 a2ui 미들웨어가 보낸 `a2ui-surface`
+ *   activity 를 자동등록 A2UIMessageRenderer + A2UIRenderer(basicCatalog)로 렌더한다.
+ *   theme 미지정 시 @copilotkit/a2ui-renderer 의 viewerTheme 가 사용된다.
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <CopilotKit runtimeUrl="/api/copilotkit" agent="batdi">
+    <CopilotKit
+      runtimeUrl="/api/copilotkit"
+      agent="batdi"
+      a2ui={{}}
+      // AG-UI Inspector(우하단 다이아몬드 토글 + "Slack early access…" announcement
+      // 배너)는 개발 도구다. 기본 enabled 라 끈다(production 안전·UI 노이즈 제거).
+      enableInspector={false}
+    >
       {children}
     </CopilotKit>
   );

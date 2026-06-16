@@ -1,13 +1,37 @@
 /* @batdi/ui 디자인 토큰 (CSS variable SSOT) */
 @import '@batdi/ui/tokens.css';
+/* Tailwind v4 (ADR-021): @tailwind 디렉티브 → @import. */
+@import 'tailwindcss';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* 기존 JS preset(@batdi/ui 토큰 매핑)·content·darkMode 를 v4 @config 로 유지.
+   web/app/globals.css 기준 web/tailwind.config.ts 상대경로. */
+@config '../tailwind.config.ts';
 
 html,
 body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+}
+
+/* ── A2UI surface 카드 (ADR-021) ──
+   a2ui basic catalog(Text/Row/Column/…)는 레이아웃 프리미티브라 카드 비주얼이
+   없다(viewerTheme={}). surface 컨테이너에 토큰 기반 카드 스타일을 부여한다.
+   (CLAUDE.md: 하드코딩 색상/간격 금지 — tokens.css CSS variable 만 사용)
+   ⚠️ 최소 카드 박스 한정. CopilotChat 전체 다크 테마 정합·팀컬러는 후속(본격 디자인). */
+.a2ui-surface {
+  flex: none; /* cpk:flex-1(width:100%) 억제 — 카드 폭을 내용+max-width 로 제한 */
+  max-width: 360px;
+  margin: var(--space-2) 0;
+  padding: var(--space-5);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* score 행(Row) 사이 간격 — 인접 자식 레이아웃 컨테이너에 상단 여백 */
+.a2ui-surface > * > * + * {
+  margin-top: var(--space-2);
 }

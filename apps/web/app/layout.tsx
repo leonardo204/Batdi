@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import '@copilotkit/react-ui/styles.css';
+// A2UI 렌더용 v2 chat 스택 스타일 (react-core/v2 CopilotChat). ADR-021.
+// 프로젝트가 Tailwind v4 로 전환되어 더 이상 PostCSS 충돌 없음.
+import '@copilotkit/react-core/v2/styles.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
