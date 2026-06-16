@@ -59,6 +59,12 @@ export const CoreStateAnnotation = Annotation.Root({
     lastValue<'L0' | 'L1' | 'L2' | 'L3' | 'miss'>(),
   ),
 
+  // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──
+  // L2 감정 리액션 텍스트. TeamPersona 가 score+template 경로에서만 생성하고,
+  // OutputGuardrail 이 검증(수치 팩트체크·일베/비속어 재검증)해 정제한 뒤
+  // EmitA2UI 가 data model `/reaction` 슬롯에 주입한다. score 외 intent 면 undefined.
+  reaction: Annotation<string | undefined>(lastValue<string | undefined>()),
+
   // ── 출력 (EmitA2UI) ──
   a2uiEnvelope: Annotation<A2UIEnvelope | undefined>(
     lastValue<A2UIEnvelope | undefined>(),

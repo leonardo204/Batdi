@@ -208,6 +208,36 @@ export function checkInputGuardrail(normalized: string): GuardrailResult {
   return { pass: true };
 }
 
+/**
+ * 출력(리액션) 재검증용 일베/비속어 룰 부분집합 (SSOT §6.3 출력 가드레일).
+ *
+ * 입력 가드레일의 전체 룰 중 LLM 출력에 다시 적용해야 하는 것(일베 밈 + 비속어)만 추린다.
+ * 프롬프트해킹/도박/자해/위협/비하는 사용자 입력 의도 차단용이라 출력 재검증 대상이 아니다.
+ * OutputGuardrail 이 reaction(normalized)에 이 룰들을 재적용한다.
+ */
+const OUTPUT_RECHECK_RULES: GuardrailRule[] = [ILBE_RULE, PROFANITY_RULE];
+
+/**
+ * 리액션 등 LLM 출력 텍스트(정규화본)에 일베/비속어 룰을 재적용한다(순수 함수).
+ * SSOT §6.3: "LLM 출력도 IlbeMimFilter + SafetyFilter 통과".
+ * @param normalized 정규화된 출력 텍스트
+ */
+export function checkOutputGuardrail(normalized: string): GuardrailResult {
+  if (normalized.trim() === '') {
+    return { pass: true };
+  }
+  for (const rule of OUTPUT_RECHECK_RULES) {
+    if (rule.patterns.some((p) => p.test(normalized))) {
+      return {
+        pass: false,
+        violationType: rule.violationType,
+        fallbackResponse: rule.fallbackResponse,
+      };
+    }
+  }
+  return { pass: true };
+}
+
 export function inputGuardrail(state: CoreGraphState): CoreGraphUpdate {
   const normalized = state.userMessageNormalized ?? '';
   return { inputGuardrailResult: checkInputGuardrail(normalized) };

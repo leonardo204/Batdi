@@ -9,6 +9,7 @@ import {
   REACTION_DATA_PATH,
 } from '../src/databind/compile';
 import { emitA2UI } from '../src/nodes/emit-a2ui';
+import { teamPersona } from '../src/nodes/team-persona';
 import type { CoreGraphState } from '../src/state';
 
 describe('score_compact — reaction 슬롯 (P2-W6)', () => {
@@ -68,31 +69,61 @@ function makeScoreState(): CoreGraphState {
   } as unknown as CoreGraphState;
 }
 
-describe('emitA2UI — 캔드 리액션 주입 (키 없음)', () => {
-  const prevKey = process.env.GOOGLE_API_KEY;
-  afterEach(() => {
-    if (prevKey === undefined) delete process.env.GOOGLE_API_KEY;
-    else process.env.GOOGLE_API_KEY = prevKey;
-  });
-
-  it('GOOGLE_API_KEY 없으면 캔드 리액션이 data model /reaction 에 주입되고 수치 미포함', async () => {
-    delete process.env.GOOGLE_API_KEY;
-    const update = await emitA2UI(makeScoreState());
+describe('emitA2UI — state.reaction 소비 (W6 분리)', () => {
+  it('state.reaction 값을 data model /reaction 에 그대로 주입', async () => {
+    const state = { ...makeScoreState(), reaction: '오 좋은데유~ 화이팅이여!' };
+    const update = await emitA2UI(state);
 
     const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
     const dataOp = ops.find((o) => 'updateDataModel' in o) as
       | { updateDataModel: { value: Record<string, unknown> } }
       | undefined;
     expect(dataOp).toBeDefined();
+    expect(dataOp?.updateDataModel.value.reaction).toBe('오 좋은데유~ 화이팅이여!');
+  });
 
-    const reaction = dataOp?.updateDataModel.value.reaction as string;
+  it('state.reaction 미설정(undefined) → /reaction 은 빈 문자열', async () => {
+    const update = await emitA2UI(makeScoreState());
+    const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
+    const dataOp = ops.find((o) => 'updateDataModel' in o) as
+      | { updateDataModel: { value: Record<string, unknown> } }
+      | undefined;
+    expect(dataOp?.updateDataModel.value.reaction).toBe('');
+  });
+});
+
+describe('teamPersona — 캔드 리액션 생성 (키 없음)', () => {
+  const prevKey = process.env.GOOGLE_API_KEY;
+  afterEach(() => {
+    if (prevKey === undefined) delete process.env.GOOGLE_API_KEY;
+    else process.env.GOOGLE_API_KEY = prevKey;
+  });
+
+  it('GOOGLE_API_KEY 없으면 score 경로에서 캔드 리액션 생성 + 수치 미포함', async () => {
+    delete process.env.GOOGLE_API_KEY;
+    const update = await teamPersona(makeScoreState());
+
+    const reaction = update.reaction as string;
     expect(typeof reaction).toBe('string');
     expect(reaction.length).toBeGreaterThan(0);
     // 수치(스코어/이닝 등 숫자) 미포함
     expect(reaction).not.toMatch(/[0-9]/);
-    // 스코어 stub 수치가 리액션에 새지 않았는지(5/3/7)
-    expect(reaction).not.toContain('5');
-    expect(reaction).not.toContain('3');
-    expect(reaction).not.toContain('7');
+  });
+
+  it('score 외 intent(chat) → reaction 미생성(undefined)', async () => {
+    delete process.env.GOOGLE_API_KEY;
+    const state = { ...makeScoreState(), intent: 'chat' } as CoreGraphState;
+    const update = await teamPersona(state);
+    expect(update.reaction).toBeUndefined();
+  });
+
+  it('입력 가드레일 차단 시 reaction 미생성(undefined)', async () => {
+    delete process.env.GOOGLE_API_KEY;
+    const state = {
+      ...makeScoreState(),
+      inputGuardrailResult: { pass: false, violationType: 'ilbe_expression' },
+    } as unknown as CoreGraphState;
+    const update = await teamPersona(state);
+    expect(update.reaction).toBeUndefined();
   });
 });

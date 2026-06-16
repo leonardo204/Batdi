@@ -11,13 +11,15 @@
  *  4) createSurface/updateComponents/updateDataModel ops 빌드 + validateBatdiA2UI 검증
  *     - valid  → state.a2uiEnvelope = ops
  *     - invalid→ 최소 Text 카드 폴백 (LLM 재호출 금지)
+ *     - /reaction 슬롯에는 state.reaction(TeamPersona 생성 → OutputGuardrail 검증값)을 주입.
+ *       리액션 생성은 더 이상 이 노드에서 하지 않는다(W6 분리). 미설정 시 '' 폴백.
  *  5) **messages에 AIMessage도 반환** (기존 채팅 E2E 유지)
  *     - score: "롯데 5 : 두산 3 (7회말)" 텍스트
  *     - chat : Gemini 실응답(키 있음) 또는 캔드 응답(키 없음)
  *
  * ⚠️ a2uiEnvelope는 state에 빌드·보관만 한다. 렌더러로의 transport는 W2-B 범위.
  */
-import { AIMessage, SystemMessage, HumanMessage } from '@langchain/core/messages';
+import { AIMessage } from '@langchain/core/messages';
 import { dispatchCustomEvent } from '@langchain/core/callbacks/dispatch';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
@@ -35,10 +37,6 @@ import {
   type BuildA2UIResult,
 } from '../databind/emit';
 import { getLangfuseHandler } from '../utils/langfuse';
-import {
-  buildReactionPrompt,
-  CANNED_REACTION_HANWHA,
-} from '../utils/prompt-builder';
 
 /**
  * A2UI 렌더 툴 이름 (ADR-020). 백엔드 a2ui 미들웨어의 a2uiToolNames 기본값과 일치해야
@@ -120,61 +118,6 @@ async function chatResponseText(state: CoreGraphState): Promise<string> {
   return typeof content === 'string' ? content : JSON.stringify(content);
 }
 
-/**
- * L2 감정 리액션 생성 (P2-W6, score 경로 전용).
- *
- * GOOGLE_API_KEY 있으면 PromptBuilder(XML system_base/team_persona/current_situation)로
- * 시스템 프롬프트를 조립해 Gemini Flash 로 짧은 리액션(~50토큰)을 1회 생성한다.
- * 키 없거나 호출 실패 시 한화 톤 캔드 문구(수치 없음)로 graceful 폴백한다(전체 실패 금지).
- *
- * ⚠️ 리액션 텍스트엔 숫자(점수/이닝) 금지 — system_base(priority=1)에서 강하게 지시(1차 방어).
- *   scoreSummary 는 LLM 에 맥락으로만 제공하고, 그대로 출력하지 말라고 프롬프트로 강제한다.
- *
- * @returns data model `/reaction` 에 주입할 리액션 문자열 (항상 비어있지 않음)
- */
-async function generateReaction(
-  state: CoreGraphState,
-  scoreSummary: string,
-  config: RunnableConfig | undefined,
-): Promise<string> {
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (apiKey === undefined || apiKey.trim() === '') {
-    // 키 없음 → 캔드 리액션(수치 없는 한화 톤 고정 문구).
-    return CANNED_REACTION_HANWHA;
-  }
-
-  try {
-    const systemPrompt = buildReactionPrompt({
-      teamId: state.teamId,
-      scoreSummary,
-      userMessage: state.userMessage,
-    });
-    const model = new ChatGoogleGenerativeAI({
-      model: 'gemini-2.5-flash',
-      apiKey,
-      // gemini-2.5-flash 는 thinking 모델 — 짧은 감정 리액션엔 추론이 불필요하다.
-      // thinkingBudget:0 으로 thinking 을 끄지 않으면 maxOutputTokens 가 reasoning
-      // 토큰에 소진돼 답변이 잘린다(예: "오잉"). 리액션은 1~2문장이라 96토큰이면 충분.
-      maxOutputTokens: 96,
-      thinkingConfig: { thinkingBudget: 0 },
-    });
-    const handler = getLangfuseHandler();
-    const response = await model.invoke(
-      [new SystemMessage(systemPrompt), new HumanMessage(state.userMessage)],
-      handler ? { callbacks: [handler] } : undefined,
-    );
-    const content = response.content;
-    const text =
-      typeof content === 'string' ? content : JSON.stringify(content);
-    const trimmed = text.trim();
-    // 빈 응답 방어 → 캔드 폴백.
-    return trimmed === '' ? CANNED_REACTION_HANWHA : trimmed;
-  } catch {
-    // 리액션 LLM 호출 실패 → 캔드 문구로 graceful (전체 응답 실패 금지).
-    return CANNED_REACTION_HANWHA;
-  }
-}
-
 export async function emitA2UI(
   state: CoreGraphState,
   config?: RunnableConfig,
@@ -212,12 +155,12 @@ export async function emitA2UI(
         ? scoreSummaryText(getStubScoreData())
         : '응답';
 
-    // P2-W6: L2 감정 리액션 생성 → data model /reaction 에 주입(카드 reaction 슬롯 표시).
-    // scoreSummary 는 LLM 맥락용으로만 전달(숫자 출력은 프롬프트로 금지).
-    const reaction = await generateReaction(state, summary, config);
+    // P2-W6: 리액션은 TeamPersona 가 생성하고 OutputGuardrail 이 검증·정제한 값을
+    // state.reaction 으로 받아 data model /reaction 에 주입한다(카드 reaction 슬롯 표시).
+    // score 외 경로/차단 시엔 미설정(undefined) → 빈 문자열로 폴백(슬롯 비표시).
     const data = {
       ...getStubDataModel(state.intent),
-      reaction,
+      reaction: state.reaction ?? '',
     };
 
     const result = buildA2UIOps(compiled, data, summary);

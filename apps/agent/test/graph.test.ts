@@ -49,6 +49,25 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(out.a2uiEnvelope).toBeDefined();
   });
 
+  it('dataBinder→teamPersona→outputGuardrail→emitA2UI E2E: score 캔드 리액션이 /reaction 에 주입(수치 없음)', async () => {
+    delete process.env.GOOGLE_API_KEY;
+    const out = await graph.invoke({
+      messages: [{ role: 'user', content: '지금 몇 대 몇이야' }],
+      userMessage: '지금 몇 대 몇이야',
+    });
+    expect(out.intent).toBe('score');
+    // TeamPersona 가 캔드 리액션 생성 → OutputGuardrail 통과 → state.reaction 보관.
+    expect(out.outputGuardrailResult?.pass).toBe(true);
+    expect(typeof out.reaction).toBe('string');
+    expect(out.reaction).not.toMatch(/[0-9]/);
+    // EmitA2UI 가 /reaction 슬롯에 주입.
+    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
+    const dataOp = ops.find((o) => 'updateDataModel' in o) as
+      | { updateDataModel: { value: Record<string, unknown> } }
+      | undefined;
+    expect(dataOp?.updateDataModel.value.reaction).toBe(out.reaction);
+  });
+
   it('chat 질의(키 없음) → 캔드 AIMessage + 단일 Text 카드', async () => {
     delete process.env.GOOGLE_API_KEY;
     const out = await graph.invoke({
