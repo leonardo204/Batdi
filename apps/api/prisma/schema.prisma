@@ -259,8 +259,8 @@ model AgentTrace {
   error          String?  @db.Text
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  conversation Conversation?  @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   messages     Message[]
   toolCallLogs ToolCallLog[]
 
@@ -281,4 +281,54 @@ model ToolCallLog {
   trace AgentTrace? @relation(fields: [traceId], references: [traceId], onDelete: Cascade)
 
   @@map("tool_call_logs")
+}
+
+// ── F. KBO 크롤링 데이터 (1일 1회 스케줄 적재, 온디맨드 크롤링 없음) ──────
+// 출처: KBO 공식(koreabaseball.com /Schedule, /Record) — robots.txt 준수(해당 경로 허용).
+// 레퍼런스 로직: github.com/colabear754/kbo-scraper (Kotlin→TS 포팅).
+// ⚠️ 사용자 요청 시 즉각 크롤링 금지. DailyKboScheduler 가 정해진 스케줄로만 적재하고,
+//    ScoreGraph/agent 는 이 테이블을 읽기만 한다(crawl-on-read 금지).
+
+// 경기 일정 + 결과 (스케줄 페이지). gameKey = `yyyyMMdd-AWAY-HOME-count` 안정 키.
+model KboGame {
+  gameKey            String   @id @map("game_key") @db.VarChar(32)
+  season             Int
+  seriesType         String   @map("series_type") @db.VarChar(16) // PRESEASON|REGULAR_SEASON|POSTSEASON
+  date               DateTime @db.Date
+  gameTime           String?  @map("game_time") @db.VarChar(5) // "HH:mm"
+  awayTeam           String   @map("away_team") @db.VarChar(10) // 팀 코드(doosan/hanwha/...)
+  homeTeam           String   @map("home_team") @db.VarChar(10)
+  awayScore          Int?     @map("away_score")
+  homeScore          Int?     @map("home_score")
+  relay              String?  @db.VarChar(100)
+  stadium            String?  @db.VarChar(20)
+  gameStatus         String   @map("game_status") @db.VarChar(12) // SCHEDULED|PLAYING|FINISHED|CANCELLED
+  cancellationReason String?  @map("cancellation_reason") @db.VarChar(20)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([date], map: "idx_kbo_games_date")
+  @@index([season, homeTeam], map: "idx_kbo_games_season_home")
+  @@index([season, awayTeam], map: "idx_kbo_games_season_away")
+  @@map("kbo_games")
+}
+
+// 팀 시즌 순위/기록 (TeamRank 페이지). (season, team) 자연키.
+model TeamSeasonRecord {
+  season        Int
+  team          String   @db.VarChar(10) // 팀 코드(doosan/hanwha/...)
+  teamRank      Int      @map("team_rank")
+  gamesPlayed   Int      @map("games_played")
+  wins          Int
+  losses        Int
+  draws         Int
+  winRate       Float    @map("win_rate")
+  gamesBehind   Float    @map("games_behind")
+  recent10Games String   @map("recent10_games") @db.VarChar(20)
+  streak        String   @db.VarChar(20)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@id([season, team])
+  @@map("team_season_records")
 }

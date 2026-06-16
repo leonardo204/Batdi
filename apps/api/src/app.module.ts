@@ -1,14 +1,22 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { HealthController } from './health.controller';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { KboModule } from './kbo/kbo.module';
 
 // CopilotKit v2 런타임은 NestJS 컨트롤러가 아니라 Express Router 로 마운트한다
 // (main.ts 의 app.use). v2 멀티라우트 정규식 매칭이 NestJS 라우터와 충돌하지 않도록
 // 분리한 것 — createCopilotKitRouter() 참조.
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [
+    // 전역 1회: @nestjs/schedule 의 cron 등록 활성화.
+    ScheduleModule.forRoot(),
+    PrismaModule,
+    AuthModule,
+    KboModule,
+  ],
   controllers: [AppController, HealthController],
   providers: [],
 })
