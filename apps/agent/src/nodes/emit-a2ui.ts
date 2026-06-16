@@ -37,6 +37,8 @@ import {
   type BuildA2UIResult,
 } from '../databind/emit';
 import { getLangfuseHandler } from '../utils/langfuse';
+import { getPrisma } from '../utils/prisma';
+import { buildCacheKey, personaScopeFor } from './cache-lookup';
 
 /**
  * A2UI 렌더 툴 이름 (ADR-020). 백엔드 a2ui 미들웨어의 a2uiToolNames 기본값과 일치해야
@@ -80,7 +82,7 @@ function reportA2UIResult(stage: string, result: BuildA2UIResult): void {
  * tool_call id 는 run 당 단일 surface 라 안정 상수(Date/random 미사용).
  */
 async function emitRenderA2UIToolCall(
-  result: BuildA2UIResult,
+  result: Pick<BuildA2UIResult, 'components' | 'data'>,
   config: RunnableConfig | undefined,
 ): Promise<void> {
   await dispatchCustomEvent(
@@ -96,6 +98,84 @@ async function emitRenderA2UIToolCall(
     },
     config,
   );
+}
+
+/**
+ * 캐시된 envelope ops 에서 render_a2ui 툴콜용 components/data 를 추출한다.
+ * ops 구조: [createSurface, updateComponents{components}, updateDataModel{value}].
+ * updateDataModel 이 없으면(폴백 envelope) data 는 빈 객체.
+ */
+function extractFromEnvelope(ops: Array<Record<string, unknown>>): {
+  components: Array<Record<string, unknown>>;
+  data: Record<string, unknown>;
+} {
+  let components: Array<Record<string, unknown>> = [];
+  let data: Record<string, unknown> = {};
+  for (const op of ops) {
+    if ('updateComponents' in op) {
+      const uc = op.updateComponents as {
+        components?: Array<Record<string, unknown>>;
+      };
+      components = uc.components ?? [];
+    } else if ('updateDataModel' in op) {
+      const ud = op.updateDataModel as { value?: Record<string, unknown> };
+      data = ud.value ?? {};
+    }
+  }
+  return { components, data };
+}
+
+/**
+ * L0 캐시 write (best-effort, MISS 경로 종단 — architecture §4.2).
+ *
+ * score template 경로에서 생성한 완성 envelope 를 비개인화 키로 upsert 한다.
+ * - TTL 5분: score 는 점수 변동이 잦아 짧게(만료 후 자동 MISS → 재생성).
+ * - cacheKey 미설정(가드레일 차단 등)이면 write skip.
+ * - DB 비활성/에러는 무시(응답 정상). hit_count 는 신규 0(증분은 조회 시).
+ *
+ * ⚠️ 개인화 응답(향후 custom_persona/personal_profile 주입) write 금지 — Cache Poisoning
+ *    방지. 현재(P2)는 개인화 미구현이라 항상 비개인화 → score 경로만 write.
+ */
+async function writeL0Cache(
+  state: CoreGraphState,
+  ops: Array<Record<string, unknown>>,
+): Promise<void> {
+  if (state.cacheKey === undefined || state.cacheKey.trim() === '') {
+    return; // 키 미생성 → skip
+  }
+  const prisma = getPrisma();
+  if (!prisma) {
+    return; // DB 비활성 → skip(best-effort)
+  }
+
+  const { paramsHash } = buildCacheKey(state);
+  const personaScope = personaScopeFor(state.intent);
+  const envelopeJsonl = JSON.stringify(ops);
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // +5분
+
+  try {
+    await prisma.cacheUiEnvelope.upsert({
+      where: { cacheKey: state.cacheKey },
+      create: {
+        cacheKey: state.cacheKey,
+        intent: state.intent,
+        paramsHash,
+        teamId: state.teamId ?? null,
+        personaScope,
+        envelopeJsonl,
+        hitCount: 0,
+        expiresAt,
+      },
+      update: {
+        envelopeJsonl,
+        personaScope,
+        teamId: state.teamId ?? null,
+        expiresAt,
+      },
+    });
+  } catch {
+    // write 실패는 무시(응답은 이미 방출됨). 다음 요청 시 MISS → 재생성.
+  }
 }
 
 /** chat intent 응답 텍스트 (Gemini 실응답 또는 캔드 폴백) */
@@ -144,6 +224,17 @@ export async function emitA2UI(
     };
   }
 
+  // ── P2-W4 (4.5): L0 캐시 HIT 분기 ──
+  // CacheLookup 이 완성 envelope 를 재사용하기로 결정한 경우(LLM 0). uiComposer~
+  // outputGuardrail 을 우회하고 곧장 진입(graph 조건부 엣지). 캐시된 ops 에서
+  // components/data 를 추출해 그대로 render_a2ui 툴콜로 재방출한다(생성·write 없음).
+  if (state.cacheHit === 'L0' && state.a2uiEnvelope) {
+    const cachedOps = state.a2uiEnvelope as Array<Record<string, unknown>>;
+    const { components, data } = extractFromEnvelope(cachedOps);
+    await emitRenderA2UIToolCall({ components, data }, config);
+    return { a2uiEnvelope: state.a2uiEnvelope };
+  }
+
   const template = resolveTemplate(state.intent);
 
   // ── 템플릿 있음 (W2: score) ──
@@ -170,6 +261,12 @@ export async function emitA2UI(
     // a2ui 미들웨어가 surface 렌더. 카드 자체가 응답이므로 별도 메시지는 두지 않는다
     // (요약 reaction 텍스트는 W2 범위 밖). a2uiEnvelope 는 state 디버그 채널로만 보관.
     await emitRenderA2UIToolCall(result, config);
+
+    // P2-W4 (4.5): MISS 경로 종단 — 완성 envelope 를 L0 캐시에 write(best-effort).
+    //   같은 intent+질의+팀이면 다음 요청은 LLM 0회로 재사용. score template 경로만
+    //   write(결정론적·비개인화). chat 등 LLM 응답 경로는 비결정이라 write 하지 않는다.
+    //   write 실패/DB 비활성은 응답에 영향 없음(await 하되 내부 try/catch 흡수).
+    await writeL0Cache(state, result.ops as Array<Record<string, unknown>>);
 
     return {
       a2uiEnvelope: result.ops,

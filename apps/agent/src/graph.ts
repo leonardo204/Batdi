@@ -52,7 +52,14 @@ export const graph = new StateGraph(CoreStateAnnotation)
     { emitA2UI: 'emitA2UI', intentRouter: 'intentRouter' },
   )
   .addEdge('intentRouter', 'cacheLookup')
-  .addEdge('cacheLookup', 'uiComposer')
+  // P2-W4 (4.5): L0 Envelope 캐시 HIT 시 완성 envelope 재사용 →
+  //   uiComposer/dataBinder/teamPersona/outputGuardrail 우회하고 emitA2UI 직행(LLM 0).
+  //   MISS 면 기존 흐름(uiComposer~)으로 진행 후 종단에서 캐시 write. (architecture §4.2)
+  .addConditionalEdges(
+    'cacheLookup',
+    (state) => (state.cacheHit === 'L0' ? 'emitA2UI' : 'uiComposer'),
+    { emitA2UI: 'emitA2UI', uiComposer: 'uiComposer' },
+  )
   .addEdge('uiComposer', 'dataBinder')
   // W6: TeamPersona(리액션 생성) → OutputGuardrail(검증) → EmitA2UI(방출).
   //   architecture §3.2 흐름. 차단 시엔 위 조건부 엣지로 emitA2UI 직행(이 경로 우회).

@@ -58,6 +58,11 @@ export const CoreStateAnnotation = Annotation.Root({
   cacheHit: Annotation<'L0' | 'L1' | 'L2' | 'L3' | 'miss'>(
     lastValue<'L0' | 'L1' | 'L2' | 'L3' | 'miss'>(),
   ),
+  // L0 캐시 키. CacheLookup 이 생성·보관하고, MISS 경로 종단(EmitA2UI)에서
+  // 완성 envelope 를 이 키로 write(upsert) 한다(SSOT: architecture §4.2).
+  //   `${intent}:${paramsHash}:${teamId ?? 'none'}:${personaScope}`
+  // 미설정(undefined) 이면 write skip(가드레일 차단·키 미생성 경로).
+  cacheKey: Annotation<string | undefined>(lastValue<string | undefined>()),
 
   // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──
   // L2 감정 리액션 텍스트. TeamPersona 가 score+template 경로에서만 생성하고,
