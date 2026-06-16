@@ -9,6 +9,12 @@
 //   react-core/v2 CopilotChat 은 a2ui activity 를 A2UIMessageRenderer 로 렌더한다.
 //   (Provider a2ui prop + runtime info a2uiEnabled:true 로 자동 활성). ADR-021.
 import { CopilotChat } from '@copilotkit/react-core/v2';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+// GET /api/auth/me 응답(부분)
+type AuthUser = { id: string; teamId?: string | null };
+type MeResponse = { user: AuthUser; onboarded: boolean };
 
 /**
  * 밧디 채팅 화면 (ADR-016 라운드트립 + ADR-020/021 A2UI 렌더)
@@ -18,8 +24,69 @@ import { CopilotChat } from '@copilotkit/react-core/v2';
  *
  * - agentId="batdi": api 측 CopilotRuntime.agents 키와 1:1 일치.
  * - threadId 는 CopilotChat 이 자동 생성한다(별도 처리 불필요).
+ *
+ * 인증 가드(최소 침습): 마운트 시 GET /api/auth/me 로 확인.
+ *   401 → /auth/login, onboarded=false → /onboarding 으로 redirect.
+ *   확인 전엔 로딩 표시. 인증 통과 시 user.teamId 로 data-team 을 걸어 팀 악센트 반영.
+ *   ⚠️ 기존 CopilotChat 렌더(<ChatSurface/>)는 변경 없음 — 래퍼만 추가.
  */
 export default function ChatPage() {
+  const router = useRouter();
+  const [authState, setAuthState] = useState<'checking' | 'ready'>('checking');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (cancelled) return;
+        if (res.status === 401 || !res.ok) {
+          router.replace('/auth/login');
+          return;
+        }
+        const data = (await res.json()) as MeResponse;
+        if (!data.onboarded) {
+          router.replace('/onboarding');
+          return;
+        }
+        // 팀 악센트 반영(전역 data-team)
+        if (data.user.teamId) {
+          document.documentElement.setAttribute('data-team', data.user.teamId);
+        }
+        setAuthState('ready');
+      } catch {
+        if (!cancelled) router.replace('/auth/login');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  // 인증 확인 중 — 로딩 표시
+  if (authState === 'checking') {
+    return (
+      <main
+        style={{
+          height: '100dvh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--color-bg)',
+          color: 'var(--color-text-muted)',
+          fontSize: 'var(--text-base)',
+        }}
+      >
+        확인 중…
+      </main>
+    );
+  }
+
+  return <ChatSurface />;
+}
+
+/** 기존 CopilotChat 렌더 — 인증 통과 후에만 마운트. 렌더 로직 변경 금지. */
+function ChatSurface() {
   return (
     <main
       style={{

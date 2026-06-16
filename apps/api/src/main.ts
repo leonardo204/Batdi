@@ -4,6 +4,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { createCopilotKitRouter } from './copilotkit.controller';
 
@@ -15,6 +16,10 @@ async function bootstrap(): Promise<void> {
     origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
     credentials: true,
   });
+
+  // 쿠키 파서 — Auth 가드(JwtAuthGuard)가 req.cookies['batdi_token'] 을 읽으려면 필요.
+  // CopilotKit 라우터/스텁보다 먼저 등록해 모든 라우트에서 req.cookies 가 채워지게 한다.
+  app.use(cookieParser());
 
   // 대화 목록(history) REST 조회 스텁 — 라우터보다 먼저 마운트해 가로챈다.
   // @copilotkit/core 는 채팅과 별개로 GET {runtimeUrl}/threads?agentId= 로 스레드

@@ -1,5 +1,6 @@
 import { BATDI_META, TEAM_IDS } from '@batdi/ui';
 import type { TeamId } from '@batdi/types';
+import Link from 'next/link';
 
 // 워크스페이스 링크 데모: @batdi/types 의 도메인 타입 사용
 const PRIORITY_TEAMS: { id: TeamId; label: string }[] = [
@@ -67,6 +68,22 @@ export default function HomePage() {
           </li>
         ))}
       </ul>
+
+      {/* 시작하기 CTA → 로그인 플로우 진입 */}
+      <Link
+        href="/auth/login"
+        style={{
+          padding: 'var(--space-3) var(--space-6)',
+          borderRadius: 'var(--radius-md)',
+          background: 'var(--team-accent)',
+          color: 'var(--color-bg)',
+          fontSize: 'var(--text-base)',
+          fontWeight: 'var(--fw-semibold)',
+          textDecoration: 'none',
+        }}
+      >
+        시작하기
+      </Link>
 
       <footer style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-subtle)' }}>
         지원 팀 ID: {TEAM_IDS.join(' · ')}

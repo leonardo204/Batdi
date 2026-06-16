@@ -30,6 +30,12 @@ const nextConfig = {
         source: '/api/copilotkit/:path*',
         destination: `${API_URL}/copilotkit/:path*`,
       },
+      // 인증 프록시 — 프론트는 same-origin /api/auth/* 로 호출, api(3001)/auth/* 로 프록시.
+      // JWT 는 HttpOnly 쿠키(batdi_token)로 오가므로 fetch 호출 시 credentials:'include' 필수.
+      {
+        source: '/api/auth/:path*',
+        destination: `${API_URL}/auth/:path*`,
+      },
     ];
   },
 };
