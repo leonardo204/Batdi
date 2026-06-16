@@ -49,6 +49,19 @@ export interface TeamSeasonRecordRow {
   streak: string;
 }
 
+/**
+ * 표 HTML 을 cheerio 로 안전하게 로드한다.
+ *
+ * ⚠️ cheerio v1(parse5)은 HTML 명세대로 `<table>` 조상이 없는 `<tbody>/<tr>/<td>` 를
+ *   foster-parenting 으로 폐기한다. 스크래퍼는 `#... > tbody` 의 outerHTML(= 맨몸 `<tbody>`)
+ *   을 넘기므로, 그대로 load 하면 `$('tr')` 가 0건이 된다(픽스처는 full `<table>` 라 통과해
+ *   회귀가 안 잡혔다). `<table>` 래퍼가 없으면 감싸서 table 컨텍스트를 보장한다.
+ */
+function loadRows(html: string): cheerio.CheerioAPI {
+  const wrapped = /<table[\s>]/i.test(html) ? html : `<table>${html}</table>`;
+  return cheerio.load(wrapped);
+}
+
 /** "season-MM-dd" 형태로 0-padding 한 ISO 날짜 문자열 생성 */
 function toIsoDate(season: number, month: string, day: string): string {
   const mm = month.padStart(2, '0');
@@ -81,7 +94,7 @@ export function parseGameSchedule(
   season: number,
   seriesType: SeriesTypeName,
 ): KboGameRow[] {
-  const $ = cheerio.load(tbodyHtml);
+  const $ = loadRows(tbodyHtml);
   const rows: KboGameRow[] = [];
 
   // 같은 날 같은 대진의 더블헤더 카운트 추적: "yyyyMMdd-away-home" → count
@@ -223,7 +236,7 @@ export function parseTeamSeasonRecord(
   tbodyHtml: string,
   season: number,
 ): TeamSeasonRecordRow[] {
-  const $ = cheerio.load(tbodyHtml);
+  const $ = loadRows(tbodyHtml);
   const rows: TeamSeasonRecordRow[] = [];
 
   $('tr').each((_, tr) => {

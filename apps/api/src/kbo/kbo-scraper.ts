@@ -123,10 +123,19 @@ export class KboScraper {
       await page.goto(TEAM_RANK_URL, { waitUntil: 'networkidle' });
 
       const series = getSeriesType(seriesName);
-      await page.selectOption(TEAM_RANK_SELECTORS.year, `${season}`);
-      await page.waitForLoadState('networkidle');
-      await page.selectOption(TEAM_RANK_SELECTORS.series, series.code);
-      await page.waitForLoadState('networkidle');
+      // 팀순위도 동일한 UpdatePanel 갱신 — 옛 테이블 detach 대기로 stale read 방지.
+      await this.selectAndWaitForTableReload(
+        page,
+        TEAM_RANK_SELECTORS.year,
+        `${season}`,
+        TEAM_RANK_SELECTORS.rankTable,
+      );
+      await this.selectAndWaitForTableReload(
+        page,
+        TEAM_RANK_SELECTORS.series,
+        series.teamRankCode, // ⚠️ 팀순위 페이지 전용 코드(정규=0). 일정 코드(0,9,6) 아님.
+        TEAM_RANK_SELECTORS.rankTable,
+      );
       await page.waitForSelector(TEAM_RANK_SELECTORS.rankTable);
 
       const html = await page
@@ -154,15 +163,51 @@ export class KboScraper {
     month: number,
     seriesCode: string,
   ): Promise<void> {
-    await page.selectOption(SCHEDULE_SELECTORS.year, `${season}`);
-    await page.waitForLoadState('networkidle');
-    await page.selectOption(
+    // ⚠️ 각 select 마다 ASP.NET UpdatePanel 부분 포스트백이 테이블을 교체한다.
+    //   networkidle 은 교체 전에 resolve 돼 stale/빈 테이블을 읽는 버그가 있었다(실측 0건).
+    //   → 선택 직전 테이블 핸들을 잡고 그 핸들이 detach 될 때까지 기다린다(레퍼런스
+    //     selectOptionAndWaitForDomChange 방식). 순서대로(year→month→series) 적용.
+    await this.selectAndWaitForTableReload(
+      page,
+      SCHEDULE_SELECTORS.year,
+      `${season}`,
+      SCHEDULE_SELECTORS.gamesTable,
+    );
+    await this.selectAndWaitForTableReload(
+      page,
       SCHEDULE_SELECTORS.month,
       String(month).padStart(2, '0'),
+      SCHEDULE_SELECTORS.gamesTable,
     );
-    await page.waitForLoadState('networkidle');
-    await page.selectOption(SCHEDULE_SELECTORS.series, seriesCode);
-    await page.waitForLoadState('networkidle');
+    await this.selectAndWaitForTableReload(
+      page,
+      SCHEDULE_SELECTORS.series,
+      seriesCode,
+      SCHEDULE_SELECTORS.gamesTable,
+    );
+  }
+
+  /**
+   * 드롭다운 선택 후 대상 테이블이 갱신될 때까지 대기한다(ASP.NET UpdatePanel 대응).
+   *
+   * 갱신 전 테이블 elementHandle 을 확보 → selectOption → 그 핸들이 detach(hidden)될
+   * 때까지 대기(부분 포스트백이 tbody 를 교체하면 옛 핸들이 사라진다). 타임아웃/예외는
+   * networkidle + 짧은 settle 로 폴백한다(graceful). 새 테이블 등장은 호출부 waitForSelector 가 보장.
+   */
+  private async selectAndWaitForTableReload(
+    page: Page,
+    selector: string,
+    value: string,
+    tableSelector: string,
+  ): Promise<void> {
+    const oldHandle = await page.$(tableSelector);
+    await page.selectOption(selector, value);
+    if (oldHandle) {
+      await oldHandle
+        .waitForElementState('hidden', { timeout: 10_000 })
+        .catch(() => undefined);
+    }
+    await page.waitForLoadState('networkidle').catch(() => undefined);
   }
 
   /**

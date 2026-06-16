@@ -26,6 +26,31 @@ function loadFixture(name: string): string {
   return readFileSync(join(FIXTURE_DIR, `${name}.html`), 'utf-8');
 }
 
+describe('parseGameSchedule — 맨몸 tbody 회귀 (스크래퍼 실입력 형태)', () => {
+  // ⚠️ 스크래퍼는 `#tblScheduleList > tbody` outerHTML(= 맨몸 <tbody>, <table> 래퍼 없음)을
+  //   넘긴다. cheerio v1(parse5)은 table 컨텍스트 없는 <tbody>/<tr> 를 foster-parenting 으로
+  //   폐기해 과거 0건 버그가 났다(픽스처는 full <table> 라 회귀 미검출). loadRows 의 래핑으로
+  //   맨몸 tbody 도 파싱돼야 한다. (실서비스 라이브 크롤 0건 → 137건 수정의 회귀 가드)
+  const bareTbody =
+    '<tbody>' +
+    '<tr><td class="day" rowspan="1">05.01(수)</td><td class="time"><b>18:30</b></td>' +
+    '<td class="play"><span>SSG</span><em><span class="win">8</span><span>vs</span>' +
+    '<span class="lose">7</span></em><span>한화</span></td>' +
+    '<td class="relay"><a>리뷰</a></td><td><a>하이라이트</a></td>' +
+    '<td>SPO</td><td></td><td>한밭</td><td>-</td></tr>' +
+    '</tbody>';
+
+  it('맨몸 tbody 도 행을 파싱한다(0건 버그 회귀 방지)', () => {
+    const rows = parseGameSchedule(bareTbody, 2024, 'REGULAR_SEASON');
+    expect(rows.length).toBe(1);
+    expect(rows[0]!.awayTeam).toBe('ssg');
+    expect(rows[0]!.homeTeam).toBe('hanwha');
+    expect(rows[0]!.awayScore).toBe(8);
+    expect(rows[0]!.homeScore).toBe(7);
+    expect(rows[0]!.gameStatus).toBe('FINISHED');
+  });
+});
+
 describe('parseGameSchedule — finished-games', () => {
   const rows = parseGameSchedule(loadFixture('finished-games'), 2025, 'REGULAR_SEASON');
 

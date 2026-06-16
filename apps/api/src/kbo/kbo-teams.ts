@@ -45,20 +45,22 @@ export function toTeamCode(teamName: string): TeamCode {
 export type SeriesTypeName = 'PRESEASON' | 'REGULAR_SEASON' | 'POSTSEASON';
 
 /**
- * 시리즈 타입 정의. `code` 는 KBO 드롭다운(`#ddlSeries`) value.
- * - PRESEASON: 시범경기 (1)
- * - REGULAR_SEASON: 정규시즌 (0,9,6)
- * - POSTSEASON: 포스트시즌 (3,4,5,7)
+ * 시리즈 타입 정의.
+ * - `code`: 경기일정 페이지(Schedule `#ddlSeries`) value — 시범1 / 정규 0,9,6 / 포스트 3,4,5,7.
+ * - `teamRankCode`: 팀순위 페이지(TeamRank `#...ddlSeries`) value — ⚠️ 일정 페이지와 다르다.
+ *   TeamRank 드롭다운은 `정규시즌=0`, `시범경기=1` 두 개뿐(포스트시즌 옵션 없음 → 0 으로 폴백).
+ *   과거 일정 코드(0,9,6)를 그대로 넘겨 selectOption 30s 타임아웃이 났다(실서비스 0팀 버그).
  */
 export interface SeriesType {
   readonly name: SeriesTypeName;
   readonly code: string;
+  readonly teamRankCode: string;
 }
 
 export const SERIES_TYPES: readonly SeriesType[] = [
-  { name: 'PRESEASON', code: '1' },
-  { name: 'REGULAR_SEASON', code: '0,9,6' },
-  { name: 'POSTSEASON', code: '3,4,5,7' },
+  { name: 'PRESEASON', code: '1', teamRankCode: '1' },
+  { name: 'REGULAR_SEASON', code: '0,9,6', teamRankCode: '0' },
+  { name: 'POSTSEASON', code: '3,4,5,7', teamRankCode: '0' },
 ] as const;
 
 /** 이름으로 시리즈 타입 조회 */
