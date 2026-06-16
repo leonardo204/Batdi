@@ -34,6 +34,7 @@ import {
   BATDI_SURFACE_ID,
   type BuildA2UIResult,
 } from '../databind/emit';
+import { getLangfuseHandler } from '../utils/langfuse';
 
 /**
  * A2UI 렌더 툴 이름 (ADR-020). 백엔드 a2ui 미들웨어의 a2uiToolNames 기본값과 일치해야
@@ -105,7 +106,12 @@ async function chatResponseText(state: CoreGraphState): Promise<string> {
     model: 'gemini-2.5-flash',
     apiKey,
   });
-  const response = await model.invoke(state.messages);
+  // Langfuse 트레이싱(1.5): 키 있으면 CallbackHandler 주입 → generation·토큰·비용 기록.
+  const handler = getLangfuseHandler();
+  const response = await model.invoke(
+    state.messages,
+    handler ? { callbacks: [handler] } : undefined,
+  );
   const content = response.content;
   return typeof content === 'string' ? content : JSON.stringify(content);
 }
