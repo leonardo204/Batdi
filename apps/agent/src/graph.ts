@@ -1,80 +1,51 @@
 /**
- * 밧디 (batdi) — Core StateGraph 골격 (ADR-016 LangGraph-over-HTTP)
+ * 밧디 (batdi) — Core StateGraph (P1-W2-A)
  *
- * 이번 P1은 "배선(wiring) 골격"이다. CopilotKit Runtime(api:3001)이
- * LangGraphAgent(deploymentUrl=http://localhost:8123, graphId="batdi") 를 통해
- * 이 그래프를 HTTP로 호출한다.
+ * SSOT: Ref-docs/specs/design/batdi-architecture.md §3.2 (노드 흐름),
+ *       Ref-docs/specs/interface/batdi-routing.md (IntentRouter)
  *
- * 키(GOOGLE_API_KEY) 없이도 라운드트립이 동작하도록:
- *   - 키 있으면 ChatGoogleGenerativeAI(gemini-2.5-flash)로 실응답
- *   - 키 없으면 캔드(canned) 응답 — "🦇 밧디(스켈레톤): {입력} 받음"
+ * W2 직선 파이프라인 (결정론, LLM은 chat fallthrough에서만):
+ *   START → Normalizer → InputGuardrail → IntentRouter → CacheLookup
+ *         → UIComposer → DataBinder → OutputGuardrail → EmitA2UI → END
  *
- * TODO(architecture §3): 아래 골격을 다음 단계에서 확장한다.
- *   - Normalizer 노드: NFKC+자모+homoglyph+이모지 제거 (userMessageNormalized)
- *   - IntentRouter 노드: 키워드/정규식 라우팅 (LLM 미사용), 미매칭 → chat
- *   - ServiceSubgraph 분기 + CacheLookup (L0~L3)
- *   - Core State 확장: user/team/level/profile/serviceDataSummary/serviceDataRef
+ * 보존 계약:
+ *  - messages 채널 보존(MessagesAnnotation.spec) → CopilotKit 라운드트립/브라우저 채팅.
+ *  - EmitA2UI: score 는 render_a2ui 툴콜을 manually_emit_tool_call 커스텀 이벤트로
+ *    스트리밍 방출(W2-B, ADR-020 Path C) → a2ui 미들웨어가 surface 렌더.
+ *    chat 은 plain text AIMessage(기존 채팅 E2E 유지). a2uiEnvelope 는 state 디버그 채널.
+ *  - langgraph.json graphId "batdi" 유지.
+ *
+ * W2 제외(P2+): ServiceSubgraph 분기, 실제 캐시(L0~L3), PersonalContext/TeamPersona,
+ *   LangGraph 병렬 실행(Promise.all), LLM UIComposer(composite).
  */
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { AIMessage, type BaseMessage } from '@langchain/core/messages';
-import { END, MessagesAnnotation, START, StateGraph } from '@langchain/langgraph';
+import { END, START, StateGraph } from '@langchain/langgraph';
+import { CoreStateAnnotation } from './state';
+import { normalizer } from './nodes/normalizer';
+import { inputGuardrail } from './nodes/input-guardrail';
+import { intentRouter } from './nodes/intent-router';
+import { cacheLookup } from './nodes/cache-lookup';
+import { uiComposer } from './nodes/ui-composer';
+import { dataBinder } from './nodes/data-binder';
+import { outputGuardrail } from './nodes/output-guardrail';
+import { emitA2UI } from './nodes/emit-a2ui';
 
-/** BaseMessage.content(string | 복합 블록)을 안전하게 평문으로 환원 */
-function messageText(message: BaseMessage | undefined): string {
-  if (message === undefined) {
-    return '';
-  }
-  const content = message.content;
-  if (typeof content === 'string') {
-    return content;
-  }
-  // 복합 콘텐츠 블록 배열 → text 블록만 이어붙임
-  return content
-    .map((block) => {
-      if (typeof block === 'string') {
-        return block;
-      }
-      if (block != null && typeof block === 'object' && 'text' in block) {
-        const text = (block as { text?: unknown }).text;
-        return typeof text === 'string' ? text : '';
-      }
-      return '';
-    })
-    .join(' ')
-    .trim();
-}
-
-/**
- * Core 채팅 노드 — 마지막 user 메시지를 받아 AI 응답을 생성한다.
- * (골격: 키 유무에 따라 실응답/캔드 응답으로 분기)
- */
-async function chat(
-  state: typeof MessagesAnnotation.State,
-): Promise<Partial<typeof MessagesAnnotation.State>> {
-  const messages = state.messages;
-  const lastMessage = messages[messages.length - 1];
-  const userText = messageText(lastMessage);
-
-  const apiKey = process.env.GOOGLE_API_KEY;
-
-  // 키 없음 → 캔드 응답 (라운드트립 실증용, 비용 0)
-  if (apiKey === undefined || apiKey.trim() === '') {
-    const canned = `🦇 밧디(스켈레톤): "${userText}" 받음`;
-    return { messages: [new AIMessage(canned)] };
-  }
-
-  // 키 있음 → Gemini 2.5 Flash 실응답
-  const model = new ChatGoogleGenerativeAI({
-    model: 'gemini-2.5-flash',
-    apiKey,
-  });
-  const response = await model.invoke(messages);
-  return { messages: [response] };
-}
-
-/** Core StateGraph: START → chat → END */
-export const graph = new StateGraph(MessagesAnnotation)
-  .addNode('chat', chat)
-  .addEdge(START, 'chat')
-  .addEdge('chat', END)
+/** Core StateGraph — 직선 배선 */
+export const graph = new StateGraph(CoreStateAnnotation)
+  .addNode('normalizer', normalizer)
+  .addNode('inputGuardrail', inputGuardrail)
+  .addNode('intentRouter', intentRouter)
+  .addNode('cacheLookup', cacheLookup)
+  .addNode('uiComposer', uiComposer)
+  .addNode('dataBinder', dataBinder)
+  .addNode('outputGuardrail', outputGuardrail)
+  .addNode('emitA2UI', emitA2UI)
+  .addEdge(START, 'normalizer')
+  .addEdge('normalizer', 'inputGuardrail')
+  .addEdge('inputGuardrail', 'intentRouter')
+  .addEdge('intentRouter', 'cacheLookup')
+  .addEdge('cacheLookup', 'uiComposer')
+  .addEdge('uiComposer', 'dataBinder')
+  .addEdge('dataBinder', 'outputGuardrail')
+  .addEdge('outputGuardrail', 'emitA2UI')
+  .addEdge('emitA2UI', END)
   .compile();
