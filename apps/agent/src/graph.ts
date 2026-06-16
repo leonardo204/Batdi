@@ -25,6 +25,7 @@ import { inputGuardrail } from './nodes/input-guardrail';
 import { semanticGuardrail } from './nodes/semantic-guardrail';
 import { intentRouter } from './nodes/intent-router';
 import { cacheLookup } from './nodes/cache-lookup';
+import { personalContext } from './nodes/personal-context';
 import { uiComposer } from './nodes/ui-composer';
 import { dataBinder } from './nodes/data-binder';
 import { teamPersona } from './nodes/team-persona';
@@ -38,6 +39,8 @@ export const graph = new StateGraph(CoreStateAnnotation)
   .addNode('semanticGuardrail', semanticGuardrail)
   .addNode('intentRouter', intentRouter)
   .addNode('cacheLookup', cacheLookup)
+  // 노드명은 state 채널명(personalContext)과 충돌하므로 personalContextNode 로 둔다.
+  .addNode('personalContextNode', personalContext)
   .addNode('uiComposer', uiComposer)
   .addNode('dataBinder', dataBinder)
   .addNode('teamPersona', teamPersona)
@@ -66,13 +69,19 @@ export const graph = new StateGraph(CoreStateAnnotation)
   )
   .addEdge('intentRouter', 'cacheLookup')
   // P2-W4 (4.5): L0 Envelope 캐시 HIT 시 완성 envelope 재사용 →
-  //   uiComposer/dataBinder/teamPersona/outputGuardrail 우회하고 emitA2UI 직행(LLM 0).
-  //   MISS 면 기존 흐름(uiComposer~)으로 진행 후 종단에서 캐시 write. (architecture §4.2)
+  //   personalContext/uiComposer/dataBinder/teamPersona/outputGuardrail 우회하고
+  //   emitA2UI 직행(LLM 0). MISS 면 PersonalContext(개인화 조립) → uiComposer~ 로 진행 후
+  //   종단에서 캐시 write. (architecture §4.2)
+  // P2-W6 (6.3): MISS 경로 진입점을 personalContext 로 변경. PersonalAgent 가 DB 에서
+  //   개인화 컨텍스트를 조립해 PromptBuilder 주입·L0 캐시 가드(Cache Poisoning 방지)에 쓴다.
+  //   ⚠️ SSOT §4.7 의 PersonalContext || ServiceSubgraph 병렬은 ServiceSubgraph(W5)
+  //      도입 시 적용. 현재는 ServiceSubgraph 부재로 순차로 둔다.
   .addConditionalEdges(
     'cacheLookup',
-    (state) => (state.cacheHit === 'L0' ? 'emitA2UI' : 'uiComposer'),
-    { emitA2UI: 'emitA2UI', uiComposer: 'uiComposer' },
+    (state) => (state.cacheHit === 'L0' ? 'emitA2UI' : 'personalContextNode'),
+    { emitA2UI: 'emitA2UI', personalContextNode: 'personalContextNode' },
   )
+  .addEdge('personalContextNode', 'uiComposer')
   .addEdge('uiComposer', 'dataBinder')
   // W6: TeamPersona(리액션 생성) → OutputGuardrail(검증) → EmitA2UI(방출).
   //   architecture §3.2 흐름. 차단 시엔 위 조건부 엣지로 emitA2UI 직행(이 경로 우회).

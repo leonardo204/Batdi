@@ -38,6 +38,7 @@ import {
 } from '../databind/emit';
 import { getLangfuseHandler, logUiInvalidEvent } from '../utils/langfuse';
 import { getPrisma } from '../utils/prisma';
+import { isPersonalized } from '../personal/personal-agent';
 import { buildCacheKey, personaScopeFor } from './cache-lookup';
 
 /**
@@ -132,8 +133,10 @@ function extractFromEnvelope(ops: Array<Record<string, unknown>>): {
  * - cacheKey 미설정(가드레일 차단 등)이면 write skip.
  * - DB 비활성/에러는 무시(응답 정상). hit_count 는 신규 0(증분은 조회 시).
  *
- * ⚠️ 개인화 응답(향후 custom_persona/personal_profile 주입) write 금지 — Cache Poisoning
- *    방지. 현재(P2)는 개인화 미구현이라 항상 비개인화 → score 경로만 write.
+ * ⚠️ 개인화 응답(custom_persona/personal_profile/favorites 주입) write 금지 — Cache
+ *    Poisoning 방지(CLAUDE.md 불변식·§4.2). P2-W6 6.3: state.personalContext 가
+ *    isPersonalized() true 면(커스텀 페르소나/관심 선수 보유) 개인화 reaction 이
+ *    비개인화 키로 캐시돼 다른 사용자에게 누출되므로 write 를 SKIP 한다.
  */
 async function writeL0Cache(
   state: CoreGraphState,
@@ -141,6 +144,10 @@ async function writeL0Cache(
 ): Promise<void> {
   if (state.cacheKey === undefined || state.cacheKey.trim() === '') {
     return; // 키 미생성 → skip
+  }
+  // L0 캐시 포이즌 가드(§4.2): 개인화 응답은 비개인화 키로 write 금지.
+  if (isPersonalized(state.personalContext)) {
+    return; // 개인화 응답 → L0 write SKIP(Cache Poisoning 방지)
   }
   const prisma = getPrisma();
   if (!prisma) {

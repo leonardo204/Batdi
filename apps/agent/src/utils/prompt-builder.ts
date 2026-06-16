@@ -17,8 +17,9 @@
  * W7: 우선 지원 4팀(hanwha/doosan/kia/lotte) 페르소나를 모두 구현한다.
  *   미지정(undefined)·범위 외 teamId 는 hanwha 페르소나로 폴백한다(중립 폴백).
  */
-import type { TeamId } from '@batdi/types';
+import type { PersonalContext, TeamId } from '@batdi/types';
 import { ChildSafetyGuardrail } from '../nodes/child-safety';
+import { isPersonalized } from '../personal/personal-agent';
 import {
   HANWHA_PERSONA_BODY,
   HANWHA_STYLE,
@@ -112,6 +113,51 @@ export interface BuildReactionPromptInput {
   scoreSummary: string;
   /** 사용자 원문 메시지 */
   userMessage: string;
+  /**
+   * 개인화 컨텍스트(P2-W6 6.3). 의미있는 개인화 정보(isPersonalized)가 있을 때만
+   * `<personal_profile priority="3">` 블록을 system_base(1)와 team_persona(4) 사이에
+   * 삽입한다(priority 순서). 중립 기본값/미지정이면 블록을 생략한다(프롬프트 변화 없음).
+   */
+  personalContext?: PersonalContext;
+}
+
+/** knowledgeLevel → 프롬프트 톤 가이드 한 줄 */
+const KNOWLEDGE_LEVEL_HINT: Record<
+  PersonalContext['profile']['knowledgeLevel'],
+  string
+> = {
+  beginner: '야구 입문자 — 어려운 용어는 풀어서 쉽게 설명하라.',
+  core: '핵심 팬 — 적당한 전문 용어를 자연스럽게 섞어도 좋다.',
+  expert: '하드코어 팬 — 세이버메트릭스 등 깊은 디테일을 다뤄도 된다.',
+};
+
+/**
+ * `<personal_profile priority="3">` 블록을 조립한다(개인화 정보 있을 때만).
+ * 개인화 정보가 전혀 없으면(isPersonalized=false) 빈 문자열을 반환해 블록을 생략한다.
+ *
+ * 포함: knowledgeLevel(톤), customPersona(있으면), isReturningUser 힌트.
+ * ⚠️ 팩트(수치) 주입 금지 계약은 그대로 — 여기엔 톤/페르소나 메타만 담는다.
+ */
+function buildPersonalProfileBlock(ctx: PersonalContext | undefined): string {
+  if (!isPersonalized(ctx) || !ctx) {
+    return '';
+  }
+  const lines: string[] = [];
+  lines.push(`  <knowledge_level>${ctx.profile.knowledgeLevel}</knowledge_level>`);
+  lines.push(`  ${KNOWLEDGE_LEVEL_HINT[ctx.profile.knowledgeLevel]}`);
+  if (ctx.hints.hasCustomPersona && ctx.profile.customPersona) {
+    lines.push(
+      `  <custom_persona>${ctx.profile.customPersona.trim()}</custom_persona>`,
+    );
+  }
+  if (ctx.hints.isReturningUser) {
+    lines.push('  다시 찾아온 친구야 — 반갑게 맞이하되 과하지 않게.');
+  }
+  return `<personal_profile priority="3">
+${lines.join('\n')}
+</personal_profile>
+
+`;
 }
 
 /**
@@ -126,18 +172,22 @@ export interface BuildReactionPromptInput {
  * @returns 조립된 시스템 프롬프트 문자열 (Context Caching 미사용 — 매 요청 주입)
  */
 export function buildReactionPrompt(input: BuildReactionPromptInput): string {
-  const { teamId, scoreSummary, userMessage } = input;
+  const { teamId, scoreSummary, userMessage, personalContext } = input;
   const persona = resolveTeamPersona(teamId);
 
   const systemBase = `${ChildSafetyGuardrail.SYSTEM_INSTRUCTION.trim()}
 
 ${REACTION_SYSTEM_DIRECTIVE}`;
 
+  // priority=3 personal_profile — system_base(1) 와 team_persona(4) 사이에 삽입.
+  // 개인화 정보 없으면 빈 문자열(블록 생략 → 프롬프트 변화 없음).
+  const personalProfileBlock = buildPersonalProfileBlock(personalContext);
+
   return `<system_base priority="1" immutable="true">
 ${systemBase}
 </system_base>
 
-<team_persona priority="4">
+${personalProfileBlock}<team_persona priority="4">
   <team>${persona.team}</team>
   <style>${persona.style}</style>
 ${persona.body}

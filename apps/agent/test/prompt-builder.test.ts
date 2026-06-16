@@ -4,7 +4,8 @@ import {
   resolveTeamPersona,
   cannedReactionFor,
 } from '../src/utils/prompt-builder';
-import type { TeamId } from '@batdi/types';
+import type { PersonalContext, TeamId } from '@batdi/types';
+import { DEFAULT_PERSONAL_CONTEXT } from '../src/personal/personal-agent';
 
 describe('PromptBuilder.buildReactionPrompt — XML 블록 구조 (§9.1)', () => {
   const prompt = buildReactionPrompt({
@@ -95,6 +96,77 @@ describe('PromptBuilder.buildReactionPrompt — 팀별 말투 주입', () => {
     });
     expect(p).toContain('<team>lotte</team>');
     expect(p).toMatch(/아이가|카이|기라/);
+  });
+});
+
+describe('PromptBuilder.buildReactionPrompt — personal_profile(priority=3) 주입 (6.3)', () => {
+  it('personalContext 미지정 → personal_profile 블록 없음', () => {
+    const p = buildReactionPrompt({
+      teamId: 'hanwha',
+      scoreSummary: '한화 0 : 0 롯데',
+      userMessage: '어때?',
+    });
+    expect(p).not.toContain('<personal_profile');
+  });
+
+  it('중립 기본값(개인화 없음) → personal_profile 블록 없음', () => {
+    const p = buildReactionPrompt({
+      teamId: 'hanwha',
+      scoreSummary: '한화 0 : 0 롯데',
+      userMessage: '어때?',
+      personalContext: DEFAULT_PERSONAL_CONTEXT,
+    });
+    expect(p).not.toContain('<personal_profile');
+  });
+
+  it('customPersona 있음 → personal_profile(priority=3) 포함 + knowledgeLevel 반영', () => {
+    const ctx: PersonalContext = {
+      profile: {
+        teamId: 'hanwha',
+        knowledgeLevel: 'expert',
+        customPersona: '반말로 까칠하게',
+        favoritePlayerIds: [],
+      },
+      session: { messageCount: 5, lastActiveIso: null },
+      hints: { isReturningUser: true, hasCustomPersona: true },
+    };
+    const p = buildReactionPrompt({
+      teamId: 'hanwha',
+      scoreSummary: '한화 0 : 0 롯데',
+      userMessage: '어때?',
+      personalContext: ctx,
+    });
+    expect(p).toContain('<personal_profile priority="3">');
+    expect(p).toContain('</personal_profile>');
+    expect(p).toContain('<knowledge_level>expert</knowledge_level>');
+    expect(p).toContain('<custom_persona>반말로 까칠하게</custom_persona>');
+    // priority 순서: system_base(1) → personal_profile(3) → team_persona(4)
+    expect(p.indexOf('<system_base')).toBeLessThan(p.indexOf('<personal_profile'));
+    expect(p.indexOf('<personal_profile')).toBeLessThan(
+      p.indexOf('<team_persona'),
+    );
+  });
+
+  it('favorites 만 있어도(customPersona 없음) personal_profile 포함 + knowledgeLevel', () => {
+    const ctx: PersonalContext = {
+      profile: {
+        teamId: 'kia',
+        knowledgeLevel: 'core',
+        customPersona: null,
+        favoritePlayerIds: [101, 202],
+      },
+      session: { messageCount: 0, lastActiveIso: null },
+      hints: { isReturningUser: false, hasCustomPersona: false },
+    };
+    const p = buildReactionPrompt({
+      teamId: 'kia',
+      scoreSummary: '기아 0 : 0 삼성',
+      userMessage: '어때?',
+      personalContext: ctx,
+    });
+    expect(p).toContain('<personal_profile priority="3">');
+    expect(p).toContain('<knowledge_level>core</knowledge_level>');
+    expect(p).not.toContain('<custom_persona>');
   });
 });
 

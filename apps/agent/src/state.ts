@@ -11,6 +11,7 @@ import type {
   A2UIEnvelope,
   GuardrailResult,
   Intent,
+  PersonalContext,
   TeamId,
 } from '@batdi/types';
 
@@ -63,6 +64,15 @@ export const CoreStateAnnotation = Annotation.Root({
   //   `${intent}:${paramsHash}:${teamId ?? 'none'}:${personaScope}`
   // 미설정(undefined) 이면 write skip(가드레일 차단·키 미생성 경로).
   cacheKey: Annotation<string | undefined>(lastValue<string | undefined>()),
+
+  // ── 개인화 (PersonalContext 노드, P2-W6 6.3) ──
+  // PersonalAgent 가 DB(User·PersonalAgentState)에서 조립한 개인화 컨텍스트.
+  //   - PromptBuilder 가 `<personal_profile priority="3">` 주입에 사용(개인화 정보 있을 때만).
+  //   - EmitA2UI 가 isPersonalized() 로 L0 캐시 write 가드(Cache Poisoning 방지, §4.2).
+  // best-effort: DB 비활성/없음 시 중립 기본값(개인화 없음). MISS 경로에서만 채워진다.
+  personalContext: Annotation<PersonalContext | undefined>(
+    lastValue<PersonalContext | undefined>(),
+  ),
 
   // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──
   // L2 감정 리액션 텍스트. TeamPersona 가 score+template 경로에서만 생성하고,

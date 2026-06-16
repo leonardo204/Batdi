@@ -28,6 +28,44 @@ export interface UserProfile {
 }
 
 /**
+ * PersonalContext (P2-W6 6.3) — PersonalAgent 가 DB(User·PersonalAgentState)에서
+ * 조립하는 개인화 컨텍스트. PromptBuilder 의 `<personal_profile priority="3">` 주입과
+ * L0 캐시 포이즌 가드(isPersonalized)에 사용한다.
+ *
+ * SSOT: Ref-docs/specs/design/batdi-architecture.md §9.1 (프롬프트 계층 priority),
+ *       §4.2 (L0 캐시는 비개인화 응답만 — Cache Poisoning 방지)
+ *
+ * best-effort: DB 비활성/레코드 없음/조회 실패 시 중립 기본값(개인화 없음)으로 폴백한다.
+ */
+export interface PersonalContext {
+  /** 프로필 — 응원 팀·지식 레벨·커스텀 페르소나·관심 선수 */
+  profile: {
+    /** 응원 팀 (User.teamId 가 우선 지원 4팀일 때만, 그 외/없음 → null) */
+    teamId: TeamId | null;
+    /** 야구 지식 레벨 (User.level 기반: 1-2 beginner, 3-5 core, 6+ expert) */
+    knowledgeLevel: 'beginner' | 'core' | 'expert';
+    /** 커스텀 페르소나 (가드레일 통과 후 저장된 사용자 지정 톤) */
+    customPersona: string | null;
+    /** 관심 선수 ID 목록 (PersonalAgentState.favoritePlayers) */
+    favoritePlayerIds: number[];
+  };
+  /** 세션 통계 */
+  session: {
+    /** 누적 메시지 수 (PersonalAgentState.messageCount) */
+    messageCount: number;
+    /** 마지막 활동 시각 ISO (없으면 null) */
+    lastActiveIso: string | null;
+  };
+  /** 파생 힌트 (프롬프트 톤 조절용) */
+  hints: {
+    /** 재방문 사용자 여부 (messageCount > 0) */
+    isReturningUser: boolean;
+    /** 커스텀 페르소나 보유 여부 */
+    hasCustomPersona: boolean;
+  };
+}
+
+/**
  * IntentRouter 결과 (LLM 미사용 — 키워드·정규식 라우팅)
  *
  * SSOT: Ref-docs/specs/interface/batdi-routing.md §2 (canonical 7종)

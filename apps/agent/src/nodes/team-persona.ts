@@ -60,6 +60,8 @@ async function generateReaction(
       teamId: state.teamId,
       scoreSummary,
       userMessage: state.userMessage,
+      // P2-W6 6.3: 개인화 컨텍스트 주입 — 개인화 정보 있을 때만 personal_profile 블록 추가.
+      personalContext: state.personalContext,
     });
     const model = new ChatGoogleGenerativeAI({
       model: 'gemini-2.5-flash',
