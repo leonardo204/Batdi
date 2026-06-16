@@ -12,6 +12,7 @@
     "dev:agent": "turbo run dev --filter=@batdi/agent",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
+    "test": "vitest run",
     "lint": "turbo run lint",
     "clean": "turbo run clean && rm -rf node_modules"
   },
@@ -21,6 +22,7 @@
     "prettier": "^3.4.2",
     "turbo": "^2.3.3",
     "typescript": "^5.4.5",
-    "typescript-eslint": "^8.18.1"
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^4.0.18"
   }
 }

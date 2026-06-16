@@ -14,8 +14,8 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
-    "@batdi/types": "workspace:*",
-    "ajv": "^8.17.1"
+    "@ag-ui/a2ui-toolkit": "0.0.3",
+    "@batdi/types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

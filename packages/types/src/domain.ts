@@ -27,5 +27,32 @@ export interface UserProfile {
   theme: ThemeMode;
 }
 
-/** IntentRouter 결과 (LLM 미사용 — 키워드·정규식 라우팅) */
-export type Intent = 'score' | 'news' | 'stat' | 'schedule' | 'chat';
+/**
+ * IntentRouter 결과 (LLM 미사용 — 키워드·정규식 라우팅)
+ *
+ * SSOT: Ref-docs/specs/interface/batdi-routing.md §2 (canonical 7종)
+ * - `standings`는 별도 intent가 아니라 `stats` 하위(`statType='standings'`)로 흡수.
+ * - 미매칭 시 `chat`이 기본값(fallthrough).
+ */
+export type Intent =
+  | 'score' // 실시간 스코어·경기 진행
+  | 'stats' // 선수/팀 통계 (순위·승률 = statType:'standings' 하위)
+  | 'news' // 뉴스·기사·소식
+  | 'schedule' // 경기 일정
+  | 'lineup' // 선발·라인업
+  | 'meme' // 밈·유머
+  | 'chat'; // 잡담 (미매칭 기본값)
+
+/**
+ * 가드레일 검사 결과 (Input/Output 공용 stub)
+ *
+ * SSOT: Ref-docs/specs/design/batdi-persona-guardrail.md (3중 검증)
+ * ⚠️ W2 범위에서는 항상 `{ pass: true }` 고정 stub. 실제 일베/비속어/
+ *    프롬프트해킹/아동보호/Semantic 검사는 W4+에서 보강.
+ */
+export interface GuardrailResult {
+  /** 통과 여부 */
+  pass: boolean;
+  /** 차단 사유 코드 (pass=false 일 때) */
+  reason?: string;
+}
