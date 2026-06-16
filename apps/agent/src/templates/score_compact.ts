@@ -12,10 +12,14 @@
  *    ├ Text  (정적 타이틀 "스코어")
  *    ├ Row   (홈)  → Text {{bind:"home.name"}}, Text {{bind:"home.score"}}
  *    ├ Row   (원정)→ Text {{bind:"away.name"}}, Text {{bind:"away.score"}}
- *    └ Text  {{bind:"inning"}}
+ *    ├ Text  {{bind:"inning"}}
+ *    └ Text  {{llm.reaction}}  ← LLM 감정 리액션 슬롯 (P2-W6)
  *
- * authoring 표기: prop 값에 `{{bind:"점.경로"}}` 문자열을 둔다.
- * DataBinder가 이를 JSON Pointer 슬롯 `{ "path": "/점/경로" }`로 컴파일한다.
+ * authoring 표기:
+ *  - `{{bind:"점.경로"}}` (DB 수치) → JSON Pointer 슬롯 `{ "path": "/점/경로" }`로 컴파일.
+ *  - `{{llm.reaction}}` (LLM 감정 리액션) → 슬롯 `{ "path": "/reaction" }`로 컴파일.
+ *    두 슬롯은 종류가 다르다: 수치는 DataBinder, 리액션은 EmitA2UI 가 /reaction 에 주입.
+ *    ⚠️ 리액션 텍스트엔 숫자 금지 — 수치는 오직 {{bind}} 슬롯만 (CLAUDE.md).
  */
 
 /** authoring 바인딩 표기 헬퍼 — `{{bind:"path"}}` */
@@ -31,7 +35,7 @@ export const SCORE_COMPACT_COMPONENTS: Array<Record<string, unknown>> = [
   {
     id: 'root',
     component: 'Column',
-    children: ['title', 'home_row', 'away_row', 'inning'],
+    children: ['title', 'home_row', 'away_row', 'inning', 'reaction'],
   },
   { id: 'title', component: 'Text', text: '스코어', variant: 'h3' },
   {
@@ -51,6 +55,8 @@ export const SCORE_COMPACT_COMPONENTS: Array<Record<string, unknown>> = [
   { id: 'away_name', component: 'Text', text: bind('away.name') },
   { id: 'away_score', component: 'Text', text: bind('away.score') },
   { id: 'inning', component: 'Text', text: bind('inning'), variant: 'caption' },
+  // LLM 감정 리액션 슬롯 — 값은 EmitA2UI 가 data model /reaction 에 주입.
+  { id: 'reaction', component: 'Text', text: '{{llm.reaction}}', variant: 'body' },
 ];
 
 /**

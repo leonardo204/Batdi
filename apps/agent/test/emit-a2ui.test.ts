@@ -4,7 +4,12 @@ import { buildA2UIOps, buildFallbackComponents } from '../src/databind/emit';
 import { compileBindings, getStubScoreData } from '../src/databind/compile';
 import { SCORE_COMPACT_COMPONENTS } from '../src/templates/score_compact';
 
-const stubData = getStubScoreData() as unknown as Record<string, unknown>;
+// score_compact 는 {{bind}} 수치 슬롯 + {{llm.reaction}} 슬롯(/reaction)을 가진다.
+// 따라서 valid 검증용 데이터 모델엔 stub 수치 + reaction 을 함께 넣는다 (P2-W6).
+const stubData = {
+  ...(getStubScoreData() as unknown as Record<string, unknown>),
+  reaction: '오 좋은데유~ 화이팅이여!',
+};
 
 describe('validateBatdiA2UI — 정상 score ops', () => {
   it('컴파일된 score_compact + stub 데이터 → valid:true', () => {

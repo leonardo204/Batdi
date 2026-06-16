@@ -6,12 +6,21 @@
  *
  *  - authoring 표기 `{{bind:"home.score"}}` → A2UI 값 슬롯 `{ path: "/home/score" }`
  *    (점경로 → JSON Pointer, 선행 슬래시, 점은 슬래시로 치환)
+ *  - authoring 표기 `{{llm.reaction}}` → A2UI 값 슬롯 `{ path: "/reaction" }`
+ *    (LLM 감정 리액션 전용 슬롯. {{bind}}=DB 수치와 별개 종류이며 경로는 /reaction 고정.
+ *     리액션 텍스트는 EmitA2UI 가 data model /reaction 에 주입한다 — P2-W6)
  *  - 정적 문자열/숫자/불리언/children(id 배열)은 그대로 보존.
  */
 import type { Intent } from '@batdi/types';
 
 /** `{{bind:"path"}}` 형태 문자열을 감지하는 정규식 (전체 일치) */
 const BIND_RE = /^\{\{bind:"([^"]+)"\}\}$/;
+
+/** `{{llm.reaction}}` 형태 문자열을 감지하는 정규식 (전체 일치) */
+const LLM_REACTION_RE = /^\{\{llm\.reaction\}\}$/;
+
+/** LLM 리액션 값이 주입되는 data model JSON Pointer 경로 (고정) */
+export const REACTION_DATA_PATH = '/reaction';
 
 /** 점경로(`home.score`) → JSON Pointer(`/home/score`) */
 export function dotPathToJsonPointer(dotPath: string): string {
@@ -32,6 +41,11 @@ export function compileBindings(
         const m = BIND_RE.exec(value);
         if (m && m[1] !== undefined) {
           out[key] = { path: dotPathToJsonPointer(m[1]) };
+          continue;
+        }
+        // {{llm.reaction}} → /reaction 슬롯 (LLM 감정 리액션 전용, bind 와 구분)
+        if (LLM_REACTION_RE.test(value)) {
+          out[key] = { path: REACTION_DATA_PATH };
           continue;
         }
       }
