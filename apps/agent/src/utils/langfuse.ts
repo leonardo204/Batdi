@@ -42,3 +42,48 @@ export function getLangfuseHandler(): CallbackHandler | undefined {
   cached = new CallbackHandler({ publicKey, secretKey, baseUrl });
   return cached;
 }
+
+/** llm_ui_invalid 이벤트 페이로드 (palette-schema §5.4(2)) */
+export interface UiInvalidEvent {
+  /** 발생 단계 (예: 'score', 'chat', 'cache-l0') */
+  stage: string;
+  /** validateBatdiA2UI 위반 코드 목록 (머신리더블) */
+  errorCodes: string[];
+  /** surface id (디버그용) */
+  surfaceId?: string;
+}
+
+/**
+ * A2UI 검증 실패(깊이/노드/카탈로그/바인딩) → L1 폴백 시 `llm_ui_invalid` 이벤트를
+ * Langfuse 에 비동기 기록한다(palette-schema §5.4(2)/ADR-019, 개발자 프롬프트 튜닝용).
+ *
+ * best-effort: 키 미설정(handler undefined)·SDK 형상 차이·전송 실패는 모두 삼킨다
+ *   (관측 실패가 그래프 실행/레이턴시를 막지 않는다 — UIValidator 재호출 금지 원칙과 일관).
+ * CallbackHandler 가 노출하는 코어 `langfuse` 클라이언트로 trace+event 를 1건 남긴다.
+ */
+export function logUiInvalidEvent(event: UiInvalidEvent): void {
+  const handler = getLangfuseHandler();
+  if (handler === undefined) return;
+  try {
+    const client = (handler as unknown as {
+      langfuse?: {
+        trace: (b: Record<string, unknown>) => {
+          event: (e: Record<string, unknown>) => unknown;
+        };
+      };
+    }).langfuse;
+    if (client === undefined) return;
+    client
+      .trace({
+        name: 'llm_ui_invalid',
+        metadata: { stage: event.stage, surfaceId: event.surfaceId },
+      })
+      .event({
+        name: 'llm_ui_invalid',
+        level: 'WARNING',
+        metadata: { stage: event.stage, errorCodes: event.errorCodes },
+      });
+  } catch {
+    // best-effort — 관측 실패는 무시
+  }
+}

@@ -36,7 +36,7 @@ import {
   BATDI_SURFACE_ID,
   type BuildA2UIResult,
 } from '../databind/emit';
-import { getLangfuseHandler } from '../utils/langfuse';
+import { getLangfuseHandler, logUiInvalidEvent } from '../utils/langfuse';
 import { getPrisma } from '../utils/prisma';
 import { buildCacheKey, personaScopeFor } from './cache-lookup';
 
@@ -57,17 +57,16 @@ const MANUALLY_EMIT_TOOL_CALL = 'manually_emit_tool_call';
 /**
  * A2UI 폴백 발생 시 관측 신호.
  * SSOT: palette-schema §5.4(2)/ADR-019 — 검증 실패 페이로드는 `llm_ui_invalid`
- * 이벤트로 비동기 기록해야 한다.
- * TODO(W2-B/Langfuse): console.warn → Langfuse `llm_ui_invalid` 비동기 로깅으로 교체.
- *   현재는 폴백이 silent 하게 삼켜지지 않도록 최소 흔적만 남긴다.
+ * 이벤트로 비동기 기록한다. 깊이/노드 게이트(§5.4.1) 위반도 동일 경로로 폴백·기록된다.
+ *
+ * console.warn(로컬 흔적) + Langfuse `llm_ui_invalid` 비동기 이벤트(키 있을 때만, best-effort).
  */
 function reportA2UIResult(stage: string, result: BuildA2UIResult): void {
   if (result.usedFallback) {
+    const errorCodes = result.errors.map((e) => e.code);
     // eslint-disable-next-line no-console
-    console.warn(
-      `[emit-a2ui] ${stage}: A2UI 검증 실패 → L1 폴백 사용`,
-      result.errors.map((e) => e.code),
-    );
+    console.warn(`[emit-a2ui] ${stage}: A2UI 검증 실패 → L1 폴백 사용`, errorCodes);
+    logUiInvalidEvent({ stage, errorCodes, surfaceId: BATDI_SURFACE_ID });
   }
 }
 
