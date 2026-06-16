@@ -46,13 +46,21 @@ export type Intent =
 /**
  * 가드레일 검사 결과 (Input/Output 공용 stub)
  *
- * SSOT: Ref-docs/specs/design/batdi-persona-guardrail.md (3중 검증)
- * ⚠️ W2 범위에서는 항상 `{ pass: true }` 고정 stub. 실제 일베/비속어/
- *    프롬프트해킹/아동보호/Semantic 검사는 W4+에서 보강.
+ * SSOT: Ref-docs/specs/design/batdi-persona-guardrail.md §6.2 (입력 가드레일)
+ * P2-W4: rule-based 입력 가드레일(IlbeMim/프롬프트해킹/비속어 등) 차단 시
+ *   violationType + fallbackResponse 를 채워 반환한다(SemanticGuardrail은 범위 밖).
  */
 export interface GuardrailResult {
   /** 통과 여부 */
   pass: boolean;
-  /** 차단 사유 코드 (pass=false 일 때) */
+  /** 차단 사유 코드 (pass=false 일 때) — 레거시 호환 필드 */
   reason?: string;
+  /**
+   * 위반 유형 (pass=false 일 때).
+   * 'ilbe_expression' | 'prompt_injection' | 'profanity' | 'insult'
+   * | 'threat' | 'gambling' | 'self_harm' 등.
+   */
+  violationType?: string;
+  /** 차단 시 사용자에게 보일 페르소나 응답 문구 (SSOT §6.2 응답표) */
+  fallbackResponse?: string;
 }

@@ -36,6 +36,19 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(JSON.stringify(out.a2uiEnvelope)).toContain('createSurface');
   });
 
+  it('가드레일 차단(일베) → intentRouter 우회, fallbackResponse AIMessage + Text 카드', async () => {
+    const out = await graph.invoke({
+      messages: [{ role: 'user', content: '일베 짤 보여줘' }],
+      userMessage: '일베 짤 보여줘',
+    });
+    expect(out.inputGuardrailResult?.pass).toBe(false);
+    expect(out.inputGuardrailResult?.violationType).toBe('ilbe_expression');
+    // intentRouter 가 우회되어 intent 는 set 되지 않거나 기본값 유지
+    const last = out.messages[out.messages.length - 1];
+    expect(String(last.content)).toContain('야구');
+    expect(out.a2uiEnvelope).toBeDefined();
+  });
+
   it('chat 질의(키 없음) → 캔드 AIMessage + 단일 Text 카드', async () => {
     delete process.env.GOOGLE_API_KEY;
     const out = await graph.invoke({

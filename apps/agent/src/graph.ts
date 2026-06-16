@@ -41,7 +41,14 @@ export const graph = new StateGraph(CoreStateAnnotation)
   .addNode('emitA2UI', emitA2UI)
   .addEdge(START, 'normalizer')
   .addEdge('normalizer', 'inputGuardrail')
-  .addEdge('inputGuardrail', 'intentRouter')
+  // W4: 입력 가드레일 차단 시 intentRouter~outputGuardrail 우회 → 곧장 emitA2UI 로
+  //   fallbackResponse 를 단일 Text 카드로 방출(조기 fallback). 통과 시 정상 흐름.
+  .addConditionalEdges(
+    'inputGuardrail',
+    (state) =>
+      state.inputGuardrailResult?.pass === false ? 'emitA2UI' : 'intentRouter',
+    { emitA2UI: 'emitA2UI', intentRouter: 'intentRouter' },
+  )
   .addEdge('intentRouter', 'cacheLookup')
   .addEdge('cacheLookup', 'uiComposer')
   .addEdge('uiComposer', 'dataBinder')

@@ -120,6 +120,28 @@ export async function emitA2UI(
   state: CoreGraphState,
   config?: RunnableConfig,
 ): Promise<CoreGraphUpdate> {
+  // ── W4: 입력 가드레일 차단 분기 ──
+  // graph 조건부 엣지로 intentRouter~outputGuardrail 을 우회해 직접 진입한 경우.
+  // LLM/템플릿 호출 없이 fallbackResponse 를 단일 Text 카드 + AIMessage 로 방출.
+  if (state.inputGuardrailResult?.pass === false) {
+    const blockedText =
+      state.inputGuardrailResult.fallbackResponse ??
+      '그런 얘기는 좀 그런 거 같아유~ 즐겁게 야구 얘기 하자!';
+    const result = buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: blockedText }],
+      {},
+      blockedText,
+    );
+    reportA2UIResult(
+      `guardrail-blocked(${state.inputGuardrailResult.violationType ?? 'unknown'})`,
+      result,
+    );
+    return {
+      a2uiEnvelope: result.ops,
+      messages: [new AIMessage(blockedText)],
+    };
+  }
+
   const template = resolveTemplate(state.intent);
 
   // ── 템플릿 있음 (W2: score) ──
