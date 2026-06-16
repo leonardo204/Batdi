@@ -33,6 +33,10 @@ dist
 **/*.tsbuildinfo
 coverage
 **/coverage
+# 패키지 src 내 우발적 TS 빌드 산출물 (소스는 .ts 만, noEmit 위반 방지)
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.js.map
 out
 **/out
 

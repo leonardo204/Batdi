@@ -1,0 +1,284 @@
+// 밧디(batdi) Prisma 스키마
+// SSOT: Ref-docs/specs/interface/batdi-db-schema.md (전체 DDL·FK·ON DELETE·인덱스)
+// PostgreSQL 16. 앱 런타임은 PgBouncer(54330) 경유(DATABASE_URL, transaction pooling),
+// 마이그레이션은 PG 직결(DIRECT_URL, 54329).
+// 테이블/컬럼은 db-schema 의 snake_case 를 @@map/@map 으로 유지한다.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ── A. 사용자·대화 ──────────────────────────────────────────
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String?  @unique @db.VarChar(255)
+  displayName  String?  @map("display_name") @db.VarChar(50)
+  authProvider String?  @map("auth_provider") @db.VarChar(20) // 'google' | 'email'
+  authId       String?  @map("auth_id") @db.VarChar(255)
+  teamId       String   @map("team_id") @db.VarChar(20)
+  personaStyle String   @default("passionate") @map("persona_style") @db.VarChar(20)
+  level        Int      @default(1)
+  xpPoints     Int      @default(0) @map("xp_points")
+  settings     Json     @default("{}") @db.JsonB
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  lastActive   DateTime @default(now()) @map("last_active") @db.Timestamp(6)
+
+  conversations      Conversation[]
+  personalAgentState PersonalAgentState?
+  favorites          UserFavorite[]
+  traces             AgentTrace[]
+
+  @@index([teamId], map: "idx_users_team")
+  @@index([lastActive(sort: Desc)], map: "idx_users_last_active")
+  @@map("users")
+}
+
+model Conversation {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String?  @db.VarChar(100)
+  summary   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+  traces   AgentTrace[]
+
+  @@index([userId, updatedAt(sort: Desc)], map: "idx_conversations_user")
+  @@map("conversations")
+}
+
+model Message {
+  id             Int      @id @default(autoincrement())
+  conversationId String   @map("conversation_id") @db.Uuid
+  role           String?  @db.VarChar(10) // 'user' | 'assistant' | 'system'
+  content        String   @db.Text
+  a2uiEnvelope   Json?    @map("a2ui_envelope") @db.JsonB
+  traceId        String?  @map("trace_id") @db.Uuid
+  tokensUsed     Int?     @map("tokens_used")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  trace        AgentTrace?  @relation(fields: [traceId], references: [traceId], onDelete: SetNull)
+
+  @@index([conversationId, createdAt], map: "idx_messages_conversation")
+  @@map("messages")
+}
+
+// ── B. Personal Agent ───────────────────────────────────────
+
+model PersonalAgentState {
+  userId            String    @id @map("user_id") @db.Uuid
+  profileSummary    String?   @map("profile_summary") @db.Text
+  profileData       Json      @default("{}") @map("profile_data") @db.JsonB
+  customPersona     String?   @map("custom_persona") @db.Text
+  favoritePlayers   Int[]     @map("favorite_players")
+  messageCount      Int       @default(0) @map("message_count")
+  lastProfileUpdate DateTime? @map("last_profile_update") @db.Timestamp(6)
+  lastActive        DateTime  @default(now()) @map("last_active") @db.Timestamp(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lastActive(sort: Desc)], map: "idx_personal_agent_last_active")
+  @@map("personal_agent_state")
+}
+
+model UserFavorite {
+  userId       String  @map("user_id") @db.Uuid
+  playerId     Int     @map("player_id")
+  source       String? @db.VarChar(20) // 'explicit' | 'auto_detected'
+  mentionCount Int     @default(0) @map("mention_count")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id])
+
+  @@id([userId, playerId])
+  @@map("user_favorites")
+}
+
+// ── C. 도메인 데이터 (선수·스탯) ────────────────────────────
+
+model Player {
+  id        Int     @id @default(autoincrement())
+  name      String? @db.VarChar(50)
+  teamId    String? @map("team_id") @db.VarChar(20)
+  position  String? @db.VarChar(10)
+  birthYear Int?    @map("birth_year")
+  throws    String? @db.VarChar(5)
+  bats      String? @db.VarChar(5)
+
+  battingStats  BattingStat[]
+  pitchingStats PitchingStat[]
+  favorites     UserFavorite[]
+
+  @@index([teamId], map: "idx_players_team")
+  @@index([name], map: "idx_players_name")
+  @@map("players")
+}
+
+model BattingStat {
+  id        Int      @id @default(autoincrement())
+  playerId  Int?     @map("player_id")
+  season    Int?
+  teamId    String?  @map("team_id") @db.VarChar(20)
+  games     Int?
+  avg       Decimal? @db.Decimal(4, 3)
+  obp       Decimal? @db.Decimal(4, 3)
+  slg       Decimal? @db.Decimal(4, 3)
+  ops       Decimal? @db.Decimal(4, 3)
+  hr        Int?
+  rbi       Int?
+  war       Decimal? @db.Decimal(4, 2)
+  wrcPlus   Decimal? @map("wrc_plus") @db.Decimal(5, 1)
+  babip     Decimal? @db.Decimal(4, 3)
+  rawData   Json?    @map("raw_data") @db.JsonB
+  source    String?  @db.VarChar(20)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  player Player? @relation(fields: [playerId], references: [id])
+
+  @@index([playerId, season], map: "idx_batting_player_season")
+  @@map("batting_stats")
+}
+
+model PitchingStat {
+  id         Int      @id @default(autoincrement())
+  playerId   Int?     @map("player_id")
+  season     Int?
+  teamId     String?  @map("team_id") @db.VarChar(20)
+  games      Int?
+  era        Decimal? @db.Decimal(4, 2)
+  whip       Decimal? @db.Decimal(4, 2)
+  fip        Decimal? @db.Decimal(4, 2)
+  war        Decimal? @db.Decimal(4, 2)
+  strikeouts Int?
+  rawData    Json?    @map("raw_data") @db.JsonB
+  source     String?  @db.VarChar(20)
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  player Player? @relation(fields: [playerId], references: [id])
+
+  @@index([playerId, season], map: "idx_pitching_player_season")
+  @@map("pitching_stats")
+}
+
+// ── D. 캐시 ─────────────────────────────────────────────────
+
+model CacheUiEnvelope {
+  cacheKey      String   @id @map("cache_key") @db.VarChar(128)
+  intent        String   @db.VarChar(32)
+  paramsHash    String   @map("params_hash") @db.VarChar(64)
+  teamId        String?  @map("team_id") @db.VarChar(20)
+  personaScope  String   @map("persona_scope") @db.VarChar(16) // 'default' | 'team_only'
+  envelopeJsonl String   @map("envelope_jsonl") @db.Text
+  dataSnapshot  Json?    @map("data_snapshot") @db.JsonB
+  hitCount      Int      @default(0) @map("hit_count")
+  expiresAt     DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([expiresAt], map: "idx_cache_ui_expires")
+  @@map("cache_ui_envelopes")
+}
+
+model A2uiTemplate {
+  templateId    String   @id @map("template_id") @db.VarChar(64)
+  intent        String   @db.VarChar(32)
+  componentTree Json     @map("component_tree") @db.JsonB
+  bindSchema    Json     @map("bind_schema") @db.JsonB
+  variants      Json?    @db.JsonB
+  version       Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@map("a2ui_templates")
+}
+
+model CacheScore {
+  gameId    String   @id @map("game_id") @db.VarChar(64)
+  gameDate  DateTime @map("game_date") @db.Date
+  homeTeam  String?  @map("home_team") @db.VarChar(20)
+  awayTeam  String?  @map("away_team") @db.VarChar(20)
+  payload   Json     @db.JsonB
+  source    String?  @db.VarChar(20)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([gameDate], map: "idx_cache_scores_date")
+  @@map("cache_scores")
+}
+
+model CacheNews {
+  id          Int       @id @default(autoincrement())
+  teamId      String?   @map("team_id") @db.VarChar(20)
+  title       String?   @db.VarChar(255)
+  url         String?   @db.VarChar(512)
+  summary     String?   @db.Text
+  publishedAt DateTime? @map("published_at") @db.Timestamp(6)
+  source      String?   @db.VarChar(20)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamp(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([teamId, publishedAt(sort: Desc)], map: "idx_cache_news_team")
+  @@map("cache_news")
+}
+
+model Meme {
+  id        Int      @id @default(autoincrement())
+  teamId    String?  @map("team_id") @db.VarChar(20)
+  content   String?  @db.Text
+  category  String?  @db.VarChar(32)
+  source    String?  @db.VarChar(20) // 'community' | 'seed'
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([teamId], map: "idx_memes_team")
+  @@map("memes")
+}
+
+// ── E. 관측 (Trace·로그) ────────────────────────────────────
+
+model AgentTrace {
+  traceId        String   @id @map("trace_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  conversationId String?  @map("conversation_id") @db.Uuid
+  intent         String?  @db.VarChar(32)
+  complexity     String?  @db.VarChar(16)
+  cacheHit       String?  @map("cache_hit") @db.VarChar(8)
+  llmCalls       Int      @default(0) @map("llm_calls")
+  tokensIn       Int      @default(0) @map("tokens_in")
+  tokensOut      Int      @default(0) @map("tokens_out")
+  durationMs     Int?     @map("duration_ms")
+  error          String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  conversation Conversation?  @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  messages     Message[]
+  toolCallLogs ToolCallLog[]
+
+  @@index([userId, createdAt], map: "idx_traces_user_created")
+  @@index([intent], map: "idx_traces_intent")
+  @@map("agent_traces")
+}
+
+model ToolCallLog {
+  id         Int      @id @default(autoincrement())
+  traceId    String?  @map("trace_id") @db.Uuid
+  actionName String?  @map("action_name") @db.VarChar(64)
+  params     Json?    @db.JsonB
+  result     Json?    @db.JsonB
+  durationMs Int?     @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  trace AgentTrace? @relation(fields: [traceId], references: [traceId], onDelete: Cascade)
+
+  @@map("tool_call_logs")
+}

@@ -1,8 +1,11 @@
 # 밧디 (batdi) — 로컬 개발 스택
 # DoD: `docker compose config -q` 유효성만 검증 (이미지 pull/run 불필요)
 #
-# TODO(P1): PgBouncer (transaction pooling) 추가 — agent_traces·tool_call_logs·
-#           Langfuse 는 비동기 배치(1초·100건 bulk insert)로 분리. architecture §10.3
+# ⚠️ 외부(호스트) 포트는 모두 private/높은 포트로 고정 — well-known·기본 포트 금지
+#    (다른 로컬 서비스와 충돌 방지). 컨테이너 내부는 기본 포트 사용.
+#      · PostgreSQL  외부 54329 → 내부 5432
+#      · PgBouncer   외부 54330 → 내부 6432
+#      · Langfuse    외부 3010  → 내부 3000
 
 services:
   # ── 애플리케이션 DB (PostgreSQL 16, 호스트 포트 54329 고정) ──
@@ -26,6 +29,33 @@ services:
     networks:
       - batdi-net
 
+  # ── PgBouncer (transaction pooling, 호스트 포트 54330 고정) ──
+  # 앱 런타임은 PgBouncer 경유(DATABASE_URL), Prisma 마이그레이션은 PG 직결(DIRECT_URL).
+  # transaction pooling 이므로 Prisma 는 DATABASE_URL 에 ?pgbouncer=true 로 prepared
+  # statement 를 비활성화한다. (architecture §10.3 / db-schema 커넥션 풀 전략)
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: batdi-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "54330:6432"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:-batdi}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-batdi}
+      DB_NAME: ${POSTGRES_DB:-batdi}
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      DEFAULT_POOL_SIZE: "25"
+      MAX_CLIENT_CONN: "200"
+      LISTEN_PORT: "6432"
+    networks:
+      - batdi-net
+
   # ── Langfuse (셀프호스팅 관측, 비용 0) ──
   langfuse:
     image: langfuse/langfuse:2
@@ -42,6 +72,17 @@ services:
       NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-changeme-nextauth-secret}
       SALT: ${LANGFUSE_SALT:-changeme-salt}
       TELEMETRY_ENABLED: "false"
+      # Headless 초기화 — org/project/user/API키를 부팅 시 자동 시드(UI 수동 가입 불필요).
+      # ⚠️ docker-compose 값은 double-quote 금지(Langfuse 공식 주의사항).
+      LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-batdi-org}
+      LANGFUSE_INIT_ORG_NAME: Batdi
+      LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-batdi}
+      LANGFUSE_INIT_PROJECT_NAME: batdi
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-batdi-local-0000000000}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-batdi-local-0000000000}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-admin@batdi.local}
+      LANGFUSE_INIT_USER_NAME: Batdi Admin
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-batdi-admin-pw}
     networks:
       - batdi-net
 
