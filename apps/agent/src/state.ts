@@ -14,6 +14,7 @@ import type {
   PersonalContext,
   TeamId,
 } from '@batdi/types';
+import type { ScoreData } from './services/score-graph';
 
 /** 마지막-쓰기-우선(last-write-wins) reducer 헬퍼 */
 function lastValue<T>() {
@@ -72,6 +73,16 @@ export const CoreStateAnnotation = Annotation.Root({
   // best-effort: DB 비활성/없음 시 중립 기본값(개인화 없음). MISS 경로에서만 채워진다.
   personalContext: Annotation<PersonalContext | undefined>(
     lastValue<PersonalContext | undefined>(),
+  ),
+
+  // ── 서비스 실데이터 (DataBinder, P2-W5.5 ScoreGraph) ──
+  // DataBinder 가 score intent 에서 fetchScoreData(teamId) 로 채운다(kbo_games 실데이터).
+  //   - TeamPersona 가 scoreSummaryText(scoreData) 로 리액션 맥락을 만든다(없으면 미생성).
+  //   - EmitA2UI 가 score_compact 카드 데이터 모델로 주입한다.
+  // best-effort: DB 비활성/없음/경기 없음 시 null → EmitA2UI 가 폴백 텍스트 카드로 방출.
+  //   score 외 intent 면 미설정(undefined).
+  scoreData: Annotation<ScoreData | null | undefined>(
+    lastValue<ScoreData | null | undefined>(),
   ),
 
   // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──

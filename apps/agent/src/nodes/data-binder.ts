@@ -1,18 +1,34 @@
 /**
- * DataBinder 노드 (W2)
+ * DataBinder 노드 (W2 → P2-W5.5 ScoreGraph 실데이터 배선)
  *
- * SSOT: CLAUDE.md "팩트(수치)는 DB → DataBinder → 템플릿 참조만"
+ * SSOT: CLAUDE.md "팩트(수치)는 DB → DataBinder → 템플릿 참조만",
+ *       Ref-docs/specs/design/batdi-architecture.md §3.5 (ServiceSubgraph summary/ref)
  *
- * 책임: 템플릿의 `{{bind:"..."}}` 슬롯을 JSON Pointer로 컴파일하고, 팩트(수치)
- * 데이터 모델을 준비한다. 실제 컴파일+검증+emit은 EmitA2UI가 수행하므로
- * (W2 CoreState subset에 "compiled components" 채널이 없음) 본 노드는 직선
- * 파이프라인의 명시적 단계로만 존재하며 상태 변경은 없다.
+ * 책임: score intent 일 때 ScoreGraph(fetchScoreData)로 kbo_games 실데이터를 읽어
+ * state.scoreData 에 보관한다. TeamPersona(리액션 맥락)·EmitA2UI(카드 데이터)가 소비한다.
  *
- * 컴파일 로직 자체는 ../databind/compile.ts(compileBindings/getStubDataModel)에
- * 순수 함수로 분리되어 EmitA2UI 및 단위테스트가 직접 호출한다.
+ *  - 입력 가드레일 차단 흐름은 graph 조건부 엣지로 이 노드를 우회하므로, 도달 = 통과.
+ *    (방어적으로도 pass===false 면 조회하지 않는다.)
+ *  - fetchScoreData 는 best-effort — DB 비활성/경기 없음 시 null(throw 금지). null 이면
+ *    EmitA2UI 가 폴백 텍스트 카드로 방출한다(DataFallbackHandler).
+ *  - score 외 intent 는 no-op({}). (템플릿/슬롯 컴파일 자체는 EmitA2UI 가 수행.)
  */
 import type { CoreGraphState, CoreGraphUpdate } from '../state';
+import { fetchScoreData } from '../services/score-graph';
 
-export function dataBinder(_state: CoreGraphState): CoreGraphUpdate {
+export async function dataBinder(
+  state: CoreGraphState,
+): Promise<CoreGraphUpdate> {
+  // 방어적: 가드레일 차단 흐름이면 조회하지 않는다(graph 에서도 우회).
+  if (state.inputGuardrailResult?.pass === false) {
+    return {};
+  }
+
+  if (state.intent === 'score') {
+    // best-effort: DB 비활성/경기 없음 → null (EmitA2UI 폴백 처리).
+    const scoreData = await fetchScoreData(state.teamId);
+    return { scoreData };
+  }
+
   return {};
 }

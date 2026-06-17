@@ -20,9 +20,25 @@ import {
 const upsert = vi.fn().mockResolvedValue({});
 const findUnique = vi.fn().mockResolvedValue(null);
 
+// P2-W5.5: DataBinder 가 score 실데이터를 읽도록 kboGame.findMany 를 모킹(FINISHED 1경기).
+//   실데이터가 있어야 score_compact 템플릿 경로(→ L0 write)가 동작한다.
+const FINISHED_GAME = {
+  gameKey: 'G1',
+  season: new Date().getFullYear(),
+  date: new Date(`${new Date().getFullYear()}-06-16`),
+  awayTeam: 'doosan',
+  homeTeam: 'hanwha',
+  awayScore: 3,
+  homeScore: 5,
+  gameStatus: 'FINISHED',
+  cancellationReason: null,
+};
+const findMany = vi.fn().mockResolvedValue([FINISHED_GAME]);
+
 vi.mock('../src/utils/prisma', () => ({
   getPrisma: () => ({
     cacheUiEnvelope: { findUnique, upsert, update: vi.fn().mockResolvedValue({}) },
+    kboGame: { findMany },
   }),
   __resetPrismaForTest: () => {},
 }));
@@ -52,6 +68,8 @@ describe('L0 캐시 포이즌 가드', () => {
   beforeEach(() => {
     upsert.mockClear();
     findUnique.mockClear();
+    findMany.mockClear();
+    findMany.mockResolvedValue([FINISHED_GAME]);
     mockBuildContext.mockReset();
   });
 

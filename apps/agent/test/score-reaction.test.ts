@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { validateBatdiA2UI } from '@batdi/a2ui-schema';
+import * as prismaMod from '../src/utils/prisma';
 import {
   SCORE_COMPACT_COMPONENTS,
 } from '../src/templates/score_compact';
@@ -49,6 +50,14 @@ describe('score_compact — reaction 슬롯 (P2-W6)', () => {
   });
 });
 
+// P2-W5.5: score 카드 경로는 state.scoreData(실데이터)를 직접 주입해 검증한다
+//   (DB 의존 제거 — 테스트 env 에선 fetchScoreData=null 이므로 단위 주입이 정확).
+const SCORE_DATA = {
+  home: { name: '한화', score: 5 },
+  away: { name: '두산', score: 3 },
+  inning: '6/16 경기 종료',
+};
+
 function makeScoreState(): CoreGraphState {
   return {
     messages: [],
@@ -63,6 +72,7 @@ function makeScoreState(): CoreGraphState {
     intentConfidence: 'high',
     complexity: 'simple',
     cacheHit: 'miss',
+    scoreData: SCORE_DATA,
     a2uiEnvelope: undefined,
     llmCallCount: undefined,
     traceId: undefined,
@@ -89,6 +99,72 @@ describe('emitA2UI — state.reaction 소비 (W6 분리)', () => {
       | { updateDataModel: { value: Record<string, unknown> } }
       | undefined;
     expect(dataOp?.updateDataModel.value.reaction).toBe('');
+  });
+
+  it('scoreData 실데이터 → score_compact 데이터 모델에 home/away/inning 주입', async () => {
+    const update = await emitA2UI(makeScoreState());
+    const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
+    // 정상 score 경로 = 3 ops (createSurface/updateComponents/updateDataModel)
+    expect(ops).toHaveLength(3);
+    const dataOp = ops.find((o) => 'updateDataModel' in o) as
+      | { updateDataModel: { value: Record<string, unknown> } }
+      | undefined;
+    expect(dataOp?.updateDataModel.value).toMatchObject({
+      home: { name: '한화', score: 5 },
+      away: { name: '두산', score: 3 },
+      inning: '6/16 경기 종료',
+    });
+  });
+});
+
+describe('emitA2UI — score 실데이터 없음 → DataFallbackHandler (W5.5)', () => {
+  function makeNoDataState(): CoreGraphState {
+    return {
+      ...makeScoreState(),
+      scoreData: null,
+      cacheKey: 'score:hash:hanwha:default',
+    } as unknown as CoreGraphState;
+  }
+
+  it('scoreData=null → 점수 템플릿(score_compact) 대신 단일 Text 폴백 카드 + AIMessage', async () => {
+    const update = await emitA2UI(makeNoDataState());
+    const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
+    // 폴백 카드: 단일 Text root (score_compact 의 다중 노드가 아님).
+    const compOp = ops.find((o) => 'updateComponents' in o) as
+      | { updateComponents: { components: Array<Record<string, unknown>> } }
+      | undefined;
+    const comps = compOp?.updateComponents.components ?? [];
+    expect(comps).toHaveLength(1);
+    expect(comps[0]).toMatchObject({ id: 'root', component: 'Text' });
+    // 점수 데이터(home/away/inning)는 주입되지 않는다(폴백은 빈 데이터 모델).
+    const dataOp = ops.find((o) => 'updateDataModel' in o) as
+      | { updateDataModel: { value: Record<string, unknown> } }
+      | undefined;
+    expect(dataOp?.updateDataModel.value.home).toBeUndefined();
+    expect(dataOp?.updateDataModel.value.inning).toBeUndefined();
+    // AIMessage 가 동반(폴백 텍스트가 응답을 대신)
+    const msgs = update.messages as Array<{ content: unknown }>;
+    expect(msgs).toBeDefined();
+    expect(String(msgs[0]?.content)).toContain('경기 정보가 없');
+    // 수치(점수) 미포함
+    expect(String(msgs[0]?.content)).not.toMatch(/[0-9]/);
+  });
+
+  it('scoreData=null → L0 캐시 write 안 함(데이터 부재 캐시 금지)', async () => {
+    // 폴백 경로는 writeL0Cache 를 호출하지 않는다(데이터 없는 상태를 캐시하면 stale fallback).
+    // getPrisma 를 spy 해 upsert 미호출을 직접 증명한다.
+    const upsert = vi.fn().mockResolvedValue({});
+    const spy = vi
+      .spyOn(prismaMod, 'getPrisma')
+      .mockReturnValue({
+        cacheUiEnvelope: { upsert },
+      } as never);
+    try {
+      await emitA2UI(makeNoDataState());
+      expect(upsert).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
@@ -123,6 +199,13 @@ describe('teamPersona — 캔드 리액션 생성 (키 없음)', () => {
       ...makeScoreState(),
       inputGuardrailResult: { pass: false, violationType: 'ilbe_expression' },
     } as unknown as CoreGraphState;
+    const update = await teamPersona(state);
+    expect(update.reaction).toBeUndefined();
+  });
+
+  it('score 인데 scoreData=null(경기 없음) → reaction 미생성(undefined)', async () => {
+    delete process.env.GOOGLE_API_KEY;
+    const state = { ...makeScoreState(), scoreData: null } as CoreGraphState;
     const update = await teamPersona(state);
     expect(update.reaction).toBeUndefined();
   });

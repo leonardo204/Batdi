@@ -17,7 +17,10 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(typeof graph.invoke).toBe('function');
   });
 
-  it('score 질의 → a2uiEnvelope(3 ops) + AIMessage(요약) 반환', async () => {
+  it('score 질의(DB 없음) → DataFallbackHandler 단일 Text 폴백 카드 + AIMessage', async () => {
+    // P2-W5.5: 테스트 env 는 DATABASE_URL='' → fetchScoreData=null(best-effort).
+    //   score intent 인데 실데이터 없음 → 점수 템플릿 대신 팀 톤 폴백 텍스트 카드.
+    //   (실데이터 주입 경로 검증은 score-reaction.test.ts 의 emitA2UI 단위테스트가 담당.)
     const out = await graph.invoke({
       messages: [{ role: 'user', content: '지금 몇 대 몇이야' }],
       userMessage: '지금 몇 대 몇이야',
@@ -25,15 +28,22 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(out.intent).toBe('score');
     expect(out.cacheHit).toBe('miss');
     expect(out.complexity).toBe('simple');
-    // A2UI envelope: 3 ops (valid score 템플릿) — state 디버그 채널.
-    // W2-B: 실제 렌더 transport 는 manually_emit_tool_call 커스텀 이벤트로 나가므로
-    // (graph.invoke 는 커스텀 이벤트를 포착하지 않음) 여기서는 state 채널만 검증한다.
-    // 팩트 값(롯데/두산)이 ops 의 updateDataModel value 에 실렸는지 확인.
+    expect(out.scoreData).toBeNull();
+    // 폴백 카드는 단일 Text root (score_compact 다중 노드가 아님), 데이터 모델 비어있음.
     expect(out.a2uiEnvelope).toBeDefined();
-    expect(out.a2uiEnvelope).toHaveLength(3);
-    expect(JSON.stringify(out.a2uiEnvelope)).toContain('롯데');
-    expect(JSON.stringify(out.a2uiEnvelope)).toContain('두산');
+    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
+    const compOp = ops.find((o) => 'updateComponents' in o) as
+      | { updateComponents: { components: Array<Record<string, unknown>> } }
+      | undefined;
+    expect(compOp?.updateComponents.components).toHaveLength(1);
+    const dataOp = ops.find((o) => 'updateDataModel' in o) as
+      | { updateDataModel: { value: Record<string, unknown> } }
+      | undefined;
+    expect(dataOp?.updateDataModel.value.inning).toBeUndefined();
     expect(JSON.stringify(out.a2uiEnvelope)).toContain('createSurface');
+    // 폴백 AIMessage 가 응답을 대신한다.
+    const last = out.messages[out.messages.length - 1];
+    expect(String(last.content)).toContain('경기 정보가 없');
   });
 
   it('가드레일 차단(일베) → intentRouter 우회, fallbackResponse AIMessage + Text 카드', async () => {
@@ -49,23 +59,23 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(out.a2uiEnvelope).toBeDefined();
   });
 
-  it('dataBinder→teamPersona→outputGuardrail→emitA2UI E2E: score 캔드 리액션이 /reaction 에 주입(수치 없음)', async () => {
+  it('score 인데 DB 없음(scoreData=null) → reaction 미생성, 폴백 카드만', async () => {
+    // P2-W5.5: 경기 정보 없음 경로 — TeamPersona 가 reaction 을 만들지 않고(undefined),
+    //   EmitA2UI 가 폴백 텍스트 카드로 응답한다(reaction 슬롯 자체 없음).
     delete process.env.GOOGLE_API_KEY;
     const out = await graph.invoke({
       messages: [{ role: 'user', content: '지금 몇 대 몇이야' }],
       userMessage: '지금 몇 대 몇이야',
     });
     expect(out.intent).toBe('score');
-    // TeamPersona 가 캔드 리액션 생성 → OutputGuardrail 통과 → state.reaction 보관.
-    expect(out.outputGuardrailResult?.pass).toBe(true);
-    expect(typeof out.reaction).toBe('string');
-    expect(out.reaction).not.toMatch(/[0-9]/);
-    // EmitA2UI 가 /reaction 슬롯에 주입.
+    expect(out.scoreData).toBeNull();
+    expect(out.reaction).toBeUndefined();
+    // 폴백 카드: 단일 Text root, 점수 데이터 미주입.
     const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
-    const dataOp = ops.find((o) => 'updateDataModel' in o) as
-      | { updateDataModel: { value: Record<string, unknown> } }
+    const compOp = ops.find((o) => 'updateComponents' in o) as
+      | { updateComponents: { components: Array<Record<string, unknown>> } }
       | undefined;
-    expect(dataOp?.updateDataModel.value.reaction).toBe(out.reaction);
+    expect(compOp?.updateComponents.components).toHaveLength(1);
   });
 
   it('chat 질의(키 없음) → 캔드 AIMessage + 단일 Text 카드', async () => {

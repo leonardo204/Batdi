@@ -28,7 +28,7 @@ import type { RunnableConfig } from '@langchain/core/runnables';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import type { CoreGraphState, CoreGraphUpdate } from '../state';
 import { resolveTemplate } from '../templates/registry';
-import { getStubScoreData, scoreSummaryText } from '../databind/compile';
+import { scoreSummaryText } from '../databind/compile';
 import { getLangfuseHandler } from '../utils/langfuse';
 import {
   buildReactionPrompt,
@@ -95,6 +95,9 @@ async function generateReaction(
  * 생성하지 않는 경우(reaction 미설정 → undefined):
  *  - 입력 가드레일 차단(pass === false)
  *  - score 외 intent (chat/meme 등 — L1 템플릿 없음)
+ *  - score 인데 실데이터 없음(state.scoreData == null): 경기 정보가 없으므로 EmitA2UI 가
+ *    폴백 텍스트 카드로 응답을 대신한다. reaction 을 생성하면 카드 없이 떠도는 텍스트가
+ *    되므로 미생성(undefined)이 더 깔끔하다(P2-W5.5 선택).
  */
 export async function teamPersona(
   state: CoreGraphState,
@@ -111,8 +114,15 @@ export async function teamPersona(
     return {};
   }
 
+  // P2-W5.5: 실데이터(state.scoreData) 없음 → 경기 정보 없는 날. reaction 미생성
+  //   (EmitA2UI 의 DataFallbackHandler 가 폴백 텍스트 카드로 응답).
+  if (state.scoreData == null) {
+    return {};
+  }
+
   // scoreSummary 는 LLM 맥락용으로만 전달(숫자 출력은 프롬프트로 금지).
-  const summary = scoreSummaryText(getStubScoreData());
+  // P2-W5.5: stub 대신 DataBinder 가 채운 실데이터(state.scoreData)로 맥락 생성.
+  const summary = scoreSummaryText(state.scoreData);
   const reaction = await generateReaction(state, summary, config);
   return { reaction };
 }

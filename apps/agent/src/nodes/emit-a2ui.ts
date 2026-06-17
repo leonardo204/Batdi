@@ -25,12 +25,8 @@ import type { RunnableConfig } from '@langchain/core/runnables';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import type { CoreGraphState, CoreGraphUpdate } from '../state';
 import { resolveTemplate } from '../templates/registry';
-import {
-  compileBindings,
-  getStubDataModel,
-  getStubScoreData,
-  scoreSummaryText,
-} from '../databind/compile';
+import { compileBindings, scoreSummaryText } from '../databind/compile';
+import { cannedReactionFor } from '../utils/prompt-builder';
 import {
   buildA2UIOps,
   BATDI_SURFACE_ID,
@@ -184,6 +180,16 @@ async function writeL0Cache(
   }
 }
 
+/**
+ * score intent 인데 실데이터(state.scoreData)가 없을 때의 팀 톤 폴백 문구(P2-W5.5).
+ * cannedReactionFor 처럼 간단히 — 수치 없음, 경기 없는 날 톤. 캐시 금지(데이터 부재).
+ */
+function scoreNoDataText(teamId: CoreGraphState['teamId']): string {
+  // 팀 톤 캔드 리액션을 앞에 붙여 자연스럽게(둘 다 수치 없음).
+  const tone = cannedReactionFor(teamId);
+  return `${tone} 아직 경기 정보가 없어유~ 다음 경기 기대해보자!`;
+}
+
 /** chat intent 응답 텍스트 (Gemini 실응답 또는 캔드 폴백) */
 async function chatResponseText(state: CoreGraphState): Promise<string> {
   const apiKey = process.env.GOOGLE_API_KEY;
@@ -243,20 +249,44 @@ export async function emitA2UI(
 
   const template = resolveTemplate(state.intent);
 
-  // ── 템플릿 있음 (W2: score) ──
+  // ── P2-W5.5: DataFallbackHandler ──
+  // score intent 인데 실데이터 없음(state.scoreData == null): 경기 정보가 없으므로
+  // 점수 템플릿 대신 팀 톤 폴백 텍스트 카드(단일 Text) + AIMessage 를 방출한다.
+  // ⚠️ 데이터 없는 상태는 캐시하면 안 되므로 L0 write 하지 않는다(Cache 무결성).
+  if (state.intent === 'score' && state.scoreData == null) {
+    const fallbackText = scoreNoDataText(state.teamId);
+    const result = buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: fallbackText }],
+      {},
+      fallbackText,
+    );
+    reportA2UIResult('intent=score(no-data-fallback)', result);
+    await emitRenderA2UIToolCall(result, config);
+    // L0 write 생략 — 경기 없는 상태를 캐시하면 다음 경기일에도 stale fallback 이 나간다.
+    return {
+      a2uiEnvelope: result.ops,
+      messages: [new AIMessage(fallbackText)],
+    };
+  }
+
+  // ── 템플릿 있음 (score: 실데이터 보유) ──
   if (template) {
     const compiled = compileBindings(template.components);
 
+    // P2-W5.5: stub 대신 DataBinder 가 채운 실데이터(state.scoreData)로 summary 생성.
     const summary =
-      state.intent === 'score'
-        ? scoreSummaryText(getStubScoreData())
+      state.intent === 'score' && state.scoreData
+        ? scoreSummaryText(state.scoreData)
         : '응답';
 
     // P2-W6: 리액션은 TeamPersona 가 생성하고 OutputGuardrail 이 검증·정제한 값을
     // state.reaction 으로 받아 data model /reaction 에 주입한다(카드 reaction 슬롯 표시).
     // score 외 경로/차단 시엔 미설정(undefined) → 빈 문자열로 폴백(슬롯 비표시).
+    // P2-W5.5: score 카드 데이터(home/away/inning)는 state.scoreData 실데이터.
     const data = {
-      ...getStubDataModel(state.intent),
+      ...(state.intent === 'score' && state.scoreData
+        ? (state.scoreData as unknown as Record<string, unknown>)
+        : {}),
       reaction: state.reaction ?? '',
     };
 

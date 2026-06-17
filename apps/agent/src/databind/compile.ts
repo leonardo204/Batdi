@@ -55,14 +55,22 @@ export function compileBindings(
   });
 }
 
-/** 스코어 데이터 모델 (W2 stub — P2에서 ScoreGraph 실데이터로 교체) */
+/**
+ * 스코어 데이터 모델 (score_compact 템플릿 bind 경로와 1:1 — 모양 불변).
+ *  - home.score/away.score: 숫자 슬롯(점수).
+ *  - inning: P2-W5.5 부터 "월/일 상태라벨"(예: "6/16 경기 종료") 문자열로 repurpose.
+ *    실데이터 변환은 services/score-graph.ts(gameRowToScoreData)가 SSOT.
+ */
 export interface ScoreData {
   home: { name: string; score: number };
   away: { name: string; score: number };
   inning: string;
 }
 
-/** W2 stub 스코어 데이터 */
+/**
+ * @deprecated W2 stub 스코어 데이터. 프로덕션 score 경로는 state.scoreData(ScoreGraph
+ *   실데이터)를 사용한다. 테스트/폴백 호환용으로만 남겨둔다.
+ */
 export function getStubScoreData(): ScoreData {
   return {
     home: { name: '롯데', score: 5 },
@@ -73,7 +81,8 @@ export function getStubScoreData(): ScoreData {
 
 /**
  * intent별 데이터 모델 stub 반환.
- * (W2: score만 데이터 보유. 그 외는 빈 객체 — 텍스트 폴백)
+ * @deprecated 프로덕션 score 경로는 state.scoreData(ScoreGraph 실데이터)를 사용한다.
+ *   테스트 호환용으로만 남겨둔다.
  */
 export function getStubDataModel(intent: Intent): Record<string, unknown> {
   if (intent === 'score') {
