@@ -18,6 +18,12 @@ import type { CoreGraphState, CoreGraphUpdate } from '../state';
 interface IntentRule {
   intent: Exclude<Intent, 'chat'>;
   pattern: RegExp;
+  /**
+   * stats intent 보조 분기(P3-W7 7.3b). stats 규칙만 설정:
+   *   - 'standings' → 팀 순위 카드, 'player' → 팀 선수 리더보드 카드.
+   * stats 외 규칙(score 등)은 미설정(undefined).
+   */
+  statType?: 'standings' | 'player';
 }
 
 /**
@@ -48,10 +54,12 @@ export const INTENT_RULES: ReadonlyArray<IntentRule> = [
   // 순위/승률(standings) 우선 — 일반 stats보다 먼저
   {
     intent: 'stats',
+    statType: 'standings',
     pattern: /순위|몇\s*위|승률|게임\s*차|연승|연패|선두|꼴찌|상위권|하위권/,
   },
   {
     intent: 'stats',
+    statType: 'player',
     pattern:
       /타율|방어율|홈런|era|war|ops|세이버|타점|도루|출루율|장타율|탈삼진|wrc|fip|whip|성적|기록/,
   },
@@ -72,23 +80,32 @@ export const INTENT_RULES: ReadonlyArray<IntentRule> = [
 export interface IntentClassification {
   intent: Intent;
   confidence: 'high' | 'default';
+  /** 매칭된 규칙의 statType(stats 규칙만). 미매칭/비-stats 규칙은 undefined. */
+  statType?: 'standings' | 'player';
 }
 
 /** 순수 분류 함수 (테스트 직접 호출용) — 입력은 normalized form */
 export function classifyIntent(normalized: string): IntentClassification {
   for (const rule of INTENT_RULES) {
     if (rule.pattern.test(normalized)) {
-      return { intent: rule.intent, confidence: 'high' };
+      return {
+        intent: rule.intent,
+        confidence: 'high',
+        statType: rule.statType,
+      };
     }
   }
   return { intent: 'chat', confidence: 'default' };
 }
 
 export function intentRouter(state: CoreGraphState): CoreGraphUpdate {
-  const { intent, confidence } = classifyIntent(state.userMessageNormalized);
+  const { intent, confidence, statType } = classifyIntent(
+    state.userMessageNormalized,
+  );
   return {
     intent,
     intentConfidence: confidence,
     complexity: 'simple', // W2: L1 only
+    statType, // stats 규칙이면 'standings'|'player', 아니면 undefined
   };
 }

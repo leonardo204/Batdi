@@ -40,6 +40,25 @@ describe('IntentRouter.classifyIntent', () => {
     expect(classifyIntent(norm('방어율 ERA 알려줘')).intent).toBe('stats');
   });
 
+  it('statType 분기: 순위→standings / 타율→player (P3-W7 7.3b)', () => {
+    const standings = classifyIntent(norm('우리 순위 어때'));
+    expect(standings.intent).toBe('stats');
+    expect(standings.statType).toBe('standings');
+
+    const player = classifyIntent(norm('타율 어때'));
+    expect(player.intent).toBe('stats');
+    expect(player.statType).toBe('player');
+
+    const playerPit = classifyIntent(norm('방어율 알려줘'));
+    expect(playerPit.intent).toBe('stats');
+    expect(playerPit.statType).toBe('player');
+  });
+
+  it('비-stats 규칙(score)·chat 은 statType undefined', () => {
+    expect(classifyIntent(norm('스코어 알려줘')).statType).toBeUndefined();
+    expect(classifyIntent(norm('안녕')).statType).toBeUndefined();
+  });
+
   it('뉴스/일정/라인업/밈 분류', () => {
     expect(classifyIntent(norm('오늘 뉴스 있어')).intent).toBe('news');
     expect(classifyIntent(norm('다음 경기 언제야')).intent).toBe('schedule');
@@ -102,5 +121,20 @@ describe('IntentRouter node', () => {
     expect(update.intent).toBe('score');
     expect(update.intentConfidence).toBe('high');
     expect(update.complexity).toBe('simple');
+    expect(update.statType).toBeUndefined(); // score 규칙은 statType 없음
+  });
+
+  it('intentRouter 가 stats statType 을 state update 로 노출', () => {
+    const player = intentRouter({
+      userMessageNormalized: norm('타율 어때'),
+    } as CoreGraphState);
+    expect(player.intent).toBe('stats');
+    expect(player.statType).toBe('player');
+
+    const standings = intentRouter({
+      userMessageNormalized: norm('순위 어때'),
+    } as CoreGraphState);
+    expect(standings.intent).toBe('stats');
+    expect(standings.statType).toBe('standings');
   });
 });

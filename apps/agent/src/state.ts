@@ -15,7 +15,7 @@ import type {
   TeamId,
 } from '@batdi/types';
 import type { ScoreData } from './services/score-graph';
-import type { StandingsData } from './services/stats-graph';
+import type { StandingsData, StatsLeaderboard } from './services/stats-graph';
 
 /** 마지막-쓰기-우선(last-write-wins) reducer 헬퍼 */
 function lastValue<T>() {
@@ -56,6 +56,13 @@ export const CoreStateAnnotation = Annotation.Root({
   complexity: Annotation<'simple' | 'general' | 'composite'>(
     lastValue<'simple' | 'general' | 'composite'>(),
   ),
+  // stats intent 보조 분기(P3-W7 7.3b). IntentRouter 가 매칭된 규칙의 statType 을 노출:
+  //   - 'standings' → 팀 순위 카드(standings_compact)
+  //   - 'player'    → 팀 선수 리더보드 카드(player_stat_compact, 타율/방어율/홈런 등)
+  // stats 외 intent / statType 없는 규칙은 undefined.
+  statType: Annotation<'standings' | 'player' | undefined>(
+    lastValue<'standings' | 'player' | undefined>(),
+  ),
 
   // ── 캐시 (CacheLookup) ──
   cacheHit: Annotation<'L0' | 'L1' | 'L2' | 'L3' | 'miss'>(
@@ -94,6 +101,17 @@ export const CoreStateAnnotation = Annotation.Root({
   //   stats 외 intent 면 미설정(undefined).
   standingsData: Annotation<StandingsData | null | undefined>(
     lastValue<StandingsData | null | undefined>(),
+  ),
+
+  // ── 서비스 실데이터 (ServiceData, stats statType='player' 선수 리더보드) ──
+  // ServiceData 가 stats intent + statType='player' 에서 fetchPlayerLeaderboard(teamId, kind)
+  // 로 채운다(batting_stats/pitching_stats 실데이터). detectStatKind 로 타자/투수 분기.
+  //   - EmitA2UI 가 player_stat_compact 카드 데이터 모델(rows)로 주입한다.
+  //   - stats 는 LLM 감정 리액션을 생성하지 않으므로 reaction 슬롯 없음.
+  // best-effort: DB 비활성/teamId 없음/4팀 외/빈 결과 시 null → EmitA2UI 폴백 텍스트.
+  //   stats player 외 경로면 미설정(undefined).
+  playerStats: Annotation<StatsLeaderboard | null | undefined>(
+    lastValue<StatsLeaderboard | null | undefined>(),
   ),
 
   // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──

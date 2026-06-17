@@ -29,6 +29,11 @@ import {
   STANDINGS_COMPACT_BIND_SCHEMA,
   STANDINGS_COMPACT_TEMPLATE_ID,
 } from './standings_compact';
+import {
+  PLAYER_STAT_COMPACT_COMPONENTS,
+  PLAYER_STAT_COMPACT_BIND_SCHEMA,
+  PLAYER_STAT_COMPACT_TEMPLATE_ID,
+} from './player_stat_compact';
 
 export interface L1Template {
   templateId: string;
@@ -100,4 +105,35 @@ export function resolveScoreTemplate(
     default:
       return SCORE_COMPACT_TEMPLATE;
   }
+}
+
+/** stats 순위 템플릿 (standings_compact). statType 미지정/standings 의 기본. */
+const STANDINGS_COMPACT_TEMPLATE: L1Template = {
+  templateId: STANDINGS_COMPACT_TEMPLATE_ID,
+  components: STANDINGS_COMPACT_COMPONENTS,
+  bindSchema: STANDINGS_COMPACT_BIND_SCHEMA,
+};
+
+/** stats 선수 리더보드 템플릿 (player_stat_compact). statType='player' 전용. */
+const PLAYER_STAT_COMPACT_TEMPLATE: L1Template = {
+  templateId: PLAYER_STAT_COMPACT_TEMPLATE_ID,
+  components: PLAYER_STAT_COMPACT_COMPONENTS,
+  bindSchema: PLAYER_STAT_COMPACT_BIND_SCHEMA,
+};
+
+/**
+ * stats intent 의 statType 기반 템플릿 선택(순수 함수, P3-W7 7.3b).
+ *
+ *  - statType==='player' → player_stat_compact (팀 선수 리더보드)
+ *  - else(standings/undefined) → standings_compact (팀 순위)
+ *
+ * 두 템플릿 모두 동일 bind 경로(rows.N.line)라 EmitA2UI 의 data={rows} 주입 로직을
+ * 그대로 공유한다. TEMPLATE_BY_INTENT.stats 는 standings 매핑을 유지(하위호환).
+ */
+export function resolveStatsTemplate(
+  statType: 'standings' | 'player' | undefined,
+): L1Template {
+  return statType === 'player'
+    ? PLAYER_STAT_COMPACT_TEMPLATE
+    : STANDINGS_COMPACT_TEMPLATE;
 }

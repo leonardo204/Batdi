@@ -12,11 +12,21 @@ import { describe, it, expect, vi } from 'vitest';
 import * as prismaMod from '../src/utils/prisma';
 import { emitA2UI } from '../src/nodes/emit-a2ui';
 import type { CoreGraphState } from '../src/state';
-import type { StandingsData } from '../src/services/stats-graph';
+import type {
+  StandingsData,
+  StatsLeaderboard,
+} from '../src/services/stats-graph';
 
 const STANDINGS: StandingsData = {
   rows: Array.from({ length: 10 }, (_, n) => ({
     line: `${n + 1}  팀${n + 1}  ${40 - n}승${20 + n}패0무  ${(0.6 - n * 0.01).toFixed(3)}`,
+  })),
+};
+
+const PLAYER_STATS: StatsLeaderboard = {
+  kind: 'batting',
+  rows: Array.from({ length: 6 }, (_, n) => ({
+    line: `${n + 1}  선수${n + 1}  ${(0.36 - n * 0.01).toFixed(3)}  ${10 - n}홈런  ${49 - n}타점`,
   })),
 };
 
@@ -95,6 +105,83 @@ describe('emitA2UI — stats standingsData 없음 → 폴백', () => {
       .mockReturnValue({ cacheUiEnvelope: { upsert } } as never);
     try {
       await emitA2UI(makeNoDataState());
+      expect(upsert).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+// ─── P3-W7 7.3b: stats statType=player 선수 리더보드 분기 ───
+
+describe('emitA2UI — stats statType=player + playerStats 있음 → 리더보드 카드', () => {
+  it('player_stat_compact 카드(8 컴포넌트) + data model rows 주입', async () => {
+    const update = await emitA2UI(
+      makeStatsState({
+        statType: 'player',
+        playerStats: PLAYER_STATS,
+        standingsData: undefined,
+        userMessage: '타율 어때',
+        userMessageNormalized: '타율어때',
+      } as Partial<CoreGraphState>),
+    );
+    const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
+    expect(ops).toHaveLength(3);
+
+    const compOp = ops.find((o) => 'updateComponents' in o) as
+      | { updateComponents: { components: Array<Record<string, unknown>> } }
+      | undefined;
+    const comps = compOp?.updateComponents.components ?? [];
+    // player_stat_compact = 8 컴포넌트 (root + title + 6줄), standings 12 가 아님.
+    expect(comps).toHaveLength(8);
+    expect(comps[0]).toMatchObject({ id: 'root', component: 'Column' });
+
+    const dataOp = ops.find((o) => 'updateDataModel' in o) as
+      | { updateDataModel: { value: Record<string, unknown> } }
+      | undefined;
+    expect(dataOp?.updateDataModel.value).toMatchObject({
+      rows: PLAYER_STATS.rows,
+    });
+    // 리더보드 카드엔 리액션 슬롯이 없다.
+    expect(dataOp?.updateDataModel.value.reaction).toBeUndefined();
+  });
+});
+
+describe('emitA2UI — stats statType=player + playerStats=null → 폴백', () => {
+  it('playerStats=null → 리더보드 카드 대신 단일 Text 폴백 카드 + AIMessage', async () => {
+    const update = await emitA2UI(
+      makeStatsState({
+        statType: 'player',
+        playerStats: null,
+        standingsData: undefined,
+        cacheKey: 'stats:hash:lotte:default',
+      } as Partial<CoreGraphState>),
+    );
+    const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
+    const compOp = ops.find((o) => 'updateComponents' in o) as
+      | { updateComponents: { components: Array<Record<string, unknown>> } }
+      | undefined;
+    const comps = compOp?.updateComponents.components ?? [];
+    expect(comps).toHaveLength(1);
+    expect(comps[0]).toMatchObject({ id: 'root', component: 'Text' });
+    const msgs = update.messages as Array<{ content: unknown }>;
+    expect(String(msgs[0]?.content)).toContain('선수 기록이 없');
+  });
+
+  it('playerStats=null → L0 캐시 write 안 함(데이터 부재 캐시 금지)', async () => {
+    const upsert = vi.fn().mockResolvedValue({});
+    const spy = vi
+      .spyOn(prismaMod, 'getPrisma')
+      .mockReturnValue({ cacheUiEnvelope: { upsert } } as never);
+    try {
+      await emitA2UI(
+        makeStatsState({
+          statType: 'player',
+          playerStats: null,
+          standingsData: undefined,
+          cacheKey: 'stats:hash:lotte:default',
+        } as Partial<CoreGraphState>),
+      );
       expect(upsert).not.toHaveBeenCalled();
     } finally {
       spy.mockRestore();

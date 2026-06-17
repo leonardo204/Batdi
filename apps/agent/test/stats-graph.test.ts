@@ -9,6 +9,10 @@ import { describe, it, expect } from 'vitest';
 import {
   formatStandingsLine,
   fetchStandings,
+  detectStatKind,
+  formatBattingLine,
+  formatPitchingLine,
+  fetchPlayerLeaderboard,
   type TeamSeasonRecordRow,
 } from '../src/services/stats-graph';
 
@@ -59,5 +63,73 @@ describe('fetchStandings (best-effort)', () => {
   it("DATABASE_URL='' (getPrisma undefined) → null 반환, throw 안 함", async () => {
     // vitest.config 가 test env DATABASE_URL='' 강제 → getPrisma()=undefined.
     await expect(fetchStandings()).resolves.toBeNull();
+  });
+});
+
+// ─── P3-W7 7.3b: 선수 스탯 리더보드 ───
+
+describe('detectStatKind (순수)', () => {
+  it('투수 키워드(방어율/era/탈삼진/세이브/whip/fip/투수) → pitching', () => {
+    expect(detectStatKind('방어율어때')).toBe('pitching');
+    expect(detectStatKind('era알려줘')).toBe('pitching');
+    expect(detectStatKind('평균자책점')).toBe('pitching');
+    expect(detectStatKind('탈삼진순위')).toBe('pitching');
+    expect(detectStatKind('whip어때')).toBe('pitching');
+    expect(detectStatKind('fip')).toBe('pitching');
+    expect(detectStatKind('투수성적')).toBe('pitching');
+  });
+
+  it('타자 질의 → batting', () => {
+    expect(detectStatKind('타율어때')).toBe('batting');
+    expect(detectStatKind('홈런왕누구')).toBe('batting');
+    expect(detectStatKind('타점순위')).toBe('batting');
+  });
+
+  it('순위(standings) 등 미지정 → batting(기본)', () => {
+    expect(detectStatKind('순위')).toBe('batting');
+    expect(detectStatKind('')).toBe('batting');
+  });
+});
+
+describe('formatBattingLine (순수)', () => {
+  it('rank + name + avg(3자리) + 홈런 + 타점 포맷', () => {
+    expect(formatBattingLine(1, '레이예스', 0.36, 10, 49)).toBe(
+      '1  레이예스  0.360  10홈런  49타점',
+    );
+  });
+
+  it('avg 는 toFixed(3) 로 안정화', () => {
+    expect(formatBattingLine(2, '김선수', 0.3125, 5, 30)).toBe(
+      '2  김선수  0.313  5홈런  30타점',
+    );
+  });
+});
+
+describe('formatPitchingLine (순수)', () => {
+  it('rank + name + era(2자리) ERA + K 포맷', () => {
+    expect(formatPitchingLine(1, '류현진', 2.84, 56)).toBe(
+      '1  류현진  2.84 ERA  56K',
+    );
+  });
+
+  it('era 는 toFixed(2) 로 안정화 (whip 인자는 줄 미표시)', () => {
+    expect(formatPitchingLine(3, '문동주', 3.5, 120, 1.21)).toBe(
+      '3  문동주  3.50 ERA  120K',
+    );
+  });
+});
+
+describe('fetchPlayerLeaderboard (best-effort)', () => {
+  it("DATABASE_URL='' (getPrisma undefined) → null, throw 안 함 (batting)", async () => {
+    await expect(fetchPlayerLeaderboard('hanwha', 'batting')).resolves.toBeNull();
+  });
+
+  it("DATABASE_URL='' → null (pitching)", async () => {
+    await expect(fetchPlayerLeaderboard('lotte', 'pitching')).resolves.toBeNull();
+  });
+
+  it('teamId 없음 → null (DB 조회 전 가드)', async () => {
+    await expect(fetchPlayerLeaderboard(undefined, 'batting')).resolves.toBeNull();
+    await expect(fetchPlayerLeaderboard('', 'batting')).resolves.toBeNull();
   });
 });

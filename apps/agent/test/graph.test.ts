@@ -99,6 +99,27 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(String(last.content)).toContain('순위 정보가 없');
   });
 
+  it('타율 질의(DB 없음) → stats statType=player + 선수 기록 폴백 카드 (P3-W7 7.3b)', async () => {
+    // 테스트 env 는 DATABASE_URL='' → fetchPlayerLeaderboard=null(best-effort).
+    //   stats intent + statType=player → 순위가 아니라 선수 리더보드 분기로 라우팅되고,
+    //   실데이터 없음 → standings 폴백이 아닌 player 폴백("선수 기록이 없")을 방출한다.
+    delete process.env.GOOGLE_API_KEY;
+    const out = await graph.invoke({
+      messages: [{ role: 'user', content: '타율 어때' }],
+      userMessage: '타율 어때',
+    });
+    expect(out.intent).toBe('stats');
+    expect(out.statType).toBe('player'); // 순위 아닌 선수 분기로 배선됨
+    expect(out.playerStats).toBeNull();
+    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
+    const compOp = ops.find((o) => 'updateComponents' in o) as
+      | { updateComponents: { components: Array<Record<string, unknown>> } }
+      | undefined;
+    expect(compOp?.updateComponents.components).toHaveLength(1);
+    const last = out.messages[out.messages.length - 1];
+    expect(String(last.content)).toContain('선수 기록이 없');
+  });
+
   it('chat 질의(키 없음) → 팀톤 캔드 AIMessage + 단일 Text 카드', async () => {
     delete process.env.GOOGLE_API_KEY;
     const out = await graph.invoke({

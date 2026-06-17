@@ -99,3 +99,207 @@ export async function fetchStandings(): Promise<StandingsData | null> {
     return null;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// 선수 스탯 리더보드 (P3-W7 7.3b — player-stat 질의: 타율/방어율/홈런 등)
+//
+// "타율"·"방어율" 류 질의는 순위(standings)가 아니라 팀 선수 리더보드를 보여준다.
+// standings 와 동일 패턴: 순수 포맷 함수 + getPrisma best-effort fetch + rows.N.line.
+// player_stat_compact 템플릿(rows.0.line..rows.5.line)과 1:1 로 6줄을 만든다.
+//
+// ⚠️ 4팀(hanwha/doosan/kia/lotte)만 적재됨. 그 외 팀/데이터 없음 → null(폴백).
+// ⚠️ 줄에 포함되는 숫자(타율/홈런/방어율 등)는 DB 팩트라 카드 슬롯(rows.N.line)에 싣는다.
+//    리액션 텍스트가 아니므로 OutputGuardrail 검사 대상이 아니다(reaction 슬롯 없음).
+// ─────────────────────────────────────────────────────────────────────────
+
+/** 리더보드 종류 — 타자(batting) / 투수(pitching) */
+export type StatKind = 'batting' | 'pitching';
+
+/** 선수 스탯 리더보드 한 줄 (미리 포맷된 문자열 — 카드 단일 Text 노드 1개) */
+export interface StatsLeaderboardRow {
+  line: string;
+}
+
+/**
+ * 선수 스탯 리더보드 데이터 (player_stat_compact 템플릿 bind 경로 `rows.N.line` 과 1:1).
+ *  - kind: 타자/투수 (정렬·포맷 분기에 사용).
+ *  - rows: 최대 6줄(상위 6명).
+ */
+export interface StatsLeaderboard {
+  kind: StatKind;
+  rows: StatsLeaderboardRow[];
+}
+
+/**
+ * 질의(normalized)에서 리더보드 종류를 판정하는 순수 함수.
+ *
+ * 투수 키워드(방어율·era·평균자책·탈삼진·세이브·홀드·whip·fip·투수)가 있으면 'pitching',
+ * 아니면 'batting'(기본). normalized 는 소문자·공백제거 형태라 정규식도 동일 기준.
+ *
+ *  예) '방어율어때' → 'pitching', '타율어때' → 'batting', '순위' → 'batting'(기본)
+ */
+export function detectStatKind(normalized: string): StatKind {
+  if (/방어율|era|평균자책|탈삼진|세이브|홀드|whip|fip|투수/.test(normalized)) {
+    return 'pitching';
+  }
+  return 'batting';
+}
+
+/**
+ * BattingStat 행에서 리더보드가 읽는 필드의 최소 구조(읽기 전용 + player 관계).
+ * Prisma battingStat.findMany({ include: { player: true } }) 결과의 부분집합.
+ * avg/… 는 Prisma Decimal 이지만 Number(...) 로 안전 변환한다(toFixed 호출 위함).
+ */
+export interface BattingStatRow {
+  avg: unknown;
+  hr: number | null;
+  rbi: number | null;
+  player: { name: string | null } | null;
+}
+
+/**
+ * PitchingStat 행에서 리더보드가 읽는 필드의 최소 구조(읽기 전용 + player 관계).
+ */
+export interface PitchingStatRow {
+  era: unknown;
+  strikeouts: number | null;
+  whip: unknown;
+  player: { name: string | null } | null;
+}
+
+/** Prisma Decimal | number | null 을 number 로 안전 변환(없으면 0) */
+function toNum(v: unknown): number {
+  if (v === null || v === undefined) {
+    return 0;
+  }
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * 타자 리더보드 한 줄 문자열(순수 함수).
+ *
+ * 포맷: `${rank}  ${name}  ${avg(0.000)}  ${hr}홈런  ${rbi}타점`
+ *   예) "1  레이예스  0.360  10홈런  49타점"
+ *
+ *  - avg 는 toFixed(3) 로 소수 3자리 고정(DB Float/Decimal 표기 안정화, 0.360 형식).
+ *  - 숫자는 DB 팩트라 카드 슬롯에 그대로 노출 OK(리액션 아님).
+ */
+export function formatBattingLine(
+  rank: number,
+  name: string,
+  avg: number,
+  hr: number,
+  rbi: number,
+): string {
+  return `${rank}  ${name}  ${avg.toFixed(3)}  ${hr}홈런  ${rbi}타점`;
+}
+
+/**
+ * 투수 리더보드 한 줄 문자열(순수 함수).
+ *
+ * 포맷: `${rank}  ${name}  ${era(0.00)} ERA  ${strikeouts}K`
+ *   예) "1  류현진  2.84 ERA  56K"
+ *
+ *  - era 는 toFixed(2) 로 소수 2자리 고정(방어율 관례).
+ *  - whip 인자는 미래 확장 여지로 받되 현재 줄에는 era/K 만 노출(노드 6줄 가독).
+ */
+export function formatPitchingLine(
+  rank: number,
+  name: string,
+  era: number,
+  strikeouts: number,
+  _whip?: number,
+): string {
+  return `${rank}  ${name}  ${era.toFixed(2)} ERA  ${strikeouts}K`;
+}
+
+/** 리더보드 줄 개수 (player_stat_compact take 6 과 일치 — 상위 6명) */
+const PLAYER_ROW_COUNT = 6;
+
+/**
+ * 팀 선수 스탯 리더보드를 DB(batting_stats/pitching_stats + players)에서 읽어
+ * StatsLeaderboard 로 반환한다.
+ *
+ * best-effort: getPrisma() undefined(테스트/DATABASE_URL 없음) 또는 teamId 없음/
+ * 4팀 외/데이터 없음/쿼리 실패 시 null. 절대 throw 하지 않는다(emit 폴백 처리).
+ *
+ *  - 현재 시즌(연도 = new Date().getFullYear())
+ *  - batting: avg not null, avg desc, take 6, include player → formatBattingLine
+ *  - pitching: era not null, era asc, take 6, include player → formatPitchingLine
+ *
+ * @param teamId 팀 코드(없으면 null 반환).
+ * @param kind   'batting' | 'pitching' (detectStatKind 결과).
+ * @returns StatsLeaderboard | null
+ */
+export async function fetchPlayerLeaderboard(
+  teamId: string | undefined,
+  kind: StatKind,
+): Promise<StatsLeaderboard | null> {
+  if (teamId === undefined || teamId.trim() === '') {
+    return null; // 팀 미지정 → 리더보드 대상 없음 → 폴백
+  }
+
+  const prisma = getPrisma();
+  if (!prisma) {
+    return null; // DB 비활성(테스트/DATABASE_URL 없음) → best-effort null
+  }
+
+  const season = new Date().getFullYear();
+
+  try {
+    if (kind === 'pitching') {
+      const rows = (await prisma.pitchingStat.findMany({
+        where: { teamId, season, era: { not: null } },
+        orderBy: { era: 'asc' },
+        take: PLAYER_ROW_COUNT,
+        include: { player: true },
+      })) as PitchingStatRow[];
+
+      if (rows.length === 0) {
+        return null; // 적재 전/4팀 외 → 폴백
+      }
+
+      return {
+        kind: 'pitching',
+        rows: rows.map((r, i) => ({
+          line: formatPitchingLine(
+            i + 1,
+            r.player?.name ?? '??',
+            toNum(r.era),
+            r.strikeouts ?? 0,
+            toNum(r.whip),
+          ),
+        })),
+      };
+    }
+
+    // batting (기본)
+    const rows = (await prisma.battingStat.findMany({
+      where: { teamId, season, avg: { not: null } },
+      orderBy: { avg: 'desc' },
+      take: PLAYER_ROW_COUNT,
+      include: { player: true },
+    })) as BattingStatRow[];
+
+    if (rows.length === 0) {
+      return null; // 적재 전/4팀 외 → 폴백
+    }
+
+    return {
+      kind: 'batting',
+      rows: rows.map((r, i) => ({
+        line: formatBattingLine(
+          i + 1,
+          r.player?.name ?? '??',
+          toNum(r.avg),
+          r.hr ?? 0,
+          r.rbi ?? 0,
+        ),
+      })),
+    };
+  } catch {
+    // 연결/쿼리 실패 → best-effort null (그래프 실행 막지 않음, emit 폴백)
+    return null;
+  }
+}

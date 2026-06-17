@@ -20,7 +20,11 @@
  */
 import type { CoreGraphState, CoreGraphUpdate } from '../state';
 import { fetchScoreData } from '../services/score-graph';
-import { fetchStandings } from '../services/stats-graph';
+import {
+  fetchStandings,
+  fetchPlayerLeaderboard,
+  detectStatKind,
+} from '../services/stats-graph';
 
 export async function serviceData(
   state: CoreGraphState,
@@ -37,6 +41,15 @@ export async function serviceData(
   }
 
   if (state.intent === 'stats') {
+    // statType 분기(P3-W7 7.3b):
+    //  - 'player'    → 팀 선수 리더보드(타율/방어율 등). detectStatKind 로 타자/투수 판정.
+    //  - else(standings/undefined) → 팀 순위(기존).
+    if (state.statType === 'player') {
+      const kind = detectStatKind(state.userMessageNormalized);
+      // best-effort: DB 비활성/teamId 없음/4팀 외/미적재 → null (EmitA2UI 폴백 처리).
+      const playerStats = await fetchPlayerLeaderboard(state.teamId, kind);
+      return { playerStats, standingsData: undefined };
+    }
     // best-effort: DB 비활성/순위 미적재 → null (EmitA2UI 폴백 처리).
     const standingsData = await fetchStandings();
     return { standingsData };

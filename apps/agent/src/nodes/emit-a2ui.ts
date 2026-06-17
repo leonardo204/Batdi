@@ -23,7 +23,11 @@ import { AIMessage } from '@langchain/core/messages';
 import { dispatchCustomEvent } from '@langchain/core/callbacks/dispatch';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { CoreGraphState, CoreGraphUpdate } from '../state';
-import { resolveTemplate, resolveScoreTemplate } from '../templates/registry';
+import {
+  resolveTemplate,
+  resolveScoreTemplate,
+  resolveStatsTemplate,
+} from '../templates/registry';
 import { compileBindings, scoreSummaryText } from '../databind/compile';
 import { cannedReactionFor } from '../utils/prompt-builder';
 import {
@@ -199,6 +203,16 @@ function standingsNoDataText(teamId: CoreGraphState['teamId']): string {
   return `${tone} 아직 순위 정보가 없어유~ 조금만 기다려보자!`;
 }
 
+/**
+ * stats(player) intent 인데 선수 리더보드 실데이터(state.playerStats)가 없을 때의 팀 톤
+ * 폴백 문구(P3-W7 7.3b). standingsNoDataText 와 평행 — 4팀 외/미적재/팀 미지정 톤.
+ * 수치 없음, 캐시 금지(데이터 부재).
+ */
+function playerStatsNoDataText(teamId: CoreGraphState['teamId']): string {
+  const tone = cannedReactionFor(teamId);
+  return `${tone} 아직 선수 기록이 없어유~ 조금만 기다려보자!`;
+}
+
 export async function emitA2UI(
   state: CoreGraphState,
   config?: RunnableConfig,
@@ -242,10 +256,16 @@ export async function emitA2UI(
   // 선택한다(resolveScoreTemplate). stats/기타 intent 는 기존 intent→템플릿 매핑 유지.
   // score 인데 실데이터 없음(scoreData==null)은 바로 아래 DataFallbackHandler 가 먼저
   // 가로채므로, 여기 template 은 실데이터 보유 경로에서만 사용된다.
+  // P3-W7 7.3b: stats intent 는 statType 으로 템플릿을 고른다(resolveStatsTemplate):
+  //  - 'player' → player_stat_compact(선수 리더보드), else → standings_compact(순위).
+  // stats 인데 실데이터 없음(standingsData/playerStats==null)은 아래 DataFallbackHandler 가
+  // 먼저 가로채므로, 여기 template 은 실데이터 보유 경로에서만 사용된다.
   const template =
     state.intent === 'score'
       ? resolveScoreTemplate(state.scoreData)
-      : resolveTemplate(state.intent);
+      : state.intent === 'stats'
+        ? resolveStatsTemplate(state.statType)
+        : resolveTemplate(state.intent);
 
   // ── P2-W5.5: DataFallbackHandler ──
   // score intent 인데 실데이터 없음(state.scoreData == null): 경기 정보가 없으므로
@@ -268,11 +288,41 @@ export async function emitA2UI(
     };
   }
 
-  // ── stats DataFallbackHandler ──
+  // ── stats(player) DataFallbackHandler (P3-W7 7.3b) ──
+  // stats intent + statType='player' 인데 선수 리더보드 실데이터 없음(playerStats==null):
+  // 4팀 외/미적재/팀 미지정 → 리더보드 카드 대신 팀 톤 폴백 텍스트 카드 + AIMessage.
+  // standings 폴백과 평행. ⚠️ 데이터 부재라 L0 write 하지 않는다(Cache 무결성).
+  if (
+    state.intent === 'stats' &&
+    state.statType === 'player' &&
+    state.playerStats == null
+  ) {
+    const fallbackText = playerStatsNoDataText(state.teamId);
+    const result = buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: fallbackText }],
+      {},
+      fallbackText,
+    );
+    reportA2UIResult('intent=stats(player,no-data-fallback)', result);
+    await emitRenderA2UIToolCall(result, config);
+    // L0 write 생략 — 선수 기록 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
+    logResponseLevel('L1', 'stats');
+    return {
+      a2uiEnvelope: result.ops,
+      messages: [new AIMessage(fallbackText)],
+    };
+  }
+
+  // ── stats(standings) DataFallbackHandler ──
   // stats intent 인데 순위 실데이터 없음(state.standingsData == null): 순위 카드 대신
   // 팀 톤 폴백 텍스트 카드(단일 Text) + AIMessage 를 방출한다. score 폴백과 동일 패턴.
+  // ⚠️ statType='player' 경로는 위에서 이미 처리됐으므로 여기는 standings/undefined 만 도달.
   // ⚠️ 데이터 없는 상태는 캐시하면 안 되므로 L0 write 하지 않는다(Cache 무결성).
-  if (state.intent === 'stats' && state.standingsData == null) {
+  if (
+    state.intent === 'stats' &&
+    state.statType !== 'player' &&
+    state.standingsData == null
+  ) {
     const fallbackText = standingsNoDataText(state.teamId);
     const result = buildA2UIOps(
       [{ id: 'root', component: 'Text', text: fallbackText }],
@@ -299,7 +349,11 @@ export async function emitA2UI(
     let summary = '응답';
     let data: Record<string, unknown>;
 
-    if (state.intent === 'stats' && state.standingsData) {
+    if (state.intent === 'stats' && state.statType === 'player' && state.playerStats) {
+      // 선수 리더보드 카드: rows 만 주입(player_stat_compact 는 /reaction 슬롯이 없음).
+      summary = '선수 기록';
+      data = { rows: state.playerStats.rows };
+    } else if (state.intent === 'stats' && state.standingsData) {
       // 순위 카드: rows 만 주입(standings_compact 는 /reaction 슬롯이 없음).
       summary = '팀 순위';
       data = { rows: state.standingsData.rows };
