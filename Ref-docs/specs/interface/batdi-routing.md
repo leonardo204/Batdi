@@ -128,17 +128,27 @@ interface IntentRule {
   statType?: 'player' | 'team' | 'standings' | 'saber';  // intent='stats' 보조 분기
 }
 
-// 순서가 곧 우선순위. 위에서부터 첫 매칭 채택.
+// 순서가 곧 우선순위. 위에서부터 첫 매칭 채택. (P2 키워드 확장 — 아래는 구현 반영본)
+// ⚠️ 매칭은 normalized form 기준 — normalizer 가 숫자→문자 homoglyph 치환(1→i 등) + 공백 제거를
+//    하므로 패턴에 숫자/공백 별칭 금지. 팀 별칭(TEAM_ALIAS)은 맥락어와 결합 시에만 score.
+const TEAM_ALIAS =
+  '두산|베어스|doosan|삼성|라이온즈|samsung|롯데|자이언츠|lotte|한화|이글스|hanwha|lg|엘지|트윈스|기아|kia|타이거즈|키움|히어로즈|heroes|nc|엔씨|다이노스|kt|케이티|위즈|ssg|에스에스지|랜더스|쓱';
+
 const INTENT_RULES: IntentRule[] = [
-  { intent: 'score',    pattern: /스코어|점수|몇\s*대\s*몇|지금.*경기|이기고/ },
-  { intent: 'stats',    pattern: /순위|몇\s*위|승률/,            statType: 'standings' },
-  { intent: 'stats',    pattern: /타율|방어율|홈런|ERA|WAR|OPS|세이버/ },
-  { intent: 'news',     pattern: /뉴스|소식|기사/ },
-  { intent: 'schedule', pattern: /일정|언제.*경기|다음.*경기/ },
-  { intent: 'lineup',   pattern: /선발|라인업|누가.*던져/ },
-  { intent: 'meme',     pattern: /밈|ㅋㅋ|웃긴/ },
+  { intent: 'score',    pattern: /스코어|점수|몇\s*대\s*몇|득점|스코어보드/ },
+  { intent: 'score',    pattern: /지금.*경기|이기고|지고\s*있|이겼|이긴|이김|졌|패배|승리|완승|완패|역전|끝내기|경기.*결과|결과/ },
+  { intent: 'stats',    pattern: /순위|몇\s*위|승률|게임\s*차|연승|연패|선두|꼴찌|상위권|하위권/, statType: 'standings' },
+  { intent: 'stats',    pattern: /타율|방어율|홈런|ERA|WAR|OPS|세이버|타점|도루|출루율|장타율|탈삼진|wRC|FIP|WHIP|성적|기록/ },
+  { intent: 'news',     pattern: /뉴스|소식|기사|근황|이슈|화제/ },
+  { intent: 'schedule', pattern: /일정|언제.*경기|다음.*경기|내일.*경기|경기.*언제|개막/ },
+  { intent: 'lineup',   pattern: /선발|라인업|누가.*던져|선발투수|출전/ },
+  { intent: 'meme',     pattern: /밈|ㅋㅋ|웃긴|드립|짤/ },
+  // 팀명 + 맥락어 → score (특정 intent 미매칭 시에만 적용 — 맨 끝). 팀명 단독은 chat.
+  { intent: 'score',    pattern: new RegExp(`(?:${TEAM_ALIAS}).*(?:경기|어때|어땠|잘해|잘하|어떻)`) },
 ];
 ```
+
+> P2 확장 근거: "엘지 경기 결과" 류가 score 키워드 부재로 `chat` 오분류되던 실측 갭을 해소(결과·승패·득점 추가). 팀명 단독은 의도 불명(chat)이라 "경기/어때/잘해" 맥락어 결합 시에만 score 로 본다. 특정 키워드(stats·news·schedule·lineup)가 팀맥락 score 보다 앞서 "기아 순위 어때"→stats, "한화 뉴스"→news 로 정확 분기. statType 은 W2 state 미포함이라 분류만(보조 분기는 후속).
 
 #### 3.2 매칭 규칙
 

@@ -48,6 +48,51 @@ describe('IntentRouter.classifyIntent', () => {
   });
 });
 
+describe('IntentRouter — P2 키워드 보강 (결과·승패·팀별칭)', () => {
+  it('"경기 결과"/"이겼어?"/"졌어"/"역전" → score (chat 오분류 해소)', () => {
+    expect(classifyIntent(norm('엘지 경기 결과 알려줘')).intent).toBe('score');
+    expect(classifyIntent(norm('어제 결과 어땠어')).intent).toBe('score');
+    expect(classifyIntent(norm('이겼어?')).intent).toBe('score');
+    expect(classifyIntent(norm('졌어?')).intent).toBe('score');
+    expect(classifyIntent(norm('역전했어?')).intent).toBe('score');
+  });
+
+  it('팀 별칭 + 맥락어 → score', () => {
+    expect(classifyIntent(norm('기아 어때')).intent).toBe('score');
+    expect(classifyIntent(norm('한화 잘해?')).intent).toBe('score');
+    expect(classifyIntent(norm('엘지 경기 어땠어')).intent).toBe('score');
+    expect(classifyIntent(norm('롯데 어떻게 됐어')).intent).toBe('score');
+  });
+
+  it('팀명 단독은 chat (맥락어 없으면 score 아님)', () => {
+    expect(classifyIntent(norm('나 한화 팬이야')).intent).toBe('chat');
+    expect(classifyIntent(norm('기아')).intent).toBe('chat');
+  });
+
+  it('우선순위: 팀명+특정 intent 키워드는 특정 intent 가 이긴다', () => {
+    // 순위(stats) > 팀맥락 score
+    expect(classifyIntent(norm('기아 순위 어때')).intent).toBe('stats');
+    // 뉴스 > 팀맥락 score
+    expect(classifyIntent(norm('한화 뉴스 있어')).intent).toBe('news');
+    // 일정 > 팀맥락 score
+    expect(classifyIntent(norm('기아 다음 경기 언제야')).intent).toBe('schedule');
+    // 선발(lineup)
+    expect(classifyIntent(norm('한화 선발 누구야')).intent).toBe('lineup');
+  });
+
+  it('stats 보강: 게임차·연승·타점·성적', () => {
+    expect(classifyIntent(norm('게임 차 얼마야')).intent).toBe('stats');
+    expect(classifyIntent(norm('연승 중이야?')).intent).toBe('stats');
+    expect(classifyIntent(norm('타점 순위')).intent).toBe('stats');
+    expect(classifyIntent(norm('문동주 성적 어때')).intent).toBe('stats');
+  });
+
+  it('영문 약칭 팀별칭(lg/kia/nc/kt/ssg) + 맥락어 → score', () => {
+    expect(classifyIntent(norm('LG 어때')).intent).toBe('score');
+    expect(classifyIntent(norm('SSG 경기 어땠어')).intent).toBe('score');
+  });
+});
+
 describe('IntentRouter node', () => {
   it('state.userMessageNormalized 기반 분류 + complexity=simple 고정', () => {
     const state = {
