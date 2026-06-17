@@ -99,7 +99,7 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(String(last.content)).toContain('순위 정보가 없');
   });
 
-  it('chat 질의(키 없음) → 캔드 AIMessage + 단일 Text 카드', async () => {
+  it('chat 질의(키 없음) → 팀톤 캔드 AIMessage + 단일 Text 카드', async () => {
     delete process.env.GOOGLE_API_KEY;
     const out = await graph.invoke({
       messages: [{ role: 'user', content: '안녕' }],
@@ -107,7 +107,9 @@ describe('Core graph compile + end-to-end (headless)', () => {
     });
     expect(out.intent).toBe('chat');
     const last = out.messages[out.messages.length - 1];
-    expect(String(last.content)).toContain('밧디(스켈레톤)');
+    // P3-W8 8.1: 키 없으면 스켈레톤 stub 가 아니라 팀톤 캔드(hanwha 폴백)로 응답한다.
+    expect(String(last.content)).not.toContain('스켈레톤');
+    expect(String(last.content)).toContain('응원해유');
     // chat은 단일 Text 카드 (createSurface + updateComponents)
     expect(out.a2uiEnvelope).toBeDefined();
     expect((out.a2uiEnvelope as unknown[]).length).toBeGreaterThanOrEqual(2);

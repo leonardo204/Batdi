@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildReactionPrompt,
+  buildChatPrompt,
   resolveTeamPersona,
   cannedReactionFor,
 } from '../src/utils/prompt-builder';
@@ -183,5 +184,87 @@ describe('PromptBuilder.cannedReactionFor — 팀 톤 + 수치 미포함', () =>
 
   it('undefined → hanwha 캔드 폴백', () => {
     expect(cannedReactionFor(undefined)).toBe(cannedReactionFor('hanwha'));
+  });
+});
+
+describe('PromptBuilder.buildChatPrompt — chat 시스템 프롬프트 (P3-W8 8.1)', () => {
+  const prompt = buildChatPrompt({
+    teamId: 'lotte',
+    userMessage: '오늘 기분이 어때?',
+  });
+
+  it('system_base(priority=1, immutable) 블록 포함', () => {
+    expect(prompt).toContain('<system_base priority="1" immutable="true">');
+    expect(prompt).toContain('</system_base>');
+  });
+
+  it('system_base 에 ChildSafety 지시 + 밧디 정체성 포함', () => {
+    expect(prompt).toContain('전 연령 대상 서비스');
+    expect(prompt).toContain('너는 밧디(batdi)');
+  });
+
+  it('system_base 에 off-topic(야구 화제 전환) 지시 포함', () => {
+    expect(prompt).toMatch(/야구와 무관한 주제.*야구 화제로 전환/);
+    expect(prompt).toContain('일상 잡담은 허용');
+  });
+
+  it('system_base 에 환각 금지 지시 포함', () => {
+    expect(prompt).toContain('지어내지 말고 모른다고 답하라');
+  });
+
+  it('system_base 에 1~3문장 길이 지시 포함', () => {
+    expect(prompt).toContain('1~3문장');
+  });
+
+  it('리액션과 달리 "숫자 한 글자도" 류 절대금지 지시는 없다', () => {
+    // chat 은 일반 대화 — 자연스러운 수치 언급 가능(환각 금지만 적용).
+    expect(prompt).not.toContain('한 글자도 쓰지 마라');
+  });
+
+  it('team_persona(priority=4) + lotte 페르소나 포함', () => {
+    expect(prompt).toContain('<team_persona priority="4">');
+    expect(prompt).toContain('<team>lotte</team>');
+  });
+
+  it('user_message 블록에 원문 포함', () => {
+    expect(prompt).toContain('<user_message>오늘 기분이 어때?</user_message>');
+  });
+
+  it('priority_rules — system_base 불변 우선 명시', () => {
+    expect(prompt).toContain('<priority_rules>');
+    expect(prompt).toContain('priority=1(system_base)은 불변');
+  });
+
+  it('개인화 없으면 personal_profile 블록 생략', () => {
+    expect(prompt).not.toContain('<personal_profile');
+  });
+
+  it('개인화 있으면 personal_profile(priority=3) 가 system_base 뒤·team_persona 앞에 삽입', () => {
+    const personalized: PersonalContext = {
+      ...DEFAULT_PERSONAL_CONTEXT,
+      profile: {
+        ...DEFAULT_PERSONAL_CONTEXT.profile,
+        knowledgeLevel: 'expert',
+        customPersona: '반말로 편하게',
+      },
+      hints: {
+        ...DEFAULT_PERSONAL_CONTEXT.hints,
+        hasCustomPersona: true,
+      },
+    };
+    const p = buildChatPrompt({
+      teamId: 'kia',
+      userMessage: '안녕',
+      personalContext: personalized,
+    });
+    expect(p).toContain('<personal_profile priority="3">');
+    expect(p).toContain('<knowledge_level>expert</knowledge_level>');
+    expect(p).toContain('<custom_persona>반말로 편하게</custom_persona>');
+    // priority 순서: system_base → personal_profile → team_persona
+    const iSys = p.indexOf('<system_base');
+    const iPersonal = p.indexOf('<personal_profile');
+    const iTeam = p.indexOf('<team_persona');
+    expect(iSys).toBeLessThan(iPersonal);
+    expect(iPersonal).toBeLessThan(iTeam);
   });
 });

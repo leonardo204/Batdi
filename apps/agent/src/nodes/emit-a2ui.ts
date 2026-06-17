@@ -22,7 +22,6 @@
 import { AIMessage } from '@langchain/core/messages';
 import { dispatchCustomEvent } from '@langchain/core/callbacks/dispatch';
 import type { RunnableConfig } from '@langchain/core/runnables';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import type { CoreGraphState, CoreGraphUpdate } from '../state';
 import { resolveTemplate, resolveScoreTemplate } from '../templates/registry';
 import { compileBindings, scoreSummaryText } from '../databind/compile';
@@ -32,11 +31,8 @@ import {
   BATDI_SURFACE_ID,
   type BuildA2UIResult,
 } from '../databind/emit';
-import {
-  getLangfuseHandler,
-  logUiInvalidEvent,
-  logResponseLevel,
-} from '../utils/langfuse';
+import { logUiInvalidEvent, logResponseLevel } from '../utils/langfuse';
+import { generateChatReply } from '../services/chat-graph';
 import { getPrisma } from '../utils/prisma';
 import { isPersonalized } from '../personal/personal-agent';
 import { buildCacheKey, personaScopeFor } from './cache-lookup';
@@ -203,26 +199,6 @@ function standingsNoDataText(teamId: CoreGraphState['teamId']): string {
   return `${tone} 아직 순위 정보가 없어유~ 조금만 기다려보자!`;
 }
 
-/** chat intent 응답 텍스트 (Gemini 실응답 또는 캔드 폴백) */
-async function chatResponseText(state: CoreGraphState): Promise<string> {
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (apiKey === undefined || apiKey.trim() === '') {
-    return `🦇 밧디(스켈레톤): "${state.userMessage}" 받음`;
-  }
-  const model = new ChatGoogleGenerativeAI({
-    model: 'gemini-2.5-flash',
-    apiKey,
-  });
-  // Langfuse 트레이싱(1.5): 키 있으면 CallbackHandler 주입 → generation·토큰·비용 기록.
-  const handler = getLangfuseHandler();
-  const response = await model.invoke(
-    state.messages,
-    handler ? { callbacks: [handler] } : undefined,
-  );
-  const content = response.content;
-  return typeof content === 'string' ? content : JSON.stringify(content);
-}
-
 export async function emitA2UI(
   state: CoreGraphState,
   config?: RunnableConfig,
@@ -366,7 +342,9 @@ export async function emitA2UI(
   }
 
   // ── 템플릿 없음 (chat/meme 등) → 텍스트-only + 단일 Text 카드 ──
-  const text = await chatResponseText(state);
+  // P3-W8 8.1: chat 응답은 ChatGraph 서비스가 페르소나 + PersonalContext + 출력 가드레일 +
+  // 팀톤 폴백을 갖춰 생성한다(이전 맨 Gemini 호출/스켈레톤 stub 교체).
+  const text = await generateChatReply(state, config);
   const result = buildA2UIOps(
     [{ id: 'root', component: 'Text', text }],
     {},

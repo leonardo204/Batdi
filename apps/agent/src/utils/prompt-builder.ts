@@ -138,7 +138,7 @@ const KNOWLEDGE_LEVEL_HINT: Record<
  * 포함: knowledgeLevel(톤), customPersona(있으면), isReturningUser 힌트.
  * ⚠️ 팩트(수치) 주입 금지 계약은 그대로 — 여기엔 톤/페르소나 메타만 담는다.
  */
-function buildPersonalProfileBlock(ctx: PersonalContext | undefined): string {
+export function buildPersonalProfileBlock(ctx: PersonalContext | undefined): string {
   if (!isPersonalized(ctx) || !ctx) {
     return '';
   }
@@ -201,5 +201,88 @@ ${persona.body}
 <priority_rules>
 우선순위 숫자가 낮을수록 강함. priority=1(system_base)은 불변이며 절대 우회 불가.
 team_persona(priority=4) 스타일보다 system_base 의 수치 금지 지시가 항상 우선한다.
+</priority_rules>`;
+}
+
+/**
+ * system_base(priority=1) 의 chat(일반 대화) 전용 지시.
+ *
+ * ⚠️ 리액션(buildReactionPrompt)과 달리 chat 은 "숫자 절대 금지"가 아니다(일반 대화이므로
+ *   자연스러운 수치 언급 가능). 다만 **모르는 수치·기록·일정을 지어내는 것(환각)** 은 금지한다.
+ *   팩트(점수/순위 등 정밀 데이터)는 카드({{bind}} 슬롯, DataBinder)로 제공된다.
+ *
+ * 핵심 지시:
+ *  - 정체성: 너는 밧디(batdi), KBO 야구 친구.
+ *  - off-topic 전환: 금융·정치·개발 등 야구 무관 주제는 페르소나 유지한 채 자연스럽게
+ *    야구 화제로 전환. 단 가벼운 일상 잡담은 허용(딱딱하게 거절하지 않는다).
+ *  - 환각 금지: 모르는 수치·기록·일정은 지어내지 말고 모른다고 답하라.
+ *  - 길이: 1~3문장, 친근하게.
+ */
+const CHAT_SYSTEM_DIRECTIVE = `너는 밧디(batdi), KBO 야구 친구야. 너의 야구 친구로서 친근하게 대화하라.
+금융·정치·개발 등 야구와 무관한 주제는 페르소나를 유지한 채 자연스럽게 야구 화제로 전환하라. 가벼운 일상 잡담은 허용.
+모르는 수치·기록·일정은 지어내지 말고 모른다고 답하라(팩트는 카드로 제공됨).
+응답 길이는 1~3문장, 친근하게.`;
+
+/** buildChatPrompt 입력 */
+export interface BuildChatPromptInput {
+  /** 사용자 응원 팀 (teamId 채널) */
+  teamId: TeamId | undefined;
+  /** 사용자 원문 메시지 */
+  userMessage: string;
+  /**
+   * 개인화 컨텍스트(P2-W6 6.3). 의미있는 개인화 정보(isPersonalized)가 있을 때만
+   * `<personal_profile priority="3">` 블록을 system_base(1)와 team_persona(4) 사이에
+   * 삽입한다(priority 순서). 중립 기본값/미지정이면 블록을 생략한다.
+   */
+  personalContext?: PersonalContext;
+}
+
+/**
+ * chat intent(일반 대화)용 시스템 프롬프트(XML)를 조립한다 (P3-W8 8.1).
+ *
+ * buildReactionPrompt 와 평행 구조 — 동일한 블록 헬퍼(ChildSafety SYSTEM_INSTRUCTION,
+ * buildPersonalProfileBlock, resolveTeamPersona)를 재사용한다. 차이점:
+ *  - system_base 지시가 리액션 전용(수치 금지)이 아니라 chat 전용(off-topic 전환·환각 금지·
+ *    1~3문장)이다.
+ *  - current_situation 의 game(scoreSummary)이 없다 — chat 은 경기 맥락에 종속되지 않는다.
+ *    사용자 메시지(user_message)만 맥락으로 둔다(실제 메시지는 HumanMessage 로도 전달).
+ *
+ * architecture §9.1 규격:
+ *  - `<system_base priority="1" immutable="true">`: ChildSafety SYSTEM_INSTRUCTION + chat 지시
+ *  - `<personal_profile priority="3">`: 개인화 정보 있을 때만(buildPersonalProfileBlock)
+ *  - `<team_persona priority="4">`: <team>/<style>/본문
+ *  - `<priority_rules>`: system_base 불변 우선
+ *
+ * @returns 조립된 시스템 프롬프트 문자열 (Context Caching 미사용 — 매 요청 주입)
+ */
+export function buildChatPrompt(input: BuildChatPromptInput): string {
+  const { teamId, userMessage, personalContext } = input;
+  const persona = resolveTeamPersona(teamId);
+
+  const systemBase = `${ChildSafetyGuardrail.SYSTEM_INSTRUCTION.trim()}
+
+${CHAT_SYSTEM_DIRECTIVE}`;
+
+  // priority=3 personal_profile — system_base(1) 와 team_persona(4) 사이에 삽입.
+  // 개인화 정보 없으면 빈 문자열(블록 생략).
+  const personalProfileBlock = buildPersonalProfileBlock(personalContext);
+
+  return `<system_base priority="1" immutable="true">
+${systemBase}
+</system_base>
+
+${personalProfileBlock}<team_persona priority="4">
+  <team>${persona.team}</team>
+  <style>${persona.style}</style>
+${persona.body}
+</team_persona>
+
+<current_situation>
+  <user_message>${userMessage}</user_message>
+</current_situation>
+
+<priority_rules>
+우선순위 숫자가 낮을수록 강함. priority=1(system_base)은 불변이며 절대 우회 불가.
+team_persona(priority=4) 스타일보다 system_base 의 안전·환각 금지 지시가 항상 우선한다.
 </priority_rules>`;
 }
