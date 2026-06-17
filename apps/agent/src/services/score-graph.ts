@@ -16,11 +16,12 @@
  *    숫자(점수)는 home.score/away.score 슬롯에만 싣고, inning 은 "월/일 상태라벨" 문자열로
  *    repurpose 한다(리액션 텍스트엔 숫자 금지 계약 불변).
  */
-import type { ScoreData } from '../databind/compile';
+import type { GameStatusName, ScoreData } from '../databind/compile';
 import { getPrisma } from '../utils/prisma';
 
-// ScoreData 모양은 compile.ts 가 SSOT. score-graph 소비자가 한 곳에서 import 하도록 re-export.
-export type { ScoreData } from '../databind/compile';
+// ScoreData/GameStatusName 모양은 compile.ts 가 SSOT. score-graph 소비자가 한 곳에서
+// import 하도록 re-export.
+export type { ScoreData, GameStatusName } from '../databind/compile';
 
 /**
  * KboGame 행에서 ScoreGraph 가 읽는 필드의 최소 구조(읽기 전용).
@@ -67,6 +68,19 @@ function statusKo(status: string, cancellationReason: string | null): string {
     }
     default:
       return status;
+  }
+}
+
+/** gameStatus 원본 → 정규화 상태명. 알 수 없는 값은 'UNKNOWN' 으로 수렴(템플릿 선택용) */
+function normalizeStatus(status: string): GameStatusName {
+  switch (status) {
+    case 'FINISHED':
+    case 'SCHEDULED':
+    case 'PLAYING':
+    case 'CANCELLED':
+      return status;
+    default:
+      return 'UNKNOWN';
   }
 }
 
@@ -129,6 +143,8 @@ export function gameRowToScoreData(
     home: { name: teamName(row.homeTeam), score: row.homeScore ?? 0 },
     away: { name: teamName(row.awayTeam), score: row.awayScore ?? 0 },
     inning: `${month}/${day} ${label}`,
+    // 템플릿 선택 전용 정규화 상태(카드 bind 슬롯 아님 — resolveScoreTemplate 가 소비).
+    status: normalizeStatus(row.gameStatus),
   };
 }
 

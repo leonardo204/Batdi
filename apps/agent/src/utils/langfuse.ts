@@ -87,3 +87,36 @@ export function logUiInvalidEvent(event: UiInvalidEvent): void {
     // best-effort — 관측 실패는 무시
   }
 }
+
+/** 응답 레벨 (캐시/렌더 경로). 분포 관측용. */
+export type ResponseLevel = 'L0' | 'L1' | 'L2' | 'chat' | 'blocked';
+
+/**
+ * 응답의 캐시/렌더 레벨을 Langfuse 에 기록한다(P2 완료조건: "L0/L1/L2 분포 확인 가능").
+ *
+ *  - L0: 완성 envelope 캐시 HIT(LLM 0)
+ *  - L1: L1 템플릿 렌더(LLM 0, 리액션 없음 — 예: stats 순위 카드, score SCHEDULED)
+ *  - L2: 템플릿 + L2 감정 리액션(LLM 1 — 예: score FINISHED 카드)
+ *  - chat: 템플릿 없는 잡담/밈 경로, blocked: 가드레일 차단
+ *
+ * best-effort(키 없음/오류 삼킴). 코어 langfuse 클라이언트로 trace 1건(name='response_level',
+ * metadata.level/intent). Langfuse 에서 name·level 로 그룹핑하면 분포가 보인다.
+ * LLM 호출이 있는 L2 는 별도 generation trace 도 남으나, 본 이벤트로 L0/L1 무LLM 경로까지 포괄한다.
+ */
+export function logResponseLevel(level: ResponseLevel, intent: string): void {
+  const handler = getLangfuseHandler();
+  if (handler === undefined) return;
+  try {
+    const client = (handler as unknown as {
+      langfuse?: { trace: (b: Record<string, unknown>) => unknown };
+    }).langfuse;
+    if (client === undefined) return;
+    client.trace({
+      name: 'response_level',
+      metadata: { level, intent },
+      tags: [`level:${level}`, `intent:${intent}`],
+    });
+  } catch {
+    // best-effort — 관측 실패는 무시
+  }
+}

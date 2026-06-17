@@ -56,15 +56,30 @@ export function compileBindings(
 }
 
 /**
- * 스코어 데이터 모델 (score_compact 템플릿 bind 경로와 1:1 — 모양 불변).
+ * 경기 상태명 (gameStatus 정규화 값). score 템플릿 선택 로직 전용.
+ *  - 알 수 없는 원본 상태는 'UNKNOWN' 으로 수렴(매핑은 score-graph.gameRowToScoreData).
+ */
+export type GameStatusName =
+  | 'FINISHED'
+  | 'SCHEDULED'
+  | 'PLAYING'
+  | 'CANCELLED'
+  | 'UNKNOWN';
+
+/**
+ * 스코어 데이터 모델 (score_* 템플릿 bind 경로와 1:1 — 모양 불변).
  *  - home.score/away.score: 숫자 슬롯(점수).
  *  - inning: P2-W5.5 부터 "월/일 상태라벨"(예: "6/16 경기 종료") 문자열로 repurpose.
  *    실데이터 변환은 services/score-graph.ts(gameRowToScoreData)가 SSOT.
+ *  - status: P2-W5.4 추가. **카드 bind 슬롯이 아님**(템플릿이 참조 안 함). gameStatus 원본을
+ *    정규화한 값으로, resolveScoreTemplate 의 템플릿 선택(compact/default/emphasized) 전용.
+ *    숫자 계약과 무관 — data model 에 섞여도 무방하나 슬롯으로 노출되지 않는다.
  */
 export interface ScoreData {
   home: { name: string; score: number };
   away: { name: string; score: number };
   inning: string;
+  status: GameStatusName;
 }
 
 /**
@@ -76,6 +91,7 @@ export function getStubScoreData(): ScoreData {
     home: { name: '롯데', score: 5 },
     away: { name: '두산', score: 3 },
     inning: '7회말',
+    status: 'PLAYING',
   };
 }
 

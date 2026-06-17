@@ -78,6 +78,27 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(compOp?.updateComponents.components).toHaveLength(1);
   });
 
+  it('순위 질의(DB 없음) → stats DataFallbackHandler 단일 Text 폴백 카드 + AIMessage', async () => {
+    // 테스트 env 는 DATABASE_URL='' → fetchStandings=null(best-effort).
+    //   stats intent 인데 순위 실데이터 없음 → standings 카드 대신 팀 톤 폴백 텍스트 카드.
+    //   (실데이터 주입 경로 검증은 stats-emit.test.ts 의 emitA2UI 단위테스트가 담당.)
+    delete process.env.GOOGLE_API_KEY;
+    const out = await graph.invoke({
+      messages: [{ role: 'user', content: '순위 알려줘' }],
+      userMessage: '순위 알려줘',
+    });
+    expect(out.intent).toBe('stats');
+    expect(out.standingsData).toBeNull();
+    // 폴백 카드는 단일 Text root (standings_compact 12노드가 아님).
+    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
+    const compOp = ops.find((o) => 'updateComponents' in o) as
+      | { updateComponents: { components: Array<Record<string, unknown>> } }
+      | undefined;
+    expect(compOp?.updateComponents.components).toHaveLength(1);
+    const last = out.messages[out.messages.length - 1];
+    expect(String(last.content)).toContain('순위 정보가 없');
+  });
+
   it('chat 질의(키 없음) → 캔드 AIMessage + 단일 Text 카드', async () => {
     delete process.env.GOOGLE_API_KEY;
     const out = await graph.invoke({

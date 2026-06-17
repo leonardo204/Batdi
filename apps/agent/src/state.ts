@@ -15,6 +15,7 @@ import type {
   TeamId,
 } from '@batdi/types';
 import type { ScoreData } from './services/score-graph';
+import type { StandingsData } from './services/stats-graph';
 
 /** 마지막-쓰기-우선(last-write-wins) reducer 헬퍼 */
 function lastValue<T>() {
@@ -83,6 +84,16 @@ export const CoreStateAnnotation = Annotation.Root({
   //   score 외 intent 면 미설정(undefined).
   scoreData: Annotation<ScoreData | null | undefined>(
     lastValue<ScoreData | null | undefined>(),
+  ),
+
+  // ── 서비스 실데이터 (DataBinder, stats StatsGraph) ──
+  // DataBinder 가 stats intent 에서 fetchStandings() 로 채운다(team_season_records 실데이터).
+  //   - EmitA2UI 가 standings_compact 카드 데이터 모델(rows)로 주입한다.
+  //   - stats 는 LLM 감정 리액션을 생성하지 않으므로 reaction 슬롯 없음.
+  // best-effort: DB 비활성/없음/빈 결과 시 null → EmitA2UI 가 폴백 텍스트 카드로 방출.
+  //   stats 외 intent 면 미설정(undefined).
+  standingsData: Annotation<StandingsData | null | undefined>(
+    lastValue<StandingsData | null | undefined>(),
   ),
 
   // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──

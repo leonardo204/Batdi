@@ -24,7 +24,7 @@ import { dispatchCustomEvent } from '@langchain/core/callbacks/dispatch';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import type { CoreGraphState, CoreGraphUpdate } from '../state';
-import { resolveTemplate } from '../templates/registry';
+import { resolveTemplate, resolveScoreTemplate } from '../templates/registry';
 import { compileBindings, scoreSummaryText } from '../databind/compile';
 import { cannedReactionFor } from '../utils/prompt-builder';
 import {
@@ -32,7 +32,11 @@ import {
   BATDI_SURFACE_ID,
   type BuildA2UIResult,
 } from '../databind/emit';
-import { getLangfuseHandler, logUiInvalidEvent } from '../utils/langfuse';
+import {
+  getLangfuseHandler,
+  logUiInvalidEvent,
+  logResponseLevel,
+} from '../utils/langfuse';
 import { getPrisma } from '../utils/prisma';
 import { isPersonalized } from '../personal/personal-agent';
 import { buildCacheKey, personaScopeFor } from './cache-lookup';
@@ -190,6 +194,15 @@ function scoreNoDataText(teamId: CoreGraphState['teamId']): string {
   return `${tone} 아직 경기 정보가 없어유~ 다음 경기 기대해보자!`;
 }
 
+/**
+ * stats intent 인데 실데이터(state.standingsData)가 없을 때의 팀 톤 폴백 문구.
+ * scoreNoDataText 와 동일 패턴 — 수치 없음, 순위 미적재 톤. 캐시 금지(데이터 부재).
+ */
+function standingsNoDataText(teamId: CoreGraphState['teamId']): string {
+  const tone = cannedReactionFor(teamId);
+  return `${tone} 아직 순위 정보가 없어유~ 조금만 기다려보자!`;
+}
+
 /** chat intent 응답 텍스트 (Gemini 실응답 또는 캔드 폴백) */
 async function chatResponseText(state: CoreGraphState): Promise<string> {
   const apiKey = process.env.GOOGLE_API_KEY;
@@ -230,6 +243,7 @@ export async function emitA2UI(
       `guardrail-blocked(${state.inputGuardrailResult.violationType ?? 'unknown'})`,
       result,
     );
+    logResponseLevel('blocked', state.intent ?? 'unknown');
     return {
       a2uiEnvelope: result.ops,
       messages: [new AIMessage(blockedText)],
@@ -244,10 +258,18 @@ export async function emitA2UI(
     const cachedOps = state.a2uiEnvelope as Array<Record<string, unknown>>;
     const { components, data } = extractFromEnvelope(cachedOps);
     await emitRenderA2UIToolCall({ components, data }, config);
+    logResponseLevel('L0', state.intent ?? 'unknown');
     return { a2uiEnvelope: state.a2uiEnvelope };
   }
 
-  const template = resolveTemplate(state.intent);
+  // P2-W5.4: score intent 는 gameStatus 기반으로 3종(compact/default/emphasized) 중
+  // 선택한다(resolveScoreTemplate). stats/기타 intent 는 기존 intent→템플릿 매핑 유지.
+  // score 인데 실데이터 없음(scoreData==null)은 바로 아래 DataFallbackHandler 가 먼저
+  // 가로채므로, 여기 template 은 실데이터 보유 경로에서만 사용된다.
+  const template =
+    state.intent === 'score'
+      ? resolveScoreTemplate(state.scoreData)
+      : resolveTemplate(state.intent);
 
   // ── P2-W5.5: DataFallbackHandler ──
   // score intent 인데 실데이터 없음(state.scoreData == null): 경기 정보가 없으므로
@@ -263,32 +285,64 @@ export async function emitA2UI(
     reportA2UIResult('intent=score(no-data-fallback)', result);
     await emitRenderA2UIToolCall(result, config);
     // L0 write 생략 — 경기 없는 상태를 캐시하면 다음 경기일에도 stale fallback 이 나간다.
+    logResponseLevel('L1', 'score');
     return {
       a2uiEnvelope: result.ops,
       messages: [new AIMessage(fallbackText)],
     };
   }
 
-  // ── 템플릿 있음 (score: 실데이터 보유) ──
+  // ── stats DataFallbackHandler ──
+  // stats intent 인데 순위 실데이터 없음(state.standingsData == null): 순위 카드 대신
+  // 팀 톤 폴백 텍스트 카드(단일 Text) + AIMessage 를 방출한다. score 폴백과 동일 패턴.
+  // ⚠️ 데이터 없는 상태는 캐시하면 안 되므로 L0 write 하지 않는다(Cache 무결성).
+  if (state.intent === 'stats' && state.standingsData == null) {
+    const fallbackText = standingsNoDataText(state.teamId);
+    const result = buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: fallbackText }],
+      {},
+      fallbackText,
+    );
+    reportA2UIResult('intent=stats(no-data-fallback)', result);
+    await emitRenderA2UIToolCall(result, config);
+    // L0 write 생략 — 순위 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
+    logResponseLevel('L1', 'stats');
+    return {
+      a2uiEnvelope: result.ops,
+      messages: [new AIMessage(fallbackText)],
+    };
+  }
+
+  // ── 템플릿 있음 (score: 실데이터 보유 / stats: 순위 실데이터 보유) ──
   if (template) {
     const compiled = compileBindings(template.components);
 
-    // P2-W5.5: stub 대신 DataBinder 가 채운 실데이터(state.scoreData)로 summary 생성.
-    const summary =
-      state.intent === 'score' && state.scoreData
-        ? scoreSummaryText(state.scoreData)
-        : '응답';
+    // intent 별 summary/data 선택.
+    //  - score: home/away/inning 실데이터(state.scoreData) + reaction 슬롯(state.reaction).
+    //  - stats : rows 실데이터(state.standingsData). 리액션 미생성이라 reaction 슬롯 없음.
+    let summary = '응답';
+    let data: Record<string, unknown>;
 
-    // P2-W6: 리액션은 TeamPersona 가 생성하고 OutputGuardrail 이 검증·정제한 값을
-    // state.reaction 으로 받아 data model /reaction 에 주입한다(카드 reaction 슬롯 표시).
-    // score 외 경로/차단 시엔 미설정(undefined) → 빈 문자열로 폴백(슬롯 비표시).
-    // P2-W5.5: score 카드 데이터(home/away/inning)는 state.scoreData 실데이터.
-    const data = {
-      ...(state.intent === 'score' && state.scoreData
-        ? (state.scoreData as unknown as Record<string, unknown>)
-        : {}),
-      reaction: state.reaction ?? '',
-    };
+    if (state.intent === 'stats' && state.standingsData) {
+      // 순위 카드: rows 만 주입(standings_compact 는 /reaction 슬롯이 없음).
+      summary = '팀 순위';
+      data = { rows: state.standingsData.rows };
+    } else {
+      // score 카드(또는 score 데이터 있는 경로): home/away/inning + reaction.
+      // P2-W6: 리액션은 TeamPersona 가 생성하고 OutputGuardrail 이 검증·정제한 값을
+      // state.reaction 으로 받아 data model /reaction 에 주입한다(카드 reaction 슬롯 표시).
+      // score 외 경로/차단 시엔 미설정(undefined) → 빈 문자열로 폴백(슬롯 비표시).
+      summary =
+        state.intent === 'score' && state.scoreData
+          ? scoreSummaryText(state.scoreData)
+          : '응답';
+      data = {
+        ...(state.intent === 'score' && state.scoreData
+          ? (state.scoreData as unknown as Record<string, unknown>)
+          : {}),
+        reaction: state.reaction ?? '',
+      };
+    }
 
     const result = buildA2UIOps(compiled, data, summary);
     reportA2UIResult(`intent=${state.intent}`, result);
@@ -304,6 +358,8 @@ export async function emitA2UI(
     //   write 실패/DB 비활성은 응답에 영향 없음(await 하되 내부 try/catch 흡수).
     await writeL0Cache(state, result.ops as Array<Record<string, unknown>>);
 
+    // L1(리액션 없음, 예: stats 순위) vs L2(리액션 있음, 예: score FINISHED) 구분 기록.
+    logResponseLevel(state.reaction ? 'L2' : 'L1', state.intent ?? 'unknown');
     return {
       a2uiEnvelope: result.ops,
     };
@@ -318,6 +374,7 @@ export async function emitA2UI(
   );
   reportA2UIResult(`intent=${state.intent}(no-template)`, result);
 
+  logResponseLevel('chat', state.intent ?? 'unknown');
   return {
     a2uiEnvelope: result.ops,
     messages: [new AIMessage(text)],

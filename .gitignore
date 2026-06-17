@@ -48,3 +48,6 @@ pnpm-debug.log*
 # macOS
 .DS_Store
 **/.DS_Store
+
+# 서브에이전트가 apps/* 하위에 만든 스트레이 .claude (커밋 방지)
+apps/*/.claude/

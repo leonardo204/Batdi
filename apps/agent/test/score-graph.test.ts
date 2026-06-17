@@ -87,6 +87,8 @@ describe('gameRowToScoreData (순수)', () => {
       home: { name: '한화', score: 5 },
       away: { name: '두산', score: 3 },
       inning: '6/16 경기 종료',
+      // P2-W5.4: gameStatus 정규화 값(템플릿 선택 전용, bind 슬롯 아님).
+      status: 'FINISHED',
     });
   });
 
@@ -127,6 +129,14 @@ describe('gameRowToScoreData (순수)', () => {
         makeRow({ date: new Date('2026-06-16'), gameStatus: 'CANCELLED', cancellationReason: null }),
       ).inning,
     ).toBe('6/16 취소');
+  });
+
+  it('status 정규화 — 알려진 상태는 그대로, 미지 상태는 UNKNOWN', () => {
+    expect(gameRowToScoreData(makeRow({ gameStatus: 'FINISHED' })).status).toBe('FINISHED');
+    expect(gameRowToScoreData(makeRow({ gameStatus: 'PLAYING' })).status).toBe('PLAYING');
+    expect(gameRowToScoreData(makeRow({ gameStatus: 'SCHEDULED' })).status).toBe('SCHEDULED');
+    expect(gameRowToScoreData(makeRow({ gameStatus: 'CANCELLED' })).status).toBe('CANCELLED');
+    expect(gameRowToScoreData(makeRow({ gameStatus: 'WEIRD' })).status).toBe('UNKNOWN');
   });
 
   it('미지 팀코드 → 코드 그대로, 빈/null → ??', () => {
