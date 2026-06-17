@@ -8,7 +8,12 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import type { KboGameRow, TeamSeasonRecordRow } from './kbo-parser';
+import type {
+  HitterStatRow,
+  KboGameRow,
+  PitcherStatRow,
+  TeamSeasonRecordRow,
+} from './kbo-parser';
 
 /** upsert 결과 요약 */
 export interface WriteResult {
@@ -18,6 +23,16 @@ export interface WriteResult {
   saved: number;
   /** 기존 행 중 갱신된 수 */
   modified: number;
+}
+
+/** 선수 스탯 write 결과 요약 */
+export interface PlayerStatWriteResult {
+  /** 입력으로 들어온 스탯 행 수 */
+  collected: number;
+  /** 신규 생성된 Player 수 */
+  players: number;
+  /** upsert 된 스탯 행 수 */
+  stats: number;
 }
 
 @Injectable()
@@ -141,6 +156,148 @@ export class TeamRecordWriter {
     const result: WriteResult = { collected: rows.length, saved, modified };
     this.logger.log(
       `team_season_records upsert: collected=${result.collected} saved=${result.saved} modified=${result.modified}`,
+    );
+    return result;
+  }
+}
+
+/**
+ * PlayerStatWriter — 선수 기본 스탯(타자/투수) Prisma 영속화 (P3-W7 7.3a).
+ *
+ * 각 행마다 Player 를 (name, teamId) 로 findFirst → 없으면 create(position 미상).
+ * 그 playerId 로 BattingStat/PitchingStat 을 (playerId, season) 복합 unique 로 upsert.
+ * rawData 에 행 전체 td 텍스트 배열을 보존하고 source='kbo' 로 표기한다.
+ *
+ * ⚠️ Player findFirst+create 는 이론상 동시성 경합이 있으나, 일일 단일 스케줄 크롤(순차)
+ *    이라 무시한다(병렬 쓰기 없음).
+ */
+@Injectable()
+export class PlayerStatWriter {
+  private readonly logger = new Logger(PlayerStatWriter.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** (name, teamId) 로 Player 조회, 없으면 생성. [playerId, 신규생성여부] 반환. */
+  private async ensurePlayer(
+    name: string,
+    teamId: string,
+  ): Promise<{ playerId: number; created: boolean }> {
+    const existing = await this.prisma.player.findFirst({
+      where: { name, teamId },
+      select: { id: true },
+    });
+    if (existing) {
+      return { playerId: existing.id, created: false };
+    }
+    const created = await this.prisma.player.create({
+      data: { name, teamId },
+      select: { id: true },
+    });
+    return { playerId: created.id, created: true };
+  }
+
+  /** 타자 스탯 write — Player 보장 후 BattingStat upsert((playerId, season) unique). */
+  async writeHitterStats(
+    rows: HitterStatRow[],
+  ): Promise<PlayerStatWriteResult> {
+    let players = 0;
+    let stats = 0;
+
+    for (const row of rows) {
+      const { playerId, created } = await this.ensurePlayer(
+        row.name,
+        row.teamId,
+      );
+      if (created) {
+        players += 1;
+      }
+
+      await this.prisma.battingStat.upsert({
+        where: { playerId_season: { playerId, season: row.season } },
+        create: {
+          playerId,
+          season: row.season,
+          teamId: row.teamId,
+          games: row.games,
+          avg: row.avg,
+          hr: row.hr,
+          rbi: row.rbi,
+          rawData: row.raw,
+          source: 'kbo',
+        },
+        update: {
+          teamId: row.teamId,
+          games: row.games,
+          avg: row.avg,
+          hr: row.hr,
+          rbi: row.rbi,
+          rawData: row.raw,
+          source: 'kbo',
+        },
+      });
+      stats += 1;
+    }
+
+    const result: PlayerStatWriteResult = {
+      collected: rows.length,
+      players,
+      stats,
+    };
+    this.logger.log(
+      `batting_stats upsert: collected=${result.collected} players=${result.players} stats=${result.stats}`,
+    );
+    return result;
+  }
+
+  /** 투수 스탯 write — Player 보장 후 PitchingStat upsert((playerId, season) unique). */
+  async writePitcherStats(
+    rows: PitcherStatRow[],
+  ): Promise<PlayerStatWriteResult> {
+    let players = 0;
+    let stats = 0;
+
+    for (const row of rows) {
+      const { playerId, created } = await this.ensurePlayer(
+        row.name,
+        row.teamId,
+      );
+      if (created) {
+        players += 1;
+      }
+
+      await this.prisma.pitchingStat.upsert({
+        where: { playerId_season: { playerId, season: row.season } },
+        create: {
+          playerId,
+          season: row.season,
+          teamId: row.teamId,
+          games: row.games,
+          era: row.era,
+          whip: row.whip,
+          strikeouts: row.strikeouts,
+          rawData: row.raw,
+          source: 'kbo',
+        },
+        update: {
+          teamId: row.teamId,
+          games: row.games,
+          era: row.era,
+          whip: row.whip,
+          strikeouts: row.strikeouts,
+          rawData: row.raw,
+          source: 'kbo',
+        },
+      });
+      stats += 1;
+    }
+
+    const result: PlayerStatWriteResult = {
+      collected: rows.length,
+      players,
+      stats,
+    };
+    this.logger.log(
+      `pitching_stats upsert: collected=${result.collected} players=${result.players} stats=${result.stats}`,
     );
     return result;
   }

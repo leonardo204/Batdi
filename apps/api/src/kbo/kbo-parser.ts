@@ -34,6 +34,44 @@ export interface KboGameRow {
   cancellationReason: CancellationReason | null;
 }
 
+/** 파싱된 타자 기본 스탯 1건 (BattingStat 모델에 write 가능한 행) */
+export interface HitterStatRow {
+  /** 선수명 (td[1]) */
+  name: string;
+  /** 내부 팀 코드 (인자로 받음 — td[2] 팀명은 무시) */
+  teamId: string;
+  season: number;
+  /** 타율 (td[3], float, NaN→null) */
+  avg: number | null;
+  /** 경기수 (td[4], int, NaN→null) */
+  games: number | null;
+  /** 홈런 (td[11], int, NaN→null) */
+  hr: number | null;
+  /** 타점 (td[13], int, NaN→null) */
+  rbi: number | null;
+  /** 행 전체 td 텍스트 배열 (나머지 컬럼 보존, rawData 로 저장) */
+  raw: string[];
+}
+
+/** 파싱된 투수 기본 스탯 1건 (PitchingStat 모델에 write 가능한 행) */
+export interface PitcherStatRow {
+  /** 선수명 (td[1]) */
+  name: string;
+  /** 내부 팀 코드 (인자로 받음 — td[2] 팀명은 무시) */
+  teamId: string;
+  season: number;
+  /** 평균자책점 (td[3], float, NaN→null) */
+  era: number | null;
+  /** 경기수 (td[4], int, NaN→null) */
+  games: number | null;
+  /** 탈삼진 (td[15], int, NaN→null) */
+  strikeouts: number | null;
+  /** WHIP (td[18], float, NaN→null) */
+  whip: number | null;
+  /** 행 전체 td 텍스트 배열 (IP "81 1/3" 등 나머지 보존, rawData 로 저장) */
+  raw: string[];
+}
+
 /** 파싱된 팀 시즌 기록 1건 (TeamSeasonRecord 모델에 그대로 write 가능한 행) */
 export interface TeamSeasonRecordRow {
   season: number;
@@ -225,6 +263,18 @@ function parseFloatSafe(raw: string): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+/** best-effort 정수 파싱 (NaN→null). 선수 스탯 전용 — "-"/빈값/'-' 은 null. */
+function parseIntOrNull(raw: string): number | null {
+  const n = Number.parseInt(raw.trim(), 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+/** best-effort 실수 파싱 (NaN→null). 선수 스탯 전용. */
+function parseFloatOrNull(raw: string): number | null {
+  const n = Number.parseFloat(raw.trim());
+  return Number.isNaN(n) ? null : n;
+}
+
 /**
  * 팀순위 tbody HTML 파싱.
  *
@@ -259,6 +309,98 @@ export function parseTeamSeasonRecord(
       gamesBehind: parseFloatSafe(cellText(7)),
       recent10Games: cellText(8),
       streak: cellText(9),
+    });
+  });
+
+  return rows;
+}
+
+/**
+ * 타자 기본기록(table.tData01) HTML 파싱.
+ *
+ * thead 순서(td 인덱스): [0]순위 [1]선수명 [2]팀명 [3]AVG [4]G [5]PA [6]AB
+ * [7]R [8]H [9]2B [10]3B [11]HR [12]TB [13]RBI [14]SAC [15]SF.
+ * - 팀명(td[2])은 무시하고 인자 teamId 를 사용한다(드롭다운으로 이미 팀 필터됨).
+ * - 순위행만(td[0] 가 정수로 파싱되는 행) — 합계/빈 행은 skip.
+ * - 숫자는 best-effort(NaN→null). 전체 td 텍스트 배열을 raw 로 보존한다.
+ */
+export function parseHitterBasic(
+  tableHtml: string,
+  season: number,
+  teamId: string,
+): HitterStatRow[] {
+  const $ = loadRows(tableHtml);
+  const rows: HitterStatRow[] = [];
+
+  $('tbody tr').each((_, tr) => {
+    const cells = $(tr).find('td').toArray();
+    if (cells.length < 14) {
+      return; // 컬럼 부족 — 합계/빈 행 skip.
+    }
+    const cellText = (i: number): string =>
+      cells[i] != null ? $(cells[i]).text().trim() : '';
+
+    // 순위행만: td[0] 가 정수여야 한다(합계행은 "합계" 등 → skip).
+    if (parseIntOrNull(cellText(0)) === null) {
+      return;
+    }
+
+    const raw = cells.map((_c, i) => cellText(i));
+    rows.push({
+      name: cellText(1),
+      teamId,
+      season,
+      avg: parseFloatOrNull(cellText(3)),
+      games: parseIntOrNull(cellText(4)),
+      hr: parseIntOrNull(cellText(11)),
+      rbi: parseIntOrNull(cellText(13)),
+      raw,
+    });
+  });
+
+  return rows;
+}
+
+/**
+ * 투수 기본기록(table.tData01) HTML 파싱.
+ *
+ * thead 순서(td 인덱스): [0]순위 [1]선수명 [2]팀명 [3]ERA [4]G [5]W [6]L
+ * [7]SV [8]HLD [9]WPCT [10]IP [11]H [12]HR [13]BB [14]HBP [15]SO [16]R
+ * [17]ER [18]WHIP.
+ * - 팀명(td[2])은 무시하고 인자 teamId 사용. 순위행만(td[0] 정수). 합계/빈행 skip.
+ * - IP "81 1/3" 같은 값은 파싱하지 않고 raw 에만 보존한다.
+ * - 숫자는 best-effort(NaN→null). 전체 td 텍스트 배열을 raw 로 보존.
+ */
+export function parsePitcherBasic(
+  tableHtml: string,
+  season: number,
+  teamId: string,
+): PitcherStatRow[] {
+  const $ = loadRows(tableHtml);
+  const rows: PitcherStatRow[] = [];
+
+  $('tbody tr').each((_, tr) => {
+    const cells = $(tr).find('td').toArray();
+    if (cells.length < 16) {
+      return; // 컬럼 부족 — 합계/빈 행 skip.
+    }
+    const cellText = (i: number): string =>
+      cells[i] != null ? $(cells[i]).text().trim() : '';
+
+    if (parseIntOrNull(cellText(0)) === null) {
+      return;
+    }
+
+    const raw = cells.map((_c, i) => cellText(i));
+    rows.push({
+      name: cellText(1),
+      teamId,
+      season,
+      era: parseFloatOrNull(cellText(3)),
+      games: parseIntOrNull(cellText(4)),
+      strikeouts: parseIntOrNull(cellText(15)),
+      whip: parseFloatOrNull(cellText(18)),
+      raw,
     });
   });
 

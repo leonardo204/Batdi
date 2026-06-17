@@ -16,10 +16,16 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { CRAWLER_ENABLED_ENV, SEASON_END_MONTH, SEASON_START_MONTH } from './kbo.constants';
+import {
+  CRAWLER_ENABLED_ENV,
+  PLAYER_STAT_TEAM_IDS,
+  SEASON_END_MONTH,
+  SEASON_START_MONTH,
+} from './kbo.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { KboScraper } from './kbo-scraper';
-import { KboGameWriter, TeamRecordWriter } from './kbo-writer';
+import { KboGameWriter, PlayerStatWriter, TeamRecordWriter } from './kbo-writer';
+import type { HitterStatRow, PitcherStatRow } from './kbo-parser';
 import { SERIES_TYPES, type SeriesTypeName } from './kbo-teams';
 
 @Injectable()
@@ -30,6 +36,7 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
     private readonly scraper: KboScraper,
     private readonly gameWriter: KboGameWriter,
     private readonly recordWriter: TeamRecordWriter,
+    private readonly playerStatWriter: PlayerStatWriter,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -41,6 +48,29 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
   /** 전 시리즈 이름 목록 */
   private allSeriesNames(): SeriesTypeName[] {
     return SERIES_TYPES.map((s) => s.name);
+  }
+
+  /**
+   * 선수 기본 스탯(타자·투수) 크롤·upsert (P3-W7 7.3a).
+   * 우선 4팀(한화·두산·KIA·롯데) 순차 크롤. best-effort — 오류 흡수.
+   * 타입 단언: scrapePlayerStats 반환은 kind 에 맞는 Row 타입이다.
+   */
+  private async crawlPlayerStats(season: number): Promise<void> {
+    const teamIds = [...PLAYER_STAT_TEAM_IDS];
+
+    const hitters = (await this.scraper.scrapePlayerStats(
+      season,
+      'hitter',
+      teamIds,
+    )) as HitterStatRow[];
+    await this.playerStatWriter.writeHitterStats(hitters);
+
+    const pitchers = (await this.scraper.scrapePlayerStats(
+      season,
+      'pitcher',
+      teamIds,
+    )) as PitcherStatRow[];
+    await this.playerStatWriter.writePitcherStats(pitchers);
   }
 
   /**
@@ -75,6 +105,9 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
 
       const records = await this.scraper.scrapeTeamRank(season);
       await this.recordWriter.write(records);
+
+      // 선수 기본 스탯(타자·투수, 우선 4팀) — 일정·순위 크롤 뒤에.
+      await this.crawlPlayerStats(season);
 
       this.logger.log('일일 KBO 크롤링 완료');
     } catch (err) {
@@ -127,6 +160,9 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
 
       const records = await this.scraper.scrapeTeamRank(season);
       await this.recordWriter.write(records);
+
+      // 선수 기본 스탯(타자·투수, 우선 4팀) — 일정·순위 백필 뒤에.
+      await this.crawlPlayerStats(season);
 
       this.logger.log(`시즌 ${season} 백필 완료`);
     } catch (err) {

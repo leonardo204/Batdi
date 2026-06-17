@@ -147,6 +147,8 @@ model BattingStat {
 
   player Player? @relation(fields: [playerId], references: [id])
 
+  // (playerId, season) 자연키 — KBO 선수 기본 스탯 크롤러 upsert 대상(P3-W7 7.3a).
+  @@unique([playerId, season], map: "uq_batting_player_season")
   @@index([playerId, season], map: "idx_batting_player_season")
   @@map("batting_stats")
 }
@@ -168,6 +170,8 @@ model PitchingStat {
 
   player Player? @relation(fields: [playerId], references: [id])
 
+  // (playerId, season) 자연키 — KBO 선수 기본 스탯 크롤러 upsert 대상(P3-W7 7.3a).
+  @@unique([playerId, season], map: "uq_pitching_player_season")
   @@index([playerId, season], map: "idx_pitching_player_season")
   @@map("pitching_stats")
 }

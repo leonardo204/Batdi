@@ -14,15 +14,26 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  HITTER_BASIC_URL,
+  PITCHER_BASIC_URL,
+  PLAYER_STAT_SELECTORS,
+  PLAYER_TEAM_CODE,
   REQUEST_DELAY_MS,
   SCHEDULE_SELECTORS,
   SCHEDULE_URL,
   TEAM_RANK_SELECTORS,
   TEAM_RANK_URL,
 } from './kbo.constants';
-import { parseGameSchedule, parseTeamSeasonRecord } from './kbo-parser';
+import {
+  parseGameSchedule,
+  parseHitterBasic,
+  parsePitcherBasic,
+  parseTeamSeasonRecord,
+} from './kbo-parser';
 import type {
+  HitterStatRow,
   KboGameRow,
+  PitcherStatRow,
   TeamSeasonRecordRow,
 } from './kbo-parser';
 import { getSeriesType, type SeriesTypeName } from './kbo-teams';
@@ -154,6 +165,93 @@ export class KboScraper {
         await browser.close().catch(() => undefined);
       }
     }
+  }
+
+  /**
+   * 선수 기본 스탯 크롤링 (타자/투수, P3-W7 7.3a).
+   *
+   * 단일 페이지(타자 or 투수)에서 우선 4팀을 순차로 팀 드롭다운 선택하며 추출한다.
+   * ⚠️ 순차(동시 1) — for...of teamIds, 각 팀 조합 추출 후 sleep(REQUEST_DELAY_MS=10초).
+   *   robots.txt 준수(/Record/ 허용). best-effort: 실패 팀은 skip + 로깅(부분 결과).
+   *
+   * @param season 시즌(연도)
+   * @param kind 'hitter' | 'pitcher'
+   * @param teamIds 내부 팀 코드 목록(PLAYER_TEAM_CODE 키, 우선 4팀)
+   * @returns 파싱된 스탯 행들(타자면 HitterStatRow[], 투수면 PitcherStatRow[]) — 부분 결과 가능
+   */
+  async scrapePlayerStats(
+    season: number,
+    kind: 'hitter' | 'pitcher',
+    teamIds: string[],
+  ): Promise<(HitterStatRow | PitcherStatRow)[]> {
+    const results: (HitterStatRow | PitcherStatRow)[] = [];
+    let browser: Browser | null = null;
+
+    try {
+      browser = await this.launchBrowser();
+      if (!browser) {
+        this.logger.warn(`Playwright 로드 실패 — 선수 스탯(${kind}) 크롤링 생략`);
+        return results;
+      }
+      const url = kind === 'hitter' ? HITTER_BASIC_URL : PITCHER_BASIC_URL;
+      const page = await browser.newPage();
+      await page.goto(url, { waitUntil: 'networkidle' });
+
+      // ⚠️ 순차 처리(동시 1) — 우선 4팀을 for...of 로 하나씩, 각 팀 후 10초 대기.
+      for (const teamId of teamIds) {
+        const teamCode = PLAYER_TEAM_CODE[teamId];
+        if (!teamCode) {
+          this.logger.warn(`선수 스탯 팀코드 미정의(건너뜀): ${teamId}`);
+          continue;
+        }
+        try {
+          // 시즌 → 팀 순서로 드롭다운 선택. 각 선택마다 tData01 갱신 대기(stale read 방지).
+          await this.selectAndWaitForTableReload(
+            page,
+            PLAYER_STAT_SELECTORS.season,
+            `${season}`,
+            PLAYER_STAT_SELECTORS.table,
+          );
+          await this.selectAndWaitForTableReload(
+            page,
+            PLAYER_STAT_SELECTORS.team,
+            teamCode,
+            PLAYER_STAT_SELECTORS.table,
+          );
+          await page.waitForSelector(PLAYER_STAT_SELECTORS.table);
+
+          const html = await page
+            .locator(PLAYER_STAT_SELECTORS.table)
+            .first()
+            .evaluate((el: { outerHTML: string }) => el.outerHTML);
+          const rows =
+            kind === 'hitter'
+              ? parseHitterBasic(html, season, teamId)
+              : parsePitcherBasic(html, season, teamId);
+          results.push(...rows);
+          this.logger.log(
+            `선수 스탯(${kind}) 수집: ${season} ${teamId}(${teamCode}) → ${rows.length}명`,
+          );
+        } catch (err) {
+          // best-effort: 한 팀 실패는 건너뛰고 계속.
+          this.logger.warn(
+            `선수 스탯(${kind}) 수집 실패(건너뜀): ${season} ${teamId} — ${String(err)}`,
+          );
+        }
+        // ⚠️ 요청 간격 10초 이상 (CLAUDE.md 불변식).
+        await sleep(REQUEST_DELAY_MS);
+      }
+    } catch (err) {
+      this.logger.error(
+        `선수 스탯(${kind}) 크롤링 오류(부분 결과 반환): ${String(err)}`,
+      );
+    } finally {
+      if (browser) {
+        await browser.close().catch(() => undefined);
+      }
+    }
+
+    return results;
   }
 
   /** 경기일정 드롭다운 선택 + 각 선택 후 갱신 대기 */
