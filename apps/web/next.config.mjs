@@ -61,6 +61,22 @@ const nextConfig = {
         source: '/api/stats/:path*',
         destination: `${API_URL}/stats/:path*`,
       },
+      // 내 레벨·통계 조회 프록시(P4-W10 10.4) — /my/* 페이지가 same-origin
+      //   /api/users/me/level|stats 로 호출, api(3001)/users/* 로 프록시. JWT 쿠키.
+      {
+        source: '/api/users/:path*',
+        destination: `${API_URL}/users/:path*`,
+      },
+      // 내 대화 목록 조회 프록시(P4-W10 10.4) — /my/conversations 페이지가 same-origin
+      //   /api/conversations 로 호출, api(3001)/conversations 로 프록시. JWT 쿠키.
+      {
+        source: '/api/conversations/:path*',
+        destination: `${API_URL}/conversations/:path*`,
+      },
+      {
+        source: '/api/conversations',
+        destination: `${API_URL}/conversations`,
+      },
     ];
   },
 };
