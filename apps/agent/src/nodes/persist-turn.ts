@@ -17,7 +17,11 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import type { CoreGraphState, CoreGraphUpdate } from '../state';
 import { messageText } from '../utils/message-text';
-import { persistTurn, bumpMessageCount } from '../personal/conversation-store';
+import {
+  persistTurn,
+  bumpMessageCount,
+  updateLevelProgress,
+} from '../personal/conversation-store';
 
 /** messages 에서 마지막 AIMessage(어시스턴트) 텍스트를 추출한다(없으면 ''). */
 function lastAssistantText(messages: BaseMessage[]): string {
@@ -44,11 +48,14 @@ export async function persistTurnNode(
   }
 
   // 2) messageCount write-through — userId 가 있을 때만(best-effort, FK 위반 시 내부 null).
+  //    이어서 XP/level 멱등 recompute(10.3). messageCount 가 먼저 갱신돼야 turns 가 최신이다.
   if (
     typeof state.userId === 'string' &&
     state.userId.trim() !== ''
   ) {
     await bumpMessageCount(state.userId);
+    // leveledUp 결과는 현재 사용처 없음(11.2 레벨업 푸시 후속) — best-effort, state 미변경.
+    await updateLevelProgress(state.userId);
   }
 
   // state 변경 없음(영속화는 부수효과). 응답 envelope/messages 는 emitA2UI 가 이미 확정.

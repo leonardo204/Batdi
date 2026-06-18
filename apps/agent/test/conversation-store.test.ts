@@ -9,32 +9,41 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // 모킹 핸들 — vi.hoisted 로 import 보다 먼저 정의(vi.mock 이 끌어올려짐).
 const {
   userFindUnique,
+  userUpdate,
   conversationUpsert,
   conversationUpdate,
   messageCreateMany,
   personalAgentUpsert,
+  personalAgentFindUnique,
   prismaHolder,
 } = vi.hoisted(() => {
   const userFindUnique = vi.fn();
+  const userUpdate = vi.fn();
   const conversationUpsert = vi.fn();
   const conversationUpdate = vi.fn();
   const messageCreateMany = vi.fn();
   const personalAgentUpsert = vi.fn();
+  const personalAgentFindUnique = vi.fn();
   // prismaHolder.value 가 null 이면 DB 비활성(getPrisma → undefined) 시뮬레이션.
   const prismaHolder: { value: unknown } = {
     value: {
-      user: { findUnique: userFindUnique },
+      user: { findUnique: userFindUnique, update: userUpdate },
       conversation: { upsert: conversationUpsert, update: conversationUpdate },
       message: { createMany: messageCreateMany },
-      personalAgentState: { upsert: personalAgentUpsert },
+      personalAgentState: {
+        upsert: personalAgentUpsert,
+        findUnique: personalAgentFindUnique,
+      },
     },
   };
   return {
     userFindUnique,
+    userUpdate,
     conversationUpsert,
     conversationUpdate,
     messageCreateMany,
     personalAgentUpsert,
+    personalAgentFindUnique,
     prismaHolder,
   };
 });
@@ -53,16 +62,20 @@ import {
   resolveConversation,
   persistTurn,
   bumpMessageCount,
+  updateLevelProgress,
   MESSAGE_COUNT_PER_TURN,
 } from '../src/personal/conversation-store';
 
 beforeEach(() => {
   vi.clearAllMocks();
   prismaHolder.value = {
-    user: { findUnique: userFindUnique },
+    user: { findUnique: userFindUnique, update: userUpdate },
     conversation: { upsert: conversationUpsert, update: conversationUpdate },
     message: { createMany: messageCreateMany },
-    personalAgentState: { upsert: personalAgentUpsert },
+    personalAgentState: {
+      upsert: personalAgentUpsert,
+      findUnique: personalAgentFindUnique,
+    },
   };
 });
 
@@ -215,6 +228,70 @@ describe('bumpMessageCount', () => {
   it('upsert throw(FK 위반 등) → null(best-effort)', async () => {
     personalAgentUpsert.mockRejectedValue(new Error('FK violation'));
     const out = await bumpMessageCount('user-1');
+    expect(out).toBeNull();
+  });
+});
+
+describe('updateLevelProgress (P4-W10 10.3 — XP/level 멱등 recompute)', () => {
+  it('message_count 100 → xpPoints=500/level=2 update + leveledUp(prev1<2)', async () => {
+    userFindUnique.mockResolvedValue({ id: 'user-1', level: 1 });
+    personalAgentFindUnique.mockResolvedValue({ messageCount: 100 });
+    userUpdate.mockResolvedValue({});
+
+    const out = await updateLevelProgress('user-1');
+    expect(out).toEqual({ leveledUp: true, level: 2 });
+    // 멱등 recompute — 증분 아님(xpPoints/level 절대값 set).
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { xpPoints: 500, level: 2 },
+    });
+  });
+
+  it('레벨 동일(prev=newLevel) → leveledUp false', async () => {
+    userFindUnique.mockResolvedValue({ id: 'user-1', level: 2 });
+    personalAgentFindUnique.mockResolvedValue({ messageCount: 100 });
+    userUpdate.mockResolvedValue({});
+
+    const out = await updateLevelProgress('user-1');
+    expect(out).toEqual({ leveledUp: false, level: 2 });
+  });
+
+  it('personal_agent_state 없으면 messageCount 0 → xp 0/level 1', async () => {
+    userFindUnique.mockResolvedValue({ id: 'user-1', level: 1 });
+    personalAgentFindUnique.mockResolvedValue(null);
+    userUpdate.mockResolvedValue({});
+
+    const out = await updateLevelProgress('user-1');
+    expect(out).toEqual({ leveledUp: false, level: 1 });
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { xpPoints: 0, level: 1 },
+    });
+  });
+
+  it('userId 없으면 null (DB 미조회)', async () => {
+    const out = await updateLevelProgress(undefined);
+    expect(out).toBeNull();
+    expect(userFindUnique).not.toHaveBeenCalled();
+  });
+
+  it('DB 비활성(getPrisma undefined)이면 null', async () => {
+    prismaHolder.value = null;
+    const out = await updateLevelProgress('user-1');
+    expect(out).toBeNull();
+  });
+
+  it('User 없으면(미등록/익명) null — update skip(FK 안전)', async () => {
+    userFindUnique.mockResolvedValue(null);
+    const out = await updateLevelProgress('user-x');
+    expect(out).toBeNull();
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it('조회/update throw 해도 null(best-effort, throw 안 함)', async () => {
+    userFindUnique.mockResolvedValue({ id: 'user-1', level: 1 });
+    personalAgentFindUnique.mockRejectedValue(new Error('connection refused'));
+    const out = await updateLevelProgress('user-1');
     expect(out).toBeNull();
   });
 });

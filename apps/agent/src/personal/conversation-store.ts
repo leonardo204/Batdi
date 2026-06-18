@@ -24,6 +24,7 @@
  */
 import { Prisma } from '@prisma/client';
 import { getPrisma } from '../utils/prisma';
+import { xpFromMessageCount, computeLevel } from './level-agent';
 
 /** 한 턴당 messageCount 증가량 = user 메시지 1 + assistant 메시지 1 = 2. */
 export const MESSAGE_COUNT_PER_TURN = 2;
@@ -172,5 +173,58 @@ export async function bumpMessageCount(
     return row.messageCount;
   } catch {
     return null; // upsert 실패(FK 위반 등) → graceful null
+  }
+}
+
+/**
+ * XP/level 멱등 recompute write-through 훅 (P4-W10 10.3 — ADR-049, best-effort).
+ *
+ * message_count(turns) 를 소스 of truth 로 xp/level 을 **항상 재계산**해 users 에 반영한다
+ * (증분 아님 → 드리프트/중복 0). bumpMessageCount 뒤에 호출되어야 turns 가 최신이다.
+ *
+ * 레벨업 감지(prevLevel < newLevel)는 11.2 레벨업 푸시 트리거용으로 반환만 한다.
+ *
+ * best-effort 계약: getPrisma() undefined·userId 누락·users 레코드 없음(미등록/익명)·
+ *   조회/update 실패 등 모든 실패는 절대 throw 하지 않고 null 을 반환한다.
+ *
+ * @param userId 인증 사용자 UUID
+ * @returns { leveledUp, level } 또는 null(인자 누락·DB 비활성·미등록 사용자·실패)
+ */
+export async function updateLevelProgress(
+  userId: string | undefined,
+): Promise<{ leveledUp: boolean; level: number } | null> {
+  if (userId === undefined || userId.trim() === '') {
+    return null;
+  }
+
+  const prisma = getPrisma();
+  if (!prisma) {
+    return null; // DB 비활성 → skip
+  }
+
+  try {
+    // FK/없는행 안전: users 레코드 없으면 update skip(익명/미등록 가드).
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return null;
+    }
+
+    // message_count(turns) → xp → level 멱등 recompute.
+    const agentState = await prisma.personalAgentState.findUnique({
+      where: { userId },
+    });
+    const messageCount = agentState?.messageCount ?? 0;
+    const xp = xpFromMessageCount(messageCount);
+    const newLevel = computeLevel(xp);
+    const prevLevel = user.level ?? 1;
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { xpPoints: xp, level: newLevel },
+    });
+
+    return { leveledUp: newLevel > prevLevel, level: newLevel };
+  } catch {
+    return null; // 조회/update 실패 → graceful null(응답 경로 막지 않음)
   }
 }
