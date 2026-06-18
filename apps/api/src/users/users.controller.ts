@@ -22,6 +22,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { toNormalizedForm, checkInputGuardrail } from '@batdi/guardrail';
 import { JwtAuthGuard, type RequestWithUser } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
@@ -70,6 +71,56 @@ export interface SaveNicknameBody {
 export interface SaveNicknameResult {
   displayName: string;
   saved: true;
+}
+
+/**
+ * MVP 우선 지원 팀 화이트리스트 — auth.controller VALID_TEAMS / @batdi/types TeamId 와 일치.
+ * 팀 변경(PATCH /users/me/team) 입력 검증에 사용.
+ */
+const VALID_TEAMS = ['lotte', 'doosan', 'kia', 'hanwha'] as const;
+type TeamId = (typeof VALID_TEAMS)[number];
+
+/**
+ * 데이터 보존기간 화이트리스트(일) — platform-ops §12.3.
+ * 셀렉트 외 임의 값 차단(BadRequest).
+ */
+const VALID_RETENTION_DAYS = [30, 90, 180, 365] as const;
+type RetentionDays = (typeof VALID_RETENTION_DAYS)[number];
+
+/**
+ * user.settings(JsonB) 의 알려진 형태. 그 외 임의 키(onboarded 등)는 보존한다.
+ * - notifications: 알림 토글 맵(gameStart/gameEnd/favoritePlayer/levelUp 등).
+ * - dataRetentionDays: 대화 보존기간(일, 화이트리스트).
+ * - learningConsent: 개인화 학습 동의.
+ */
+export interface UserSettings {
+  onboarded?: boolean;
+  notifications?: Record<string, boolean>;
+  dataRetentionDays?: number;
+  learningConsent?: boolean;
+  [key: string]: unknown;
+}
+
+/** PATCH /users/me/settings 요청 바디(부분 갱신 — 준 필드만 반영). */
+export interface UpdateSettingsBody {
+  notifications?: Record<string, boolean>;
+  dataRetentionDays?: number;
+  learningConsent?: boolean;
+}
+
+/** PATCH /users/me/settings 성공 응답. */
+export interface UpdateSettingsResult {
+  settings: UserSettings;
+}
+
+/** PATCH /users/me/team 요청 바디. */
+export interface UpdateTeamBody {
+  teamId?: string;
+}
+
+/** PATCH /users/me/team 성공 응답. */
+export interface UpdateTeamResult {
+  teamId: string;
 }
 
 @Controller('users')
@@ -248,5 +299,90 @@ export class UsersController {
       data: { displayName: trimmed },
     });
     return { displayName: trimmed, saved: true };
+  }
+
+  /**
+   * 내 설정 부분 갱신 (platform-ops §12.3) — 알림/보존기간/학습동의.
+   *
+   *   - 기존 settings 를 readSettings 로 머지(onboarded 등 임의 키 보존).
+   *   - 준 필드만 반영(부분 갱신). notifications 는 기존 맵과 얕은 머지.
+   *   - dataRetentionDays 는 화이트리스트(30|90|180|365) 외 BadRequest.
+   *   - user.settings update 후 머지된 settings 반환.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/settings')
+  async updateSettings(
+    @Req() req: RequestWithUser,
+    @Body() body: UpdateSettingsBody,
+  ): Promise<UpdateSettingsResult> {
+    const userId = req.user.userId;
+
+    // 보존기간 화이트리스트 검증(준 경우만).
+    if (body?.dataRetentionDays !== undefined) {
+      const days = body.dataRetentionDays;
+      if (!VALID_RETENTION_DAYS.includes(days as RetentionDays)) {
+        throw new BadRequestException(
+          `dataRetentionDays 는 ${VALID_RETENTION_DAYS.join('|')} 중 하나여야 합니다.`,
+        );
+      }
+    }
+
+    const me = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { settings: true },
+    });
+    const prev = this.readSettings(me?.settings);
+    const next: UserSettings = { ...prev };
+
+    if (body?.notifications !== undefined) {
+      // 알림 토글은 기존 맵과 얕은 머지(준 토글만 덮어씀).
+      next.notifications = { ...(prev.notifications ?? {}), ...body.notifications };
+    }
+    if (body?.dataRetentionDays !== undefined) {
+      next.dataRetentionDays = body.dataRetentionDays;
+    }
+    if (body?.learningConsent !== undefined) {
+      next.learningConsent = body.learningConsent;
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      // JsonB 컬럼 — Prisma InputJsonValue 캐스팅(UserSettings 는 index signature 보유).
+      data: { settings: next as Prisma.InputJsonValue },
+    });
+    return { settings: next };
+  }
+
+  /**
+   * 내 응원팀 변경 (platform-ops §12.3) — VALID_TEAMS 화이트리스트.
+   *
+   *   - teamId 가 lotte|doosan|kia|hanwha 외면 BadRequest.
+   *   - user.teamId update 후 { teamId } 반환(프론트는 data-team 갱신).
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/team')
+  async updateTeam(
+    @Req() req: RequestWithUser,
+    @Body() body: UpdateTeamBody,
+  ): Promise<UpdateTeamResult> {
+    const teamId = body?.teamId;
+    if (!teamId || !VALID_TEAMS.includes(teamId as TeamId)) {
+      throw new BadRequestException(
+        `teamId 는 ${VALID_TEAMS.join('|')} 중 하나여야 합니다.`,
+      );
+    }
+    await this.prisma.user.update({
+      where: { id: req.user.userId },
+      data: { teamId },
+    });
+    return { teamId };
+  }
+
+  /** settings(JsonB) 를 안전하게 객체로 해석. null/배열/원시값은 빈 객체로 폴백. */
+  private readSettings(raw: unknown): UserSettings {
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      return raw as UserSettings;
+    }
+    return {};
   }
 }

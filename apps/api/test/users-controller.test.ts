@@ -200,3 +200,115 @@ describe('UsersController.saveNickname (ADR-053 Lv5)', () => {
     });
   });
 });
+
+describe('UsersController.updateSettings (platform-ops §12.3)', () => {
+  function makeController(prevSettings: unknown) {
+    const findUnique = vi.fn().mockResolvedValue({ settings: prevSettings });
+    const update = vi.fn().mockResolvedValue({});
+    const prisma = { user: { findUnique, update } };
+    const controller = new UsersController(prisma as never);
+    return { controller, findUnique, update };
+  }
+
+  it('기존 settings 보존 머지(onboarded 안 지움) + 알림 부분 갱신', async () => {
+    const { controller, update } = makeController({
+      onboarded: true,
+      notifications: { gameStart: true, gameEnd: false },
+    });
+    const result = await controller.updateSettings(reqFor('u1'), {
+      notifications: { gameEnd: true, levelUp: true },
+    });
+    // onboarded 보존 + gameStart 보존 + gameEnd 덮어씀 + levelUp 추가.
+    expect(result.settings).toEqual({
+      onboarded: true,
+      notifications: { gameStart: true, gameEnd: true, levelUp: true },
+    });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: {
+        settings: {
+          onboarded: true,
+          notifications: { gameStart: true, gameEnd: true, levelUp: true },
+        },
+      },
+    });
+  });
+
+  it('보존기간 화이트리스트 통과(90) → 저장', async () => {
+    const { controller, update } = makeController({ onboarded: true });
+    const result = await controller.updateSettings(reqFor('u1'), {
+      dataRetentionDays: 90,
+    });
+    expect(result.settings).toEqual({ onboarded: true, dataRetentionDays: 90 });
+    expect(update).toHaveBeenCalledOnce();
+  });
+
+  it('보존기간 화이트리스트 외(45) → BadRequest, update 안 함', async () => {
+    const { controller, update } = makeController({ onboarded: true });
+    await expect(
+      controller.updateSettings(reqFor('u1'), { dataRetentionDays: 45 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('부분 갱신 — learningConsent 만 줘도 다른 키 보존', async () => {
+    const { controller } = makeController({
+      onboarded: true,
+      dataRetentionDays: 180,
+      notifications: { gameStart: true },
+    });
+    const result = await controller.updateSettings(reqFor('u1'), {
+      learningConsent: true,
+    });
+    expect(result.settings).toEqual({
+      onboarded: true,
+      dataRetentionDays: 180,
+      notifications: { gameStart: true },
+      learningConsent: true,
+    });
+  });
+
+  it('기존 settings 가 null/비객체여도 빈 객체로 폴백', async () => {
+    const { controller } = makeController(null);
+    const result = await controller.updateSettings(reqFor('u1'), {
+      learningConsent: false,
+    });
+    expect(result.settings).toEqual({ learningConsent: false });
+  });
+});
+
+describe('UsersController.updateTeam (platform-ops §12.3)', () => {
+  function makeController() {
+    const update = vi.fn().mockResolvedValue({});
+    const prisma = { user: { update } };
+    const controller = new UsersController(prisma as never);
+    return { controller, update };
+  }
+
+  it('화이트리스트 팀(doosan) → teamId 갱신', async () => {
+    const { controller, update } = makeController();
+    const result = await controller.updateTeam(reqFor('u1'), {
+      teamId: 'doosan',
+    });
+    expect(result).toEqual({ teamId: 'doosan' });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { teamId: 'doosan' },
+    });
+  });
+
+  it('화이트리스트 외 팀(samsung) → BadRequest, update 안 함', async () => {
+    const { controller, update } = makeController();
+    await expect(
+      controller.updateTeam(reqFor('u1'), { teamId: 'samsung' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('teamId 누락 → BadRequest', async () => {
+    const { controller } = makeController();
+    await expect(
+      controller.updateTeam(reqFor('u1'), {}),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
