@@ -59,6 +59,36 @@ import {
   LEVEL_PROGRESS_BIND_SCHEMA,
   LEVEL_PROGRESS_WIDGET_ID,
 } from './level_progress_widget';
+import {
+  STANDINGS_EMPHASIZED_COMPONENTS,
+  STANDINGS_EMPHASIZED_BIND_SCHEMA,
+  STANDINGS_EMPHASIZED_TEMPLATE_ID,
+} from './standings_emphasized';
+import {
+  PLAYER_STAT_EMPHASIZED_COMPONENTS,
+  PLAYER_STAT_EMPHASIZED_BIND_SCHEMA,
+  PLAYER_STAT_EMPHASIZED_TEMPLATE_ID,
+} from './player_stat_emphasized';
+import {
+  NEWS_COMPACT_COMPONENTS,
+  NEWS_COMPACT_BIND_SCHEMA,
+  NEWS_COMPACT_TEMPLATE_ID,
+} from './news_compact';
+import {
+  SCHEDULE_COMPACT_COMPONENTS,
+  SCHEDULE_COMPACT_BIND_SCHEMA,
+  SCHEDULE_COMPACT_TEMPLATE_ID,
+} from './schedule_compact';
+import {
+  LINEUP_COMPACT_COMPONENTS,
+  LINEUP_COMPACT_BIND_SCHEMA,
+  LINEUP_COMPACT_TEMPLATE_ID,
+} from './lineup_compact';
+import {
+  MEME_CARD_COMPONENTS,
+  MEME_CARD_BIND_SCHEMA,
+  MEME_CARD_TEMPLATE_ID,
+} from './meme_card';
 
 export interface L1Template {
   templateId: string;
@@ -146,20 +176,43 @@ const PLAYER_STAT_COMPACT_TEMPLATE: L1Template = {
   bindSchema: PLAYER_STAT_COMPACT_BIND_SCHEMA,
 };
 
+/** stats 순위 강조 템플릿 (standings_emphasized). variant='emphasized' 전용(8.4 ADR-047). */
+const STANDINGS_EMPHASIZED_TEMPLATE: L1Template = {
+  templateId: STANDINGS_EMPHASIZED_TEMPLATE_ID,
+  components: STANDINGS_EMPHASIZED_COMPONENTS,
+  bindSchema: STANDINGS_EMPHASIZED_BIND_SCHEMA,
+};
+
+/** stats 선수 리더보드 강조 템플릿 (player_stat_emphasized). variant='emphasized' 전용. */
+const PLAYER_STAT_EMPHASIZED_TEMPLATE: L1Template = {
+  templateId: PLAYER_STAT_EMPHASIZED_TEMPLATE_ID,
+  components: PLAYER_STAT_EMPHASIZED_COMPONENTS,
+  bindSchema: PLAYER_STAT_EMPHASIZED_BIND_SCHEMA,
+};
+
 /**
- * stats intent 의 statType 기반 템플릿 선택(순수 함수, P3-W7 7.3b).
+ * stats intent 의 statType 기반 템플릿 선택(순수 함수, P3-W7 7.3b · P3-W8 8.4 ADR-047).
  *
- *  - statType==='player' → player_stat_compact (팀 선수 리더보드)
- *  - else(standings/undefined) → standings_compact (팀 순위)
+ *  - statType==='player' → player_stat_* (팀 선수 리더보드)
+ *  - else(standings/undefined) → standings_* (팀 순위)
+ *  - variant==='emphasized' → 상위권 강조 레이아웃(_emphasized), 그 외 → 기본(_compact)
  *
- * 두 템플릿 모두 동일 bind 경로(rows.N.line)라 EmitA2UI 의 data={rows} 주입 로직을
- * 그대로 공유한다. TEMPLATE_BY_INTENT.stats 는 standings 매핑을 유지(하위호환).
+ * 모든 템플릿이 동일 bind 경로(rows.N.line)라 EmitA2UI 의 data={rows} 주입 로직을 그대로
+ * 공유한다. **variant 인자는 additive — 미지정/'compact' 면 기존 동작 불변(회귀 0)**.
+ * emit-a2ui 호출부(`resolveStatsTemplate(state.statType)`)는 기본 compact 를 받는다.
+ * TEMPLATE_BY_INTENT.stats 는 standings_compact 매핑을 유지(하위호환).
  */
 export function resolveStatsTemplate(
   statType: 'standings' | 'player' | undefined,
+  variant: 'compact' | 'emphasized' = 'compact',
 ): L1Template {
-  return statType === 'player'
-    ? PLAYER_STAT_COMPACT_TEMPLATE
+  if (statType === 'player') {
+    return variant === 'emphasized'
+      ? PLAYER_STAT_EMPHASIZED_TEMPLATE
+      : PLAYER_STAT_COMPACT_TEMPLATE;
+  }
+  return variant === 'emphasized'
+    ? STANDINGS_EMPHASIZED_TEMPLATE
     : STANDINGS_COMPACT_TEMPLATE;
 }
 
@@ -211,3 +264,156 @@ export const WIDGET_REGISTRY: Record<string, A2UIWidget> = {
 export function resolveWidget(widgetId: string): A2UIWidget | undefined {
   return WIDGET_REGISTRY[widgetId];
 }
+
+/**
+ * a2ui_templates 카탈로그 한 행(P3-W8 8.4, ADR-047).
+ *
+ * **런타임 SSOT** 는 in-memory registry(L1 0-LLM·~500ms — DB 왕복 안 함). DB `a2ui_templates`
+ * 테이블은 본 카탈로그에서 **파생 시드**한 catalog-of-record(드리프트 0). 런타임 DB 로드는
+ * 의도적 보류. seed-a2ui-templates 스크립트가 TEMPLATE_CATALOG 를 upsert(by template_id)한다.
+ */
+export interface A2UITemplateRow {
+  /** 템플릿 식별자 (DB template_id PK) */
+  templateId: string;
+  /** DB intent 컬럼(VARCHAR) — 자연 intent 매핑. 위젯도 자연 intent 로 분류. */
+  intent: string;
+  /** authoring 컴포넌트 트리(`{{bind:"..."}}` 플레이스홀더 포함 — §4.3 component_tree) */
+  componentTree: Array<Record<string, unknown>>;
+  /** bind 점경로 목록 */
+  bindSchema: ReadonlyArray<string>;
+  /** 같은 intent+role 묶음의 variant 라벨. 단일은 null 또는 ['default']. */
+  variants: string[] | null;
+}
+
+/**
+ * 전 템플릿 16종 단일 카탈로그(SSOT). 기존 10종 + 신규 6종.
+ *  - score(3): score_compact/default/emphasized — gameStatus 기반 resolveScoreTemplate 선택.
+ *  - stats(6): standings_compact/emphasized + player_stat_compact/emphasized + 위젯 2종
+ *    (player_chip/head_to_head/trend_sparkline).
+ *  - schedule(1): game_schedule_widget.
+ *  - chat(1): level_progress_widget.
+ *  - 신규 6: standings_emphasized·player_stat_emphasized(stats), news_compact(news),
+ *    schedule_compact(schedule), lineup_compact(lineup), meme_card(meme).
+ *
+ * ⚠️ news/schedule/lineup 은 데이터 서브그래프 부재라 TEMPLATE_BY_INTENT 라우팅 미배선(ADR-047 ④).
+ *    카탈로그·DB 시드에는 포함(빌딩블록), 서브그래프 도입 시 배선.
+ */
+export const TEMPLATE_CATALOG: A2UITemplateRow[] = [
+  // ── score(3) — resolveScoreTemplate(gameStatus) 로 선택 ──
+  {
+    templateId: SCORE_COMPACT_TEMPLATE_ID,
+    intent: 'score',
+    componentTree: SCORE_COMPACT_COMPONENTS,
+    bindSchema: SCORE_COMPACT_BIND_SCHEMA,
+    variants: ['compact', 'default', 'emphasized'],
+  },
+  {
+    templateId: SCORE_DEFAULT_TEMPLATE_ID,
+    intent: 'score',
+    componentTree: SCORE_DEFAULT_COMPONENTS,
+    bindSchema: SCORE_DEFAULT_BIND_SCHEMA,
+    variants: ['compact', 'default', 'emphasized'],
+  },
+  {
+    templateId: SCORE_EMPHASIZED_TEMPLATE_ID,
+    intent: 'score',
+    componentTree: SCORE_EMPHASIZED_COMPONENTS,
+    bindSchema: SCORE_EMPHASIZED_BIND_SCHEMA,
+    variants: ['compact', 'default', 'emphasized'],
+  },
+  // ── stats: standings 2종 + player 2종 + 위젯 3종 ──
+  {
+    templateId: STANDINGS_COMPACT_TEMPLATE_ID,
+    intent: 'stats',
+    componentTree: STANDINGS_COMPACT_COMPONENTS,
+    bindSchema: STANDINGS_COMPACT_BIND_SCHEMA,
+    variants: ['compact', 'emphasized'],
+  },
+  {
+    templateId: STANDINGS_EMPHASIZED_TEMPLATE_ID,
+    intent: 'stats',
+    componentTree: STANDINGS_EMPHASIZED_COMPONENTS,
+    bindSchema: STANDINGS_EMPHASIZED_BIND_SCHEMA,
+    variants: ['compact', 'emphasized'],
+  },
+  {
+    templateId: PLAYER_STAT_COMPACT_TEMPLATE_ID,
+    intent: 'stats',
+    componentTree: PLAYER_STAT_COMPACT_COMPONENTS,
+    bindSchema: PLAYER_STAT_COMPACT_BIND_SCHEMA,
+    variants: ['compact', 'emphasized'],
+  },
+  {
+    templateId: PLAYER_STAT_EMPHASIZED_TEMPLATE_ID,
+    intent: 'stats',
+    componentTree: PLAYER_STAT_EMPHASIZED_COMPONENTS,
+    bindSchema: PLAYER_STAT_EMPHASIZED_BIND_SCHEMA,
+    variants: ['compact', 'emphasized'],
+  },
+  {
+    templateId: PLAYER_CHIP_WIDGET_ID,
+    intent: 'stats',
+    componentTree: PLAYER_CHIP_COMPONENTS,
+    bindSchema: PLAYER_CHIP_BIND_SCHEMA,
+    variants: null,
+  },
+  {
+    templateId: HEAD_TO_HEAD_WIDGET_ID,
+    intent: 'stats',
+    componentTree: HEAD_TO_HEAD_COMPONENTS,
+    bindSchema: HEAD_TO_HEAD_BIND_SCHEMA,
+    variants: null,
+  },
+  {
+    templateId: TREND_SPARKLINE_WIDGET_ID,
+    intent: 'stats',
+    componentTree: TREND_SPARKLINE_COMPONENTS,
+    bindSchema: TREND_SPARKLINE_BIND_SCHEMA,
+    variants: null,
+  },
+  // ── schedule: 위젯(단일 경기) + schedule_compact(멀티게임) ──
+  {
+    templateId: GAME_SCHEDULE_WIDGET_ID,
+    intent: 'schedule',
+    componentTree: GAME_SCHEDULE_COMPONENTS,
+    bindSchema: GAME_SCHEDULE_BIND_SCHEMA,
+    variants: null,
+  },
+  {
+    templateId: SCHEDULE_COMPACT_TEMPLATE_ID,
+    intent: 'schedule',
+    componentTree: SCHEDULE_COMPACT_COMPONENTS,
+    bindSchema: SCHEDULE_COMPACT_BIND_SCHEMA,
+    variants: ['compact'],
+  },
+  // ── chat: level_progress_widget ──
+  {
+    templateId: LEVEL_PROGRESS_WIDGET_ID,
+    intent: 'chat',
+    componentTree: LEVEL_PROGRESS_COMPONENTS,
+    bindSchema: LEVEL_PROGRESS_BIND_SCHEMA,
+    variants: null,
+  },
+  // ── 신규 단독 intent (미배선 — 빌딩블록 시드) ──
+  {
+    templateId: NEWS_COMPACT_TEMPLATE_ID,
+    intent: 'news',
+    componentTree: NEWS_COMPACT_COMPONENTS,
+    bindSchema: NEWS_COMPACT_BIND_SCHEMA,
+    variants: ['compact'],
+  },
+  {
+    templateId: LINEUP_COMPACT_TEMPLATE_ID,
+    intent: 'lineup',
+    componentTree: LINEUP_COMPACT_COMPONENTS,
+    bindSchema: LINEUP_COMPACT_BIND_SCHEMA,
+    variants: ['compact'],
+  },
+  {
+    templateId: MEME_CARD_TEMPLATE_ID,
+    intent: 'meme',
+    componentTree: MEME_CARD_COMPONENTS,
+    bindSchema: MEME_CARD_BIND_SCHEMA,
+    variants: ['card'],
+  },
+];
