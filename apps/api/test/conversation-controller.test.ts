@@ -13,14 +13,15 @@ import type { RequestWithUser } from '../src/auth/jwt-auth.guard';
 
 function makeController(conversation: { userId: string } | null) {
   const findUnique = vi.fn().mockResolvedValue(conversation);
-  const prisma = { conversation: { findUnique } };
+  const findMany = vi.fn().mockResolvedValue([]);
+  const prisma = { conversation: { findUnique, findMany } };
   const summarizeConversation = vi.fn().mockResolvedValue('요약 결과');
   const summary = { summarizeConversation };
   const controller = new ConversationController(
     prisma as never,
     summary as never,
   );
-  return { controller, findUnique, summarizeConversation };
+  return { controller, findUnique, findMany, summarizeConversation };
 }
 
 function reqFor(userId: string): RequestWithUser {
@@ -53,5 +54,54 @@ describe('ConversationController.endSession', () => {
     const result = await controller.endSession(reqFor('u1'), 'conv-1');
     expect(summarizeConversation).toHaveBeenCalledWith('conv-1');
     expect(result).toEqual({ summary: '요약 결과' });
+  });
+});
+
+describe('ConversationController.list', () => {
+  it('소유자(req.user.userId) 범위 + updatedAt desc + take 50 으로 조회', async () => {
+    const { controller, findMany } = makeController(null);
+    findMany.mockResolvedValue([]);
+
+    await controller.list(reqFor('u1'));
+
+    expect(findMany).toHaveBeenCalledWith({
+      where: { userId: 'u1' },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        title: true,
+        summary: true,
+        updatedAt: true,
+        _count: { select: { messages: true } },
+      },
+    });
+  });
+
+  it('_count.messages → messageCount 로 매핑', async () => {
+    const { controller, findMany } = makeController(null);
+    const updatedAt = new Date('2026-06-18T00:00:00Z');
+    findMany.mockResolvedValue([
+      {
+        id: 'c1',
+        title: '두산 얘기',
+        summary: '요약',
+        updatedAt,
+        _count: { messages: 7 },
+      },
+      {
+        id: 'c2',
+        title: null,
+        summary: null,
+        updatedAt,
+        _count: { messages: 0 },
+      },
+    ]);
+
+    const result = await controller.list(reqFor('u1'));
+    expect(result).toEqual([
+      { id: 'c1', title: '두산 얘기', summary: '요약', updatedAt, messageCount: 7 },
+      { id: 'c2', title: null, summary: null, updatedAt, messageCount: 0 },
+    ]);
   });
 });

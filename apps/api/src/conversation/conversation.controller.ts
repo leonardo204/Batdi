@@ -5,12 +5,17 @@
  *  - 본인(req.user.userId == conversation.userId) 검증 후 즉시 세션 최종 요약.
  *  - 대화 없음 → 404, 타인 소유 → 403. 요약 결과 { summary } 반환(키 없음/실패 시 summary=null).
  *
+ * GET /conversations (JwtAuthGuard) — P4-W10 10.4
+ *  - 본인(req.user.userId) 의 대화 목록을 updatedAt desc, take 50 으로 반환.
+ *  - 각 항목 { id, title, summary, updatedAt, messageCount(_count.messages) }.
+ *
  * 명시적 종료는 idle/자정 스윕과 달리 게이트(SESSION_SUMMARY_ENABLED) 없이 즉시 동작한다
  *   (사용자 의도 종료). 단 키 없으면 summarizeConversation 이 null 을 반환한다(no-op).
  */
 import {
   Controller,
   ForbiddenException,
+  Get,
   NotFoundException,
   Param,
   Post,
@@ -21,12 +26,47 @@ import { JwtAuthGuard, type RequestWithUser } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConversationSummaryService } from './conversation-summary.service';
 
+/** GET /conversations 목록 항목. */
+export interface ConversationListItem {
+  id: string;
+  title: string | null;
+  summary: string | null;
+  updatedAt: Date;
+  messageCount: number;
+}
+
 @Controller('conversations')
 export class ConversationController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly summary: ConversationSummaryService,
   ) {}
+
+  /** 내 대화 목록 — 소유자(req.user.userId) 범위, updatedAt desc, take 50. */
+  @UseGuards(JwtAuthGuard)
+  @Get()
+  async list(@Req() req: RequestWithUser): Promise<ConversationListItem[]> {
+    const conversations = await this.prisma.conversation.findMany({
+      where: { userId: req.user.userId },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        title: true,
+        summary: true,
+        updatedAt: true,
+        _count: { select: { messages: true } },
+      },
+    });
+
+    return conversations.map((c) => ({
+      id: c.id,
+      title: c.title,
+      summary: c.summary,
+      updatedAt: c.updatedAt,
+      messageCount: c._count.messages,
+    }));
+  }
 
   /** 명시적 세션 종료 → 소유자 검증 후 즉시 최종 요약. */
   @UseGuards(JwtAuthGuard)
