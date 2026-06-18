@@ -72,6 +72,13 @@ const nextConfig = {
         source: '/api/stats/:path*',
         destination: `${API_URL}/stats/:path*`,
       },
+      // Web Push 프록시(P4-W11) — settings 의 lib/push.ts 가 same-origin
+      //   /api/push/subscribe|unsubscribe|vapid-public-key 로 호출, api(3001)/push/* 로 프록시.
+      //   subscribe/unsubscribe 는 JWT 쿠키(credentials:'include'). sw.js 는 public 이라 rewrite 불요.
+      {
+        source: '/api/push/:path*',
+        destination: `${API_URL}/push/:path*`,
+      },
       // 내 레벨·통계 조회 프록시(P4-W10 10.4) — /my/* 페이지가 same-origin
       //   /api/users/me/level|stats 로 호출, api(3001)/users/* 로 프록시. JWT 쿠키.
       {

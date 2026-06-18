@@ -13,6 +13,13 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import {
+  getSubscriptionState,
+  isPushSupported,
+  subscribeToPush,
+  unsubscribeFromPush,
+  type SubscribeResult,
+} from '../../lib/push';
 
 const MAX_LEN = 500;
 const NICKNAME_MAX_LEN = 20;
@@ -97,6 +104,12 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = useState<Record<string, boolean>>({});
   const [notifState, setNotifState] = useState<SaveState>(IDLE);
 
+  // 브라우저 푸시 구독(P4-W11) — 서버 settings 와 별개의 디바이스 단위 구독.
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushNotice, setPushNotice] = useState<string | null>(null);
+
   // 데이터 보존기간.
   const [retentionDays, setRetentionDays] = useState<number>(90);
   const [retentionState, setRetentionState] = useState<SaveState>(IDLE);
@@ -161,6 +174,58 @@ export default function SettingsPage() {
       cancelled = true;
     };
   }, [router]);
+
+  // 브라우저 푸시 지원/구독 여부 초기 감지(디바이스 단위, 인증과 무관).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supported = isPushSupported();
+      if (cancelled) return;
+      setPushSupported(supported);
+      if (supported) {
+        const subscribed = await getSubscriptionState();
+        if (!cancelled) setPushSubscribed(subscribed);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 브라우저 알림 켜기/끄기 토글.
+  async function handleTogglePush() {
+    setPushBusy(true);
+    setPushNotice(null);
+    try {
+      if (pushSubscribed) {
+        await unsubscribeFromPush();
+        setPushSubscribed(false);
+        setPushNotice('브라우저 알림을 껐어.');
+        return;
+      }
+      const result: SubscribeResult = await subscribeToPush();
+      switch (result.status) {
+        case 'subscribed':
+          setPushSubscribed(true);
+          setPushNotice('브라우저 알림을 켰어!');
+          break;
+        case 'unsupported':
+          setPushNotice('이 브라우저는 알림을 지원하지 않아.');
+          break;
+        case 'denied':
+          setPushNotice('브라우저 알림 권한이 거부됐어. 브라우저 설정에서 허용해줘.');
+          break;
+        case 'disabled':
+          setPushNotice('서버 푸시가 아직 설정되지 않았어.');
+          break;
+        case 'error':
+          setPushNotice(`알림 설정 중 오류가 났어 (${result.message})`);
+          break;
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   // --- 커스텀 페르소나 저장 ---
   async function handleSavePersona() {
@@ -447,6 +512,38 @@ export default function SettingsPage() {
 
         {/* === 알림 설정 === */}
         <SettingsCard title="알림 설정" desc="받고 싶은 알림만 켜둬.">
+          {/* 브라우저 푸시 구독(디바이스 단위) — 켜야 아래 알림 종류가 실제로 도착해. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <ToggleRow
+              label="브라우저 알림 켜기"
+              checked={pushSubscribed}
+              disabled={!pushSupported || pushBusy}
+              onToggle={handleTogglePush}
+            />
+            {!pushSupported && (
+              <p
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--color-text-subtle)',
+                  margin: 0,
+                }}
+              >
+                이 브라우저는 알림을 지원하지 않아.
+              </p>
+            )}
+            {pushNotice && (
+              <p
+                role="status"
+                style={{
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--color-text-muted)',
+                  margin: 0,
+                }}
+              >
+                {pushNotice}
+              </p>
+            )}
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {NOTIFICATION_OPTIONS.map((opt) => (
               <ToggleRow

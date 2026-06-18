@@ -35,6 +35,7 @@ model User {
   favorites          UserFavorite[]
   traces             AgentTrace[]
   matchPredictions   MatchPrediction[]
+  pushSubscriptions  PushSubscription[]
 
   @@index([teamId], map: "idx_users_team")
   @@index([lastActive(sort: Desc)], map: "idx_users_last_active")
@@ -130,6 +131,24 @@ model MatchPrediction {
   @@unique([userId, gameKey], map: "uq_match_predictions_user_game")
   @@index([userId], map: "idx_match_predictions_user")
   @@map("match_predictions")
+}
+
+// Web Push 구독 (P4-W11 — ADR-055). 브라우저 PushManager.subscribe 결과를 저장한다.
+//   endpoint 가 자연키(브라우저/디바이스별 고유 URL) → @unique 로 멱등 upsert.
+//   p256dh/auth 는 web-push 암호화 키(VAPID). 만료(404/410) 응답 시 PushService 가 삭제.
+//   P6 FCM 교체 시에도 동일 테이블 유지(PushProvider 추상화가 전송만 갈아낌).
+model PushSubscription {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  endpoint  String   @unique @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_push_subscriptions_user")
+  @@map("push_subscriptions")
 }
 
 // ── C. 도메인 데이터 (선수·스탯) ────────────────────────────
