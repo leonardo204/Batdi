@@ -15,6 +15,7 @@ import {
   ActionResultOverlay,
   type ActionResult,
 } from './components/ActionResultOverlay';
+import { ChatLoadingOverlay } from './components/ChatLoadingOverlay';
 import { useBatdiActions } from './hooks/useBatdiActions';
 
 // GET /api/auth/me 응답(부분)
@@ -132,6 +133,12 @@ function ChatSurface({ user }: { user: AuthUser | null }) {
         input={{ addMenuButton: () => null }}
         style={{ flex: 1, minHeight: 0 }}
       />
+      {/* CLS 0 로딩 UX (uiux §5.4): RunStarted ~ 첫 어시스턴트 토큰 전까지
+          TypingIndicator + intent별 SkeletonCard 를 채팅 영역 하단에 노출.
+          어시스턴트 스트리밍 개시 시 자동 소멸(in-place 근사 swap).
+          ⚠️ CopilotChat 이 메시지 리스트 렌더를 소유해 내부 슬롯 주입 불가 →
+             하단 자리표시로 표시(ChatLoadingOverlay 주석의 한계 참조). */}
+      <ChatLoadingOverlay agentId="batdi" />
     </main>
   );
 }
