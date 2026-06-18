@@ -19,7 +19,9 @@
  *   제거 대상이 아니다). 완전 재조합은 추후 보강 대상으로 남긴다.
  */
 import type { BaseMessage } from '@langchain/core/messages';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import type { CoreGraphState, CoreGraphUpdate } from '../state';
+import type { TeamId } from '@batdi/types';
 import { messageText } from '../utils/message-text';
 
 /** zero-width 문자 (ZWSP/ZWNJ/ZWJ/BOM) */
@@ -149,7 +151,65 @@ function isHumanMessage(message: BaseMessage): boolean {
   return message.getType() === 'human';
 }
 
-export function normalizer(state: CoreGraphState): CoreGraphUpdate {
+/**
+ * 신원(userId/teamId)을 그래프 진입 직후 1회 해석한다(P3-W9 9.3 신원 배선).
+ *
+ * 전달 채널(조사 결과): 프론트 `<CopilotKit properties={{ config:{ configurable:{ userId, teamId } } }}>`
+ *   → @ag-ui/langgraph 가 RunsStreamPayload.config 로 보존(context_schema 없음 → configurable
+ *   키 드롭 안 됨) → LangGraph 런타임이 노드 2번째 인자 config.configurable 로 노출.
+ *
+ * 방어적 우선순위(미니파이드 소스 역공학 결론이라 실제 도달 위치를 방어):
+ *   1) 이미 state 에 값이 있으면(테스트 invoke `{userId,...}`) **보존**(덮어쓰지 않음).
+ *   2) 없으면 config.configurable.userId / .teamId 에서 승격.
+ * 둘 다 없으면 해당 필드를 반환하지 않아(undefined) state 기본값을 유지한다(익명).
+ */
+function resolveIdentity(
+  state: CoreGraphState,
+  config: RunnableConfig | undefined,
+): { userId?: string; teamId?: TeamId } {
+  const configurable = config?.configurable as
+    | { userId?: unknown; teamId?: unknown }
+    | undefined;
+
+  const out: { userId?: string; teamId?: TeamId } = {};
+
+  // userId: state 우선 → config 폴백.
+  const stateUserId =
+    typeof state.userId === 'string' && state.userId.trim() !== ''
+      ? state.userId
+      : undefined;
+  const configUserId =
+    typeof configurable?.userId === 'string' &&
+    configurable.userId.trim() !== ''
+      ? configurable.userId
+      : undefined;
+  const resolvedUserId = stateUserId ?? configUserId;
+  if (resolvedUserId !== undefined) {
+    out.userId = resolvedUserId;
+  }
+
+  // teamId: state 우선 → config 폴백.
+  const stateTeamId =
+    typeof state.teamId === 'string' && state.teamId.trim() !== ''
+      ? (state.teamId as TeamId)
+      : undefined;
+  const configTeamId =
+    typeof configurable?.teamId === 'string' &&
+    configurable.teamId.trim() !== ''
+      ? (configurable.teamId as TeamId)
+      : undefined;
+  const resolvedTeamId = stateTeamId ?? configTeamId;
+  if (resolvedTeamId !== undefined) {
+    out.teamId = resolvedTeamId;
+  }
+
+  return out;
+}
+
+export function normalizer(
+  state: CoreGraphState,
+  config?: RunnableConfig,
+): CoreGraphUpdate {
   // 이번 턴의 입력 = messages 의 "마지막 Human 메시지" (CopilotKit 라운드트립).
   // ⚠️ userMessage 채널은 thread checkpoint 에 last-write-wins 로 persist 되므로
   //   이전 턴의 값을 신뢰하면 멀티턴에서 intent 가 첫 메시지로 고정된다
@@ -161,9 +221,13 @@ export function normalizer(state: CoreGraphState): CoreGraphUpdate {
       ? messageText(lastHuman)
       : (state.userMessage ?? '');
 
+  // 신원 해석(config.configurable → state 승격, state 값은 보존). 그래프 진입 1회.
+  const identity = resolveIdentity(state, config);
+
   return {
     userMessage: raw,
     userMessageDisplay: toDisplayForm(raw),
     userMessageNormalized: toNormalizedForm(raw),
+    ...identity,
   };
 }

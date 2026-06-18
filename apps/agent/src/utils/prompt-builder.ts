@@ -18,6 +18,7 @@
  *   미지정(undefined)·범위 외 teamId 는 hanwha 페르소나로 폴백한다(중립 폴백).
  */
 import type { PersonalContext, TeamId } from '@batdi/types';
+import type { ConversationMemory } from '../services/memory';
 import { ChildSafetyGuardrail } from '../nodes/child-safety';
 import { isPersonalized } from '../personal/personal-agent';
 import {
@@ -119,6 +120,11 @@ export interface BuildReactionPromptInput {
    * 삽입한다(priority 순서). 중립 기본값/미지정이면 블록을 생략한다(프롬프트 변화 없음).
    */
   personalContext?: PersonalContext;
+  /**
+   * 대화 메모리(P3-W9 9.2). session/long-term 요약이 있으면 personal_profile 다음에
+   * `<conversation_memory priority="3">` 블록을 삽입한다. 비어있으면 블록 생략.
+   */
+  conversationMemory?: ConversationMemory;
 }
 
 /** knowledgeLevel → 프롬프트 톤 가이드 한 줄 */
@@ -161,6 +167,42 @@ ${lines.join('\n')}
 }
 
 /**
+ * `<conversation_memory priority="3">` 블록을 조립한다(P3-W9 9.2).
+ *
+ * 3단계 메모리 중 프롬프트에 주입할 두 요약을 담는다(있을 때만 하위 태그 추가):
+ *  - `<session_summary>`: 세션(overflow) 증분 요약 — 직전 대화 흐름의 개인화 단서.
+ *  - `<long_term_profile>`: 장기 프로필 요약(PersonalAgentState.profileSummary, 세션 간 학습).
+ *
+ * 둘 다 비어있으면 빈 문자열을 반환해 블록을 생략한다(프롬프트 변화 없음).
+ * working memory 자체는 chat-graph 가 state.messages.slice 로 LLM 에 직접 전달하므로 여기 없다.
+ * ⚠️ 팩트(수치) 주입 금지 계약 동일 — 요약은 톤/개인화 단서만(요약기 프롬프트에서 환각 금지).
+ */
+export function buildConversationMemoryBlock(
+  memory: ConversationMemory | undefined,
+): string {
+  if (!memory) {
+    return '';
+  }
+  const sessionSummary = memory.sessionSummary?.trim() ?? '';
+  const longTermSummary = memory.longTermSummary?.trim() ?? '';
+  if (sessionSummary === '' && longTermSummary === '') {
+    return '';
+  }
+  const lines: string[] = [];
+  if (sessionSummary !== '') {
+    lines.push(`  <session_summary>${sessionSummary}</session_summary>`);
+  }
+  if (longTermSummary !== '') {
+    lines.push(`  <long_term_profile>${longTermSummary}</long_term_profile>`);
+  }
+  return `<conversation_memory priority="3">
+${lines.join('\n')}
+</conversation_memory>
+
+`;
+}
+
+/**
  * L2 리액션 생성용 시스템 프롬프트(XML)를 조립한다.
  *
  * architecture §9.1 규격:
@@ -172,7 +214,8 @@ ${lines.join('\n')}
  * @returns 조립된 시스템 프롬프트 문자열 (Context Caching 미사용 — 매 요청 주입)
  */
 export function buildReactionPrompt(input: BuildReactionPromptInput): string {
-  const { teamId, scoreSummary, userMessage, personalContext } = input;
+  const { teamId, scoreSummary, userMessage, personalContext, conversationMemory } =
+    input;
   const persona = resolveTeamPersona(teamId);
 
   const systemBase = `${ChildSafetyGuardrail.SYSTEM_INSTRUCTION.trim()}
@@ -182,12 +225,15 @@ ${REACTION_SYSTEM_DIRECTIVE}`;
   // priority=3 personal_profile — system_base(1) 와 team_persona(4) 사이에 삽입.
   // 개인화 정보 없으면 빈 문자열(블록 생략 → 프롬프트 변화 없음).
   const personalProfileBlock = buildPersonalProfileBlock(personalContext);
+  // priority=3 conversation_memory — personal_profile 바로 다음(둘 다 priority=3 컨텍스트).
+  const conversationMemoryBlock =
+    buildConversationMemoryBlock(conversationMemory);
 
   return `<system_base priority="1" immutable="true">
 ${systemBase}
 </system_base>
 
-${personalProfileBlock}<team_persona priority="4">
+${personalProfileBlock}${conversationMemoryBlock}<team_persona priority="4">
   <team>${persona.team}</team>
   <style>${persona.style}</style>
 ${persona.body}
@@ -235,6 +281,11 @@ export interface BuildChatPromptInput {
    * 삽입한다(priority 순서). 중립 기본값/미지정이면 블록을 생략한다.
    */
   personalContext?: PersonalContext;
+  /**
+   * 대화 메모리(P3-W9 9.2). session/long-term 요약이 있으면 personal_profile 다음에
+   * `<conversation_memory priority="3">` 블록을 삽입한다. 비어있으면 블록 생략.
+   */
+  conversationMemory?: ConversationMemory;
 }
 
 /**
@@ -256,7 +307,7 @@ export interface BuildChatPromptInput {
  * @returns 조립된 시스템 프롬프트 문자열 (Context Caching 미사용 — 매 요청 주입)
  */
 export function buildChatPrompt(input: BuildChatPromptInput): string {
-  const { teamId, userMessage, personalContext } = input;
+  const { teamId, userMessage, personalContext, conversationMemory } = input;
   const persona = resolveTeamPersona(teamId);
 
   const systemBase = `${ChildSafetyGuardrail.SYSTEM_INSTRUCTION.trim()}
@@ -266,12 +317,15 @@ ${CHAT_SYSTEM_DIRECTIVE}`;
   // priority=3 personal_profile — system_base(1) 와 team_persona(4) 사이에 삽입.
   // 개인화 정보 없으면 빈 문자열(블록 생략).
   const personalProfileBlock = buildPersonalProfileBlock(personalContext);
+  // priority=3 conversation_memory — personal_profile 바로 다음(둘 다 priority=3 컨텍스트).
+  const conversationMemoryBlock =
+    buildConversationMemoryBlock(conversationMemory);
 
   return `<system_base priority="1" immutable="true">
 ${systemBase}
 </system_base>
 
-${personalProfileBlock}<team_persona priority="4">
+${personalProfileBlock}${conversationMemoryBlock}<team_persona priority="4">
   <team>${persona.team}</team>
   <style>${persona.style}</style>
 ${persona.body}

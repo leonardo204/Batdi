@@ -100,6 +100,8 @@ export async function generateChatReply(
       userMessage: state.userMessage,
       // P2-W6 6.3: 개인화 컨텍스트 — 개인화 정보 있을 때만 personal_profile 블록 추가.
       personalContext: state.personalContext,
+      // P3-W9 9.2: 대화 메모리 — session/long-term 요약 있을 때만 conversation_memory 블록 추가.
+      conversationMemory: state.conversationMemory,
     });
     const model = new ChatGoogleGenerativeAI({
       model: 'gemini-2.5-flash',

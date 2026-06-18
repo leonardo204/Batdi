@@ -38,6 +38,7 @@ import { dataBinder } from './nodes/data-binder';
 import { teamPersona } from './nodes/team-persona';
 import { outputGuardrail } from './nodes/output-guardrail';
 import { emitA2UI } from './nodes/emit-a2ui';
+import { persistTurnNode } from './nodes/persist-turn';
 
 /** Core StateGraph — 직선 배선 */
 export const graph = new StateGraph(CoreStateAnnotation)
@@ -55,6 +56,9 @@ export const graph = new StateGraph(CoreStateAnnotation)
   .addNode('teamPersona', teamPersona)
   .addNode('outputGuardrail', outputGuardrail)
   .addNode('emitA2UI', emitA2UI)
+  // P3-W9 9.3/9.4: 모든 응답 경로가 수렴하는 emitA2UI 종단 뒤에서 1회 영속화
+  //   (user/assistant Message 2건 + messageCount write-through). best-effort.
+  .addNode('persistTurnNode', persistTurnNode)
   .addEdge(START, 'normalizer')
   .addEdge('normalizer', 'inputGuardrail')
   // W4: 입력 가드레일(1단계 rule-based) 차단 시 곧장 emitA2UI 로 fallbackResponse 를
@@ -107,5 +111,8 @@ export const graph = new StateGraph(CoreStateAnnotation)
   .addEdge('dataBinder', 'teamPersona')
   .addEdge('teamPersona', 'outputGuardrail')
   .addEdge('outputGuardrail', 'emitA2UI')
-  .addEdge('emitA2UI', END)
+  // P3-W9 9.3/9.4: emitA2UI → persistTurnNode → END. 모든 진입 경로(차단/L0 HIT/composite/
+  //   score/stats/meme/chat)가 emitA2UI 로 수렴하므로 한 곳에서 전부 영속화된다.
+  .addEdge('emitA2UI', 'persistTurnNode')
+  .addEdge('persistTurnNode', END)
   .compile();

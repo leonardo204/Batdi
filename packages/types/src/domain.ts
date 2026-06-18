@@ -48,6 +48,8 @@ export interface PersonalContext {
     customPersona: string | null;
     /** 관심 선수 ID 목록 (PersonalAgentState.favoritePlayers) */
     favoritePlayerIds: number[];
+    /** 장기 프로필 요약 (PersonalAgentState.profileSummary, 세션 간 학습 결과). 없으면 null */
+    longTermSummary: string | null;
   };
   /** 세션 통계 */
   session: {

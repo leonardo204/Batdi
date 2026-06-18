@@ -29,6 +29,7 @@ export const DEFAULT_PERSONAL_CONTEXT: PersonalContext = {
     knowledgeLevel: 'beginner',
     customPersona: null,
     favoritePlayerIds: [],
+    longTermSummary: null,
   },
   session: {
     messageCount: 0,
@@ -105,6 +106,9 @@ export async function buildContext(
         knowledgeLevel: deriveKnowledgeLevel(user?.level),
         customPersona,
         favoritePlayerIds,
+        // 9.2: 장기 프로필 요약(세션 간 학습 결과). 9.4 learnFromConversation 이 채우는
+        //   자리지만 현재는 DB 값(profileSummary)을 그대로 읽어 노출만 한다(없으면 null).
+        longTermSummary: agentState?.profileSummary ?? null,
       },
       session: {
         messageCount,

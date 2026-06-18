@@ -16,6 +16,7 @@ import type {
 } from '@batdi/types';
 import type { ScoreData } from './services/score-graph';
 import type { StandingsData, StatsLeaderboard } from './services/stats-graph';
+import type { ConversationMemory } from './services/memory';
 
 /** 마지막-쓰기-우선(last-write-wins) reducer 헬퍼 */
 function lastValue<T>() {
@@ -39,6 +40,15 @@ export const CoreStateAnnotation = Annotation.Root({
   // ── 식별자 ──
   userId: Annotation<string>(lastValue<string>()),
   teamId: Annotation<TeamId>(lastValue<TeamId>()),
+
+  // ── 대화 식별자 (P3-W9 9.3/9.4 영속화 배선) ──
+  // LangGraph run 의 thread_id 로 resolveConversation 이 upsert 한 Conversation.id.
+  //   - personalContext 노드가 config.configurable.thread_id → resolveConversation 으로 채운다.
+  //   - persistTurnNode 가 이 값으로 Message 2건(user/assistant)을 영속화한다.
+  //   - thread_id 미배선(테스트 invoke)/익명/미등록 사용자 시 undefined → 영속화 skip(best-effort).
+  conversationId: Annotation<string | undefined>(
+    lastValue<string | undefined>(),
+  ),
 
   // ── 가드레일 (W2: pass stub) ──
   inputGuardrailResult: Annotation<GuardrailResult | undefined>(
@@ -88,6 +98,17 @@ export const CoreStateAnnotation = Annotation.Root({
   // best-effort: DB 비활성/없음 시 중립 기본값(개인화 없음). MISS 경로에서만 채워진다.
   personalContext: Annotation<PersonalContext | undefined>(
     lastValue<PersonalContext | undefined>(),
+  ),
+
+  // ── 대화 메모리 (PersonalContext 노드, P3-W9 9.2) ──
+  // 3단계 메모리(working 카운트 + session 증분 요약 + long-term 프로필 요약) 묶음.
+  //   - MISS 경로에서 personalContext 노드가 buildConversationMemory 로 조립한다.
+  //   - PromptBuilder 가 `<conversation_memory priority="3">` 블록 주입에 사용한다
+  //     (session_summary/long_term_profile 하위 태그, 값 있을 때만).
+  // best-effort: DB/LLM 비활성·실패 시 요약은 null(블록 생략). per-request 인메모리 계산
+  //   (conversationId 미배선 — DB 영속화는 9.4 범위).
+  conversationMemory: Annotation<ConversationMemory | undefined>(
+    lastValue<ConversationMemory | undefined>(),
   ),
 
   // ── 서비스 실데이터 (DataBinder, P2-W5.5 ScoreGraph) ──
