@@ -10,6 +10,7 @@ import { Module } from '@nestjs/common';
 import { DailyKboScheduler } from './daily-kbo.scheduler';
 import { KboScraper } from './kbo-scraper';
 import { KboGameWriter, PlayerStatWriter, TeamRecordWriter } from './kbo-writer';
+import { CrawlerHealthManager } from './crawler-health';
 
 @Module({
   providers: [
@@ -17,8 +18,9 @@ import { KboGameWriter, PlayerStatWriter, TeamRecordWriter } from './kbo-writer'
     KboGameWriter,
     TeamRecordWriter,
     PlayerStatWriter,
+    CrawlerHealthManager,
     DailyKboScheduler,
   ],
-  exports: [KboGameWriter, TeamRecordWriter, PlayerStatWriter],
+  exports: [KboGameWriter, TeamRecordWriter, PlayerStatWriter, CrawlerHealthManager],
 })
 export class KboModule {}

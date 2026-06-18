@@ -25,6 +25,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { KboScraper } from './kbo-scraper';
 import { KboGameWriter, PlayerStatWriter, TeamRecordWriter } from './kbo-writer';
+import { CrawlerHealthManager, type CrawlSource } from './crawler-health';
 import type { HitterStatRow, PitcherStatRow } from './kbo-parser';
 import { SERIES_TYPES, type SeriesTypeName } from './kbo-teams';
 
@@ -38,11 +39,42 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
     private readonly recordWriter: TeamRecordWriter,
     private readonly playerStatWriter: PlayerStatWriter,
     private readonly prisma: PrismaService,
+    private readonly health: CrawlerHealthManager,
   ) {}
 
   /** 크롤러 활성 여부 — KBO_CRAWLER_ENABLED === 'true' 일 때만 동작. */
   private isEnabled(): boolean {
     return process.env[CRAWLER_ENABLED_ENV] === 'true';
+  }
+
+  /**
+   * 소스별 health 게이트 + 성공/실패 판정 헬퍼.
+   *
+   * - 비활성(연속 실패 3회 도달) 소스는 skip → undefined 반환(graceful degradation).
+   * - scraper 는 throw 하지 않고 빈 배열을 반환하므로 **반환 길이 0 = 실패**, >0 = 성공으로 판정한다
+   *   (네트워크 전체 실패 시 빈 배열이 반환되어 0건=실패로 포착됨).
+   * - 한 소스 비활성이어도 다른 소스는 계속 진행한다(호출부에서 독립 판정).
+   *
+   * @param source 크롤 소스
+   * @param crawl 실제 크롤 함수(부분이라도 결과 배열 반환)
+   * @returns 크롤 결과 배열(성공/실패 무관). 비활성 skip 시 undefined.
+   */
+  private async withHealthGate<T>(
+    source: CrawlSource,
+    crawl: () => Promise<T[]>,
+  ): Promise<T[] | undefined> {
+    if (!this.health.isEnabled(source)) {
+      this.logger.warn(`소스 ${source} 비활성 — 크롤 skip(graceful degradation)`);
+      return undefined;
+    }
+    const rows = await crawl();
+    if (rows.length > 0) {
+      this.health.recordSuccess(source);
+    } else {
+      // 0건 = 실패(scraper 가 throw 대신 빈 배열 반환) → 연속 실패 카운트 증가.
+      this.health.recordFailure(source);
+    }
+    return rows;
   }
 
   /** 전 시리즈 이름 목록 */
@@ -58,19 +90,20 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
   private async crawlPlayerStats(season: number): Promise<void> {
     const teamIds = [...PLAYER_STAT_TEAM_IDS];
 
-    const hitters = (await this.scraper.scrapePlayerStats(
-      season,
-      'hitter',
-      teamIds,
-    )) as HitterStatRow[];
-    await this.playerStatWriter.writeHitterStats(hitters);
+    // 타자/투수 각각 독립 health 게이트 — 한쪽 비활성이어도 다른 쪽은 계속.
+    const hitters = (await this.withHealthGate('hitter', () =>
+      this.scraper.scrapePlayerStats(season, 'hitter', teamIds),
+    )) as HitterStatRow[] | undefined;
+    if (hitters) {
+      await this.playerStatWriter.writeHitterStats(hitters);
+    }
 
-    const pitchers = (await this.scraper.scrapePlayerStats(
-      season,
-      'pitcher',
-      teamIds,
-    )) as PitcherStatRow[];
-    await this.playerStatWriter.writePitcherStats(pitchers);
+    const pitchers = (await this.withHealthGate('pitcher', () =>
+      this.scraper.scrapePlayerStats(season, 'pitcher', teamIds),
+    )) as PitcherStatRow[] | undefined;
+    if (pitchers) {
+      await this.playerStatWriter.writePitcherStats(pitchers);
+    }
   }
 
   /**
@@ -96,15 +129,20 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
     );
 
     try {
-      const games = await this.scraper.scrapeSchedule(
-        season,
-        months,
-        this.allSeriesNames(),
+      // 각 소스 독립 health 게이트 — 비활성 소스는 skip, 나머지는 계속(graceful degradation).
+      const games = await this.withHealthGate('schedule', () =>
+        this.scraper.scrapeSchedule(season, months, this.allSeriesNames()),
       );
-      await this.gameWriter.write(games);
+      if (games) {
+        await this.gameWriter.write(games);
+      }
 
-      const records = await this.scraper.scrapeTeamRank(season);
-      await this.recordWriter.write(records);
+      const records = await this.withHealthGate('teamrank', () =>
+        this.scraper.scrapeTeamRank(season),
+      );
+      if (records) {
+        await this.recordWriter.write(records);
+      }
 
       // 선수 기본 스탯(타자·투수, 우선 4팀) — 일정·순위 크롤 뒤에.
       await this.crawlPlayerStats(season);
@@ -151,15 +189,20 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
       for (let m = SEASON_START_MONTH; m <= SEASON_END_MONTH; m += 1) {
         months.push(m);
       }
-      const games = await this.scraper.scrapeSchedule(
-        season,
-        months,
-        this.allSeriesNames(),
+      // 백필에도 동일 health 게이트 적용(비활성 소스 skip).
+      const games = await this.withHealthGate('schedule', () =>
+        this.scraper.scrapeSchedule(season, months, this.allSeriesNames()),
       );
-      await this.gameWriter.write(games);
+      if (games) {
+        await this.gameWriter.write(games);
+      }
 
-      const records = await this.scraper.scrapeTeamRank(season);
-      await this.recordWriter.write(records);
+      const records = await this.withHealthGate('teamrank', () =>
+        this.scraper.scrapeTeamRank(season),
+      );
+      if (records) {
+        await this.recordWriter.write(records);
+      }
 
       // 선수 기본 스탯(타자·투수, 우선 4팀) — 일정·순위 백필 뒤에.
       await this.crawlPlayerStats(season);
