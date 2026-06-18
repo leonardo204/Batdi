@@ -59,6 +59,7 @@ const PERSONALIZED: PersonalContext = {
     knowledgeLevel: 'expert',
     customPersona: '반말로 까칠하게',
     favoritePlayerIds: [101],
+    longTermSummary: null,
   },
   session: { messageCount: 9, lastActiveIso: null },
   hints: { isReturningUser: true, hasCustomPersona: true },

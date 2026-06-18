@@ -123,7 +123,19 @@ describe('emitA2UI — stats statType=player + playerStats 있음 → 리더보�
         standingsData: undefined,
         userMessage: '타율 어때',
         userMessageNormalized: '타율어때',
-      } as Partial<CoreGraphState>),
+        // core 는 레벨 footnote 가 붙지 않아 기본 카드(8노드) 구조를 그대로 검증.
+        personalContext: {
+          profile: {
+            teamId: 'lotte',
+            knowledgeLevel: 'core',
+            customPersona: null,
+            favoritePlayerIds: [],
+            longTermSummary: null,
+          },
+          session: { messageCount: 0, lastActiveIso: null },
+          hints: { isReturningUser: false, hasCustomPersona: false },
+        },
+      } as unknown as Partial<CoreGraphState>),
     );
     const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
     expect(ops).toHaveLength(3);
@@ -183,6 +195,76 @@ describe('emitA2UI — stats statType=player + playerStats=null → 폴백', () 
         } as Partial<CoreGraphState>),
       );
       expect(upsert).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+// ─── P3-W9 9.5: 지식 레벨 적응 footnote (standings) ───
+
+/** knowledgeLevel 을 가진 PersonalContext 를 주입한 stats(standings) state */
+function makeLeveledState(
+  knowledgeLevel: 'beginner' | 'core' | 'expert',
+): CoreGraphState {
+  return makeStatsState({
+    statType: 'standings',
+    cacheKey: 'stats:hash:lotte:default',
+    personalContext: {
+      profile: {
+        teamId: 'lotte',
+        knowledgeLevel,
+        customPersona: null,
+        favoritePlayerIds: [],
+        longTermSummary: null,
+      },
+      session: { messageCount: 0, lastActiveIso: null },
+      hints: { isReturningUser: false, hasCustomPersona: false },
+    },
+  } as unknown as Partial<CoreGraphState>);
+}
+
+describe('emitA2UI — stats standings 지식 레벨 적응(P3-W9 9.5)', () => {
+  it('beginner → 방출 components 에 level_note 포함 + L0 write 미호출(캐시 포이즌 방지)', async () => {
+    const upsert = vi.fn().mockResolvedValue({});
+    const spy = vi
+      .spyOn(prismaMod, 'getPrisma')
+      .mockReturnValue({ cacheUiEnvelope: { upsert } } as never);
+    try {
+      const update = await emitA2UI(makeLeveledState('beginner'));
+      const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
+      const compOp = ops.find((o) => 'updateComponents' in o) as
+        | { updateComponents: { components: Array<Record<string, unknown>> } }
+        | undefined;
+      const comps = compOp?.updateComponents.components ?? [];
+      // standings 12 + level_note 1 = 13 컴포넌트.
+      expect(comps).toHaveLength(13);
+      const note = comps.find((c) => c.id === 'level_note');
+      expect(note).toMatchObject({ component: 'Text', variant: 'caption' });
+      // 레벨 적응 카드는 비-레벨 키로 캐시 금지 → upsert 미호출.
+      expect(upsert).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('core → level_note 없음 + L0 write 정상 호출(기존 회귀)', async () => {
+    const upsert = vi.fn().mockResolvedValue({});
+    const spy = vi
+      .spyOn(prismaMod, 'getPrisma')
+      .mockReturnValue({ cacheUiEnvelope: { upsert } } as never);
+    try {
+      const update = await emitA2UI(makeLeveledState('core'));
+      const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
+      const compOp = ops.find((o) => 'updateComponents' in o) as
+        | { updateComponents: { components: Array<Record<string, unknown>> } }
+        | undefined;
+      const comps = compOp?.updateComponents.components ?? [];
+      // core 는 기본 카드 그대로 → 12 컴포넌트, level_note 없음.
+      expect(comps).toHaveLength(12);
+      expect(comps.find((c) => c.id === 'level_note')).toBeUndefined();
+      // core(비개인화 favorites 없음)는 기존대로 L0 write 호출.
+      expect(upsert).toHaveBeenCalledTimes(1);
     } finally {
       spy.mockRestore();
     }

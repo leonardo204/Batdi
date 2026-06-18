@@ -29,6 +29,7 @@ import {
   resolveStatsTemplate,
 } from '../templates/registry';
 import { compileBindings, scoreSummaryText } from '../databind/compile';
+import { applyLevelAdaptation } from '../templates/level-adaptive';
 import { cannedReactionFor } from '../utils/prompt-builder';
 import {
   buildA2UIOps,
@@ -441,7 +442,19 @@ export async function emitA2UI(
 
   // ── 템플릿 있음 (score: 실데이터 보유 / stats: 순위 실데이터 보유) ──
   if (template) {
-    const compiled = compileBindings(template.components);
+    // P3-W9 9.5: stats intent 면 지식 레벨 footnote 를 카드 하단에 정적 주입(LLM 미사용).
+    //  - beginner → 용어 설명, expert → 세이버 안내, core → 추가 없음(adapted=false).
+    //  - level_note 는 bind 슬롯이 없는 정적 Text 라 data 모델/주입 로직 변경은 불필요.
+    //  - score/기타 intent 는 적응하지 않는다(기존대로 template.components 컴파일).
+    const adaptation =
+      state.intent === 'stats'
+        ? applyLevelAdaptation(template.components, {
+            statType: state.statType,
+            knowledgeLevel:
+              state.personalContext?.profile.knowledgeLevel ?? 'beginner',
+          })
+        : { components: template.components, adapted: false };
+    const compiled = compileBindings(adaptation.components);
 
     // intent 별 summary/data 선택.
     //  - score: home/away/inning 실데이터(state.scoreData) + reaction 슬롯(state.reaction).
@@ -486,7 +499,15 @@ export async function emitA2UI(
     //   같은 intent+질의+팀이면 다음 요청은 LLM 0회로 재사용. score template 경로만
     //   write(결정론적·비개인화). chat 등 LLM 응답 경로는 비결정이라 write 하지 않는다.
     //   write 실패/DB 비활성은 응답에 영향 없음(await 하되 내부 try/catch 흡수).
-    await writeL0Cache(state, result.ops as Array<Record<string, unknown>>);
+    //
+    // ⚠️ P3-W9 9.5 캐시 포이즌 방지: knowledgeLevel 이 cacheKey 에 없어 레벨 적응 카드
+    //   (adaptation.adapted===true, beginner/expert footnote 주입)는 L0 write 를 SKIP 한다.
+    //   비-레벨 키로 캐시하면 다른 레벨 사용자에게 해당 footnote 가 누출되기 때문이다.
+    //   core(adapted=false)는 기존대로 write(회귀 없음).
+    //   향후 personaScope 에 level 차원을 추가하면 레벨별로도 캐시 가능.
+    if (!adaptation.adapted) {
+      await writeL0Cache(state, result.ops as Array<Record<string, unknown>>);
+    }
 
     // L1(리액션 없음, 예: stats 순위) vs L2(리액션 있음, 예: score FINISHED) 구분 기록.
     logResponseLevel(state.reaction ? 'L2' : 'L1', state.intent ?? 'unknown');
