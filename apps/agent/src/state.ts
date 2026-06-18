@@ -169,6 +169,20 @@ export const CoreStateAnnotation = Annotation.Root({
   // EmitA2UI 가 data model `/reaction` 슬롯에 주입한다. score 외 intent 면 undefined.
   reaction: Annotation<string | undefined>(lastValue<string | undefined>()),
 
+  // ── 프론트엔드 액션 passthrough (P4-W10 10.1 ADR-050) ──
+  // CopilotKit 클라이언트가 POST /copilotkit body 의 `tools`(또는 `copilotkit.actions`)로
+  // 보낸 프론트 액션 정의는 @ag-ui/langgraph 가 LangGraph run **input(그래프 state)** 에
+  // 병합한다(신원 config.configurable 과는 다른 채널). ⚠️ CoreStateAnnotation 에 채널을
+  // 선언하지 않으면 input 의 이 키들이 노드 진입 전에 드롭되므로, passthrough 채널로 선언해
+  // 노드(chat-graph)까지 살아남게 한다. 값 가공은 services/frontend-actions 가 담당.
+  //   - tools: @ag-ui 가 직접 병합하는 표준 채널([{type:'function',name,function:{...}}] 등).
+  //   - copilotkit: 일부 버전이 actions 를 copilotkit.actions 하위로 보내는 경우 방어.
+  // 느슨한 타입(unknown[]) — 정규화는 extractFrontendActions 가 방어적으로 파싱한다.
+  tools: Annotation<unknown[] | undefined>(lastValue<unknown[] | undefined>()),
+  copilotkit: Annotation<{ actions?: unknown[] } | undefined>(
+    lastValue<{ actions?: unknown[] } | undefined>(),
+  ),
+
   // ── 출력 (EmitA2UI) ──
   a2uiEnvelope: Annotation<A2UIEnvelope | undefined>(
     lastValue<A2UIEnvelope | undefined>(),

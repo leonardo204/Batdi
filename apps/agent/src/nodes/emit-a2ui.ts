@@ -578,7 +578,7 @@ export async function emitA2UI(
   // ── 템플릿 없음 (chat 등) → 텍스트-only + 단일 Text 카드 ──
   // P3-W8 8.1: chat 응답은 ChatGraph 서비스가 페르소나 + PersonalContext + 출력 가드레일 +
   // 팀톤 폴백을 갖춰 생성한다(이전 맨 Gemini 호출/스켈레톤 stub 교체).
-  const text = await generateChatReply(state, config);
+  const { text, toolCalls } = await generateChatReply(state, config);
   const result = buildA2UIOps(
     [{ id: 'root', component: 'Text', text }],
     {},
@@ -587,8 +587,23 @@ export async function emitA2UI(
   reportA2UIResult(`intent=${state.intent}(no-template)`, result);
 
   logResponseLevel('chat', state.intent ?? 'unknown');
+  // P4-W10 10.1: LLM 이 프론트 액션을 호출했으면 구조화된 tool_calls 를 가진 AIMessage 를
+  //   messages 에 실어준다 → CopilotKit 클라이언트(processAgentResult)가 message.toolCalls 를
+  //   읽어 getTool(name).handler 를 실행한다(ADR-050). tool_call 없으면 기존 텍스트 메시지.
+  const assistantMessage =
+    toolCalls.length > 0
+      ? new AIMessage({
+          content: text,
+          tool_calls: toolCalls.map((tc, i) => ({
+            id: tc.id ?? `act-${i}`,
+            name: tc.name,
+            args: tc.args ?? {},
+            type: 'tool_call' as const,
+          })),
+        })
+      : new AIMessage(text);
   return {
     a2uiEnvelope: result.ops,
-    messages: [new AIMessage(text)],
+    messages: [assistantMessage],
   };
 }
