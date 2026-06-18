@@ -13,10 +13,12 @@ import {
   Controller,
   Get,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard, type RequestWithUser } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { requireLevel } from '../users/level-guard';
 
 /** MVP 우선 지원 팀 화이트리스트(auth.controller VALID_TEAMS 와 일치). */
 const VALID_TEAMS = ['lotte', 'doosan', 'kia', 'hanwha'] as const;
@@ -43,14 +45,27 @@ interface CompareResult {
 export class StatsController {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** 팀 비교 — 2팀 당해 시즌 기록 반환 + ToolCallLog. */
+  /**
+   * 팀 비교 — 2팀 당해 시즌 기록 반환 + ToolCallLog.
+   *
+   * 선수/팀 비교는 Lv4(시즌권) 해금 기능(ADR-053). req.user.userId 의 현재 level 을
+   *   조회해 requireLevel(level, 4) 로 게이팅한다. 미달이면 403 { locked }.
+   */
   @UseGuards(JwtAuthGuard)
   @Get('compare')
   async showTeamComparison(
+    @Req() req: RequestWithUser,
     @Query('teamA') teamA: string,
     @Query('teamB') teamB: string,
   ): Promise<CompareResult> {
     const start = Date.now();
+
+    // ── 레벨 게이팅: 선수/팀 비교는 Lv4 해금 ──
+    const me = await this.prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { level: true },
+    });
+    requireLevel(me?.level ?? 1, 4);
 
     // ── 화이트리스트 검증 ──
     if (

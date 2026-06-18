@@ -14,10 +14,12 @@ import {
   Get,
   NotFoundException,
   Param,
+  Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard, type RequestWithUser } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { requireLevel } from '../users/level-guard';
 
 /** GET /players/:playerId 응답. */
 interface PlayerDetailResult {
@@ -35,13 +37,26 @@ interface PlayerDetailResult {
 export class PlayersController {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** 선수 상세 — Player + 당해 시즌 batting/pitching 스탯 반환 + ToolCallLog. */
+  /**
+   * 선수 상세 — Player + 당해 시즌 batting/pitching 스탯 반환 + ToolCallLog.
+   *
+   * 상세 통계는 Lv4(시즌권) 해금 기능(ADR-053). req.user.userId 의 현재 level 을 조회해
+   *   requireLevel(level, 4) 로 게이팅한다. 미달이면 403 { locked } (조회/로그 전 차단).
+   */
   @UseGuards(JwtAuthGuard)
   @Get(':playerId')
   async showPlayerDetail(
+    @Req() req: RequestWithUser,
     @Param('playerId') playerIdParam: string,
   ): Promise<PlayerDetailResult> {
     const start = Date.now();
+
+    // ── 레벨 게이팅: 상세 통계는 Lv4 해금 ──
+    const me = await this.prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { level: true },
+    });
+    requireLevel(me?.level ?? 1, 4);
 
     // ── playerId 숫자 검증 ──
     const playerId = Number(playerIdParam);

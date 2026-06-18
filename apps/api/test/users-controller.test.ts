@@ -6,6 +6,7 @@
  * - myStats: 대화/메시지/턴/관심선수 집계(prisma 모킹).
  */
 import { describe, it, expect, vi } from 'vitest';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UsersController } from '../src/users/users.controller';
 import { buildLevelInfo, computeLevel } from '../src/users/level-rules';
 import type { RequestWithUser } from '../src/auth/jwt-auth.guard';
@@ -130,5 +131,72 @@ describe('UsersController.myStats', () => {
     expect(stats.messageCount).toBe(0);
     expect(stats.turns).toBe(0);
     expect(stats.level).toBe(1);
+  });
+});
+
+describe('UsersController.saveNickname (ADR-053 Lv5)', () => {
+  function makeController(opts: { level?: number }) {
+    const userFindUnique = vi
+      .fn()
+      .mockResolvedValue({ level: opts.level ?? 5 });
+    const userUpdate = vi.fn().mockResolvedValue({});
+    const prisma = {
+      user: { findUnique: userFindUnique, update: userUpdate },
+    };
+    const controller = new UsersController(prisma as never);
+    return { controller, userFindUnique, userUpdate };
+  }
+
+  it('Lv5 미만(Lv4) → 403 locked, update 안 함', async () => {
+    const { controller, userUpdate } = makeController({ level: 4 });
+    await expect(
+      controller.saveNickname(reqFor('u1'), { nickname: '슈퍼팬' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it('빈 닉네임 → BadRequestException(길이)', async () => {
+    const { controller, userUpdate } = makeController({ level: 5 });
+    await expect(
+      controller.saveNickname(reqFor('u1'), { nickname: '   ' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it('21자 초과 닉네임 → BadRequestException(길이)', async () => {
+    const { controller } = makeController({ level: 5 });
+    await expect(
+      controller.saveNickname(reqFor('u1'), { nickname: 'a'.repeat(21) }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('가드레일 위반 닉네임 → BadRequestException(rejected)', async () => {
+    const { controller, userUpdate } = makeController({ level: 5 });
+    try {
+      // 일베/비속어 등 룰 위반 토큰 — checkInputGuardrail 차단.
+      await controller.saveNickname(reqFor('u1'), { nickname: '씨발놈아' });
+      throw new Error('should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(BadRequestException);
+      const res = (e as BadRequestException).getResponse() as {
+        rejected: boolean;
+        reason: string;
+      };
+      expect(res.rejected).toBe(true);
+      expect(typeof res.reason).toBe('string');
+    }
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it('정상 닉네임 → displayName 저장 + saved:true', async () => {
+    const { controller, userUpdate } = makeController({ level: 5 });
+    const result = await controller.saveNickname(reqFor('u1'), {
+      nickname: '  부산갈매기  ',
+    });
+    expect(result).toEqual({ displayName: '부산갈매기', saved: true });
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { displayName: '부산갈매기' },
+    });
   });
 });

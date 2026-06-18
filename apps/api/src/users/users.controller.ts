@@ -17,6 +17,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -25,6 +26,7 @@ import { toNormalizedForm, checkInputGuardrail } from '@batdi/guardrail';
 import { JwtAuthGuard, type RequestWithUser } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildLevelInfo, type LevelInfo } from './level-rules';
+import { requireLevel } from './level-guard';
 
 /** GET /users/me/stats 응답. */
 export interface UserStats {
@@ -52,6 +54,21 @@ export interface PersonaResponse {
 /** POST /users/me/persona 성공 응답. */
 export interface SavePersonaResult {
   customPersona: string | null;
+  saved: true;
+}
+
+/** 커스텀 닉네임 최소/최대 길이(자) — ADR-053 (Lv5 해금). */
+const NICKNAME_MIN_LEN = 1;
+const NICKNAME_MAX_LEN = 20;
+
+/** PATCH /users/me/nickname 요청 바디. */
+export interface SaveNicknameBody {
+  nickname?: string;
+}
+
+/** PATCH /users/me/nickname 성공 응답. */
+export interface SaveNicknameResult {
+  displayName: string;
   saved: true;
 }
 
@@ -175,5 +192,61 @@ export class UsersController {
       create: { userId, customPersona: trimmed },
     });
     return { customPersona: trimmed, saved: true };
+  }
+
+  /**
+   * 커스텀 닉네임 저장 (ADR-053) — Lv5(12번째 선수) 해금 기능.
+   *
+   *   1) 레벨 게이팅: user.level 조회 → requireLevel(level, 5). 미달 403 { locked }.
+   *   2) 길이 검증: trim 길이 1~20 자 벗어나면 BadRequest('1~20자').
+   *   3) 가드레일: toNormalizedForm → checkInputGuardrail(@batdi/guardrail 공유 SSOT).
+   *      !pass 면 저장 안 하고 BadRequest { rejected:true, reason:violationType }.
+   *   4) 통과 → user.displayName 갱신. 반환 { displayName, saved:true }.
+   *
+   * 현재 displayName 조회는 기존 GET /auth/me 로 가능하므로 신규 GET 은 두지 않는다.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/nickname')
+  async saveNickname(
+    @Req() req: RequestWithUser,
+    @Body() body: SaveNicknameBody,
+  ): Promise<SaveNicknameResult> {
+    const userId = req.user.userId;
+
+    // 1) 레벨 게이팅 — 커스텀 닉네임은 Lv5 해금.
+    const me = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { level: true },
+    });
+    requireLevel(me?.level ?? 1, 5);
+
+    const raw = typeof body?.nickname === 'string' ? body.nickname : '';
+    const trimmed = raw.trim();
+
+    // 2) 길이 검증 (trim 기준 1~20자).
+    if (trimmed.length < NICKNAME_MIN_LEN || trimmed.length > NICKNAME_MAX_LEN) {
+      throw new BadRequestException({
+        rejected: true,
+        reason: 'invalid_length',
+        message: '닉네임은 1~20자로 작성해줘.',
+      });
+    }
+
+    // 3) 가드레일 — 정규화 후 rule-based 검사(@batdi/guardrail 공유 SSOT).
+    const normalized = toNormalizedForm(trimmed);
+    const guard = checkInputGuardrail(normalized);
+    if (!guard.pass) {
+      throw new BadRequestException({
+        rejected: true,
+        reason: guard.violationType ?? 'guardrail',
+      });
+    }
+
+    // 4) 통과 → displayName 갱신(원문 trim 보존).
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { displayName: trimmed },
+    });
+    return { displayName: trimmed, saved: true };
   }
 }
