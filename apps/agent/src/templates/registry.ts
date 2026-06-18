@@ -34,6 +34,31 @@ import {
   PLAYER_STAT_COMPACT_BIND_SCHEMA,
   PLAYER_STAT_COMPACT_TEMPLATE_ID,
 } from './player_stat_compact';
+import {
+  PLAYER_CHIP_COMPONENTS,
+  PLAYER_CHIP_BIND_SCHEMA,
+  PLAYER_CHIP_WIDGET_ID,
+} from './player_chip_widget';
+import {
+  GAME_SCHEDULE_COMPONENTS,
+  GAME_SCHEDULE_BIND_SCHEMA,
+  GAME_SCHEDULE_WIDGET_ID,
+} from './game_schedule_widget';
+import {
+  HEAD_TO_HEAD_COMPONENTS,
+  HEAD_TO_HEAD_BIND_SCHEMA,
+  HEAD_TO_HEAD_WIDGET_ID,
+} from './head_to_head_widget';
+import {
+  TREND_SPARKLINE_COMPONENTS,
+  TREND_SPARKLINE_BIND_SCHEMA,
+  TREND_SPARKLINE_WIDGET_ID,
+} from './trend_sparkline_widget';
+import {
+  LEVEL_PROGRESS_COMPONENTS,
+  LEVEL_PROGRESS_BIND_SCHEMA,
+  LEVEL_PROGRESS_WIDGET_ID,
+} from './level_progress_widget';
 
 export interface L1Template {
   templateId: string;
@@ -136,4 +161,53 @@ export function resolveStatsTemplate(
   return statType === 'player'
     ? PLAYER_STAT_COMPACT_TEMPLATE
     : STANDINGS_COMPACT_TEMPLATE;
+}
+
+/**
+ * A2UI 위젯 (P3-W8 8.3, ADR-046) — 기본 카탈로그 조합 빌딩블록.
+ *
+ * L3 UIComposer(ADR-040) 동적 조합·8.4 템플릿 풀세트의 빌딩블록으로 widgetId 로 조회한다.
+ * intent 직접 매핑은 8.4/P4 범위(TEMPLATE_BY_INTENT 는 회귀 방지 차 미수정).
+ */
+export interface A2UIWidget {
+  /** 위젯 식별자 */
+  widgetId: string;
+  /** authoring 컴포넌트 트리 (`{{bind:"..."}}` 표기 포함) */
+  components: Array<Record<string, unknown>>;
+  /** bind 점경로 목록 */
+  bindSchema: ReadonlyArray<string>;
+}
+
+/** widgetId → A2UI 위젯 (8.3 신규 5종) */
+export const WIDGET_REGISTRY: Record<string, A2UIWidget> = {
+  [PLAYER_CHIP_WIDGET_ID]: {
+    widgetId: PLAYER_CHIP_WIDGET_ID,
+    components: PLAYER_CHIP_COMPONENTS,
+    bindSchema: PLAYER_CHIP_BIND_SCHEMA,
+  },
+  [GAME_SCHEDULE_WIDGET_ID]: {
+    widgetId: GAME_SCHEDULE_WIDGET_ID,
+    components: GAME_SCHEDULE_COMPONENTS,
+    bindSchema: GAME_SCHEDULE_BIND_SCHEMA,
+  },
+  [HEAD_TO_HEAD_WIDGET_ID]: {
+    widgetId: HEAD_TO_HEAD_WIDGET_ID,
+    components: HEAD_TO_HEAD_COMPONENTS,
+    bindSchema: HEAD_TO_HEAD_BIND_SCHEMA,
+  },
+  [TREND_SPARKLINE_WIDGET_ID]: {
+    widgetId: TREND_SPARKLINE_WIDGET_ID,
+    components: TREND_SPARKLINE_COMPONENTS,
+    bindSchema: TREND_SPARKLINE_BIND_SCHEMA,
+  },
+  [LEVEL_PROGRESS_WIDGET_ID]: {
+    widgetId: LEVEL_PROGRESS_WIDGET_ID,
+    components: LEVEL_PROGRESS_COMPONENTS,
+    bindSchema: LEVEL_PROGRESS_BIND_SCHEMA,
+  },
+};
+
+/** widgetId 로 A2UI 위젯 조회 (미등록 → undefined) */
+export function resolveWidget(widgetId: string): A2UIWidget | undefined {
+  return WIDGET_REGISTRY[widgetId];
 }
