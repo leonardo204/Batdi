@@ -10,6 +10,7 @@ import { ConversationModule } from './conversation/conversation.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PlayersModule } from './players/players.module';
+import { PredictionsModule } from './predictions/predictions.module';
 import { ScoresModule } from './scores/scores.module';
 import { StatsModule } from './stats/stats.module';
 import { UsersModule } from './users/users.module';
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module';
     FavoritesModule,
     NotificationsModule,
     PlayersModule,
+    PredictionsModule,
     ScoresModule,
     StatsModule,
     UsersModule,

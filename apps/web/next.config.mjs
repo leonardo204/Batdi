@@ -42,6 +42,17 @@ const nextConfig = {
         source: '/api/favorites/:path*',
         destination: `${API_URL}/favorites/:path*`,
       },
+      // 경기 예측 프록시(ADR-054, Lv2 해금) — /my/predictions 페이지가 same-origin
+      //   /api/predictions(POST)·/api/predictions/me(GET) 로 호출, api(3001)/predictions/* 로 프록시.
+      //   JWT 쿠키(credentials:'include')로 가드 통과.
+      {
+        source: '/api/predictions/:path*',
+        destination: `${API_URL}/predictions/:path*`,
+      },
+      {
+        source: '/api/predictions',
+        destination: `${API_URL}/predictions`,
+      },
       // 6개 useCopilotAction 백엔드 프록시(P4-W10 10.1) — same-origin /api/* → api(3001)/*.
       // toggleNotification / showPlayerDetail / requestScoreRefresh / showTeamComparison.
       // JWT 쿠키(credentials:'include')로 가드 통과.

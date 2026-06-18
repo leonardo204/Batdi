@@ -17,6 +17,7 @@ type MeResponse = { user: AuthUser; onboarded: boolean };
 const TABS: { href: string; label: string }[] = [
   { href: '/my/level', label: '레벨' },
   { href: '/my/stats', label: '통계' },
+  { href: '/my/predictions', label: '예측' },
   { href: '/my/conversations', label: '대화' },
 ];
 

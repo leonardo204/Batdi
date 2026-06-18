@@ -34,6 +34,7 @@ model User {
   personalAgentState PersonalAgentState?
   favorites          UserFavorite[]
   traces             AgentTrace[]
+  matchPredictions   MatchPrediction[]
 
   @@index([teamId], map: "idx_users_team")
   @@index([lastActive(sort: Desc)], map: "idx_users_last_active")
@@ -111,6 +112,24 @@ model UserFavorite {
 
   @@id([userId, playerId])
   @@map("user_favorites")
+}
+
+// 경기 예측 (ADR-054) — Lv2 해금. 사용자별 경기 승부 예측(home|away).
+//   (userId, gameKey) 자연키로 멱등 upsert(예측 변경 허용). 적중률은 저장하지 않고
+//   GET /predictions/me 에서 kbo_games 의 FINISHED 스코어로 on-read 계산한다.
+model MatchPrediction {
+  id              Int      @id @default(autoincrement())
+  userId          String   @map("user_id") @db.Uuid
+  gameKey         String   @map("game_key") @db.VarChar(32)
+  predictedWinner String   @map("predicted_winner") @db.VarChar(8) // 'home' | 'away'
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameKey], map: "uq_match_predictions_user_game")
+  @@index([userId], map: "idx_match_predictions_user")
+  @@map("match_predictions")
 }
 
 // ── C. 도메인 데이터 (선수·스탯) ────────────────────────────
