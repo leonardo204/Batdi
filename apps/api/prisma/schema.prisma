@@ -43,8 +43,15 @@ model User {
 model Conversation {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
+  // P3-W9 9.3/9.4: LangGraph run 의 thread_id(=conversationId 소스). CopilotKit 라운드트립의
+  //   안정 키로 대화를 식별·upsert 한다(unique → 멱등). 익명/미배선 run 은 null.
+  threadId  String?  @unique @map("thread_id") @db.VarChar(100)
   title     String?  @db.VarChar(100)
   summary   String?  @db.Text
+  // P3-W9 9.3: 세션 종료 트리거(idle/자정/명시적)로 최종 요약을 기록한 시각. 재요약 멱등성:
+  //   idle 스윕은 summarizedAt 이 null 이거나 updatedAt 보다 과거일 때만 다시 요약한다
+  //   (매 idle 마다 중복 요약 방지 + 새 메시지로 updated_at 이 갱신되면 재요약 허용).
+  summarizedAt DateTime? @map("summarized_at") @db.Timestamp(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 

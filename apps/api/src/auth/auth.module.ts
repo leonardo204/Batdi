@@ -31,6 +31,8 @@ import { AUTH_PROVIDER } from './auth.provider';
     // 호출부가 AuthProvider 추상 토큰으로도 주입받을 수 있게 동일 인스턴스 연결.
     { provide: AUTH_PROVIDER, useExisting: LocalAuthProvider },
   ],
-  exports: [AuthService],
+  // JwtAuthGuard/LocalAuthProvider 도 export — 다른 모듈(ConversationModule 등)이 가드를
+  // 적용하려면 DI 컨텍스트에 가드와 그 의존성(LocalAuthProvider)이 있어야 한다.
+  exports: [AuthService, JwtAuthGuard, LocalAuthProvider],
 })
 export class AuthModule {}

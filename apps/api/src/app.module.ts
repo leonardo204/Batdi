@@ -5,6 +5,7 @@ import { HealthController } from './health.controller';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { KboModule } from './kbo/kbo.module';
+import { ConversationModule } from './conversation/conversation.module';
 
 // CopilotKit v2 런타임은 NestJS 컨트롤러가 아니라 Express Router 로 마운트한다
 // (main.ts 의 app.use). v2 멀티라우트 정규식 매칭이 NestJS 라우터와 충돌하지 않도록
@@ -16,6 +17,7 @@ import { KboModule } from './kbo/kbo.module';
     PrismaModule,
     AuthModule,
     KboModule,
+    ConversationModule,
   ],
   controllers: [AppController, HealthController],
   providers: [],
