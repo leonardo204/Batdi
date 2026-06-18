@@ -16,6 +16,7 @@ import type {
 } from '@batdi/types';
 import type { ScoreData } from './services/score-graph';
 import type { StandingsData, StatsLeaderboard } from './services/stats-graph';
+import type { NewsData } from './services/news-graph';
 import type { ConversationMemory } from './services/memory';
 
 /** 마지막-쓰기-우선(last-write-wins) reducer 헬퍼 */
@@ -150,6 +151,16 @@ export const CoreStateAnnotation = Annotation.Root({
   //   meme 외 intent 면 미설정(undefined).
   memeContent: Annotation<string | undefined>(
     lastValue<string | undefined>(),
+  ),
+
+  // ── 서비스 실데이터 (ServiceData, news NewsGraph, P3-W7 7.5 ADR-048) ──
+  // ServiceData 가 news intent 에서 fetchNewsData(teamId) 로 채운다(cache_news 실데이터).
+  //   - EmitA2UI 가 news 분기에서 news_compact 카드 데이터 모델(rows)로 주입한다.
+  //   - 뉴스는 LLM 감정 리액션을 생성하지 않으므로 reaction 슬롯 없음(L1).
+  // best-effort: DB 비활성/없음/만료/빈 결과 시 null → EmitA2UI 가 폴백 텍스트 카드로 방출.
+  //   news 외 intent 면 미설정(undefined).
+  newsData: Annotation<NewsData | null | undefined>(
+    lastValue<NewsData | null | undefined>(),
   ),
 
   // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──

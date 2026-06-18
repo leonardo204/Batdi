@@ -216,6 +216,15 @@ function playerStatsNoDataText(teamId: CoreGraphState['teamId']): string {
 }
 
 /**
+ * news intent 인데 뉴스 실데이터(state.newsData)가 없을 때의 팀 톤 폴백 문구(P3-W7 7.5 ADR-048).
+ * standingsNoDataText 와 평행 — 수치 없음, 뉴스 미적재/만료 톤. 캐시 금지(데이터 부재).
+ */
+function newsNoDataText(teamId: CoreGraphState['teamId']): string {
+  const tone = cannedReactionFor(teamId);
+  return `${tone} 아직 최신 뉴스를 못 가져왔어유~ 조금 있다 다시 물어봐줘!`;
+}
+
+/**
  * composite L3 게이트 실패/생성 불가 시 대표 intent 의 L1 템플릿으로 즉시 폴백한다(P3-W9 9.1).
  *
  * SSOT: palette-schema §5.4 "검증 실패 → 해당 intent L1 기본 Template 통째 폴백(재호출 금지)".
@@ -440,7 +449,28 @@ export async function emitA2UI(
     };
   }
 
-  // ── 템플릿 있음 (score: 실데이터 보유 / stats: 순위 실데이터 보유) ──
+  // ── news DataFallbackHandler (P3-W7 7.5 ADR-048) ──
+  // news intent 인데 뉴스 실데이터 없음(state.newsData == null): 뉴스 미적재/만료/DB 없음 →
+  // news_compact 카드 대신 팀 톤 폴백 텍스트 카드(단일 Text) + AIMessage 를 방출한다.
+  // stats 폴백과 평행. ⚠️ 데이터 부재라 L0 write 하지 않는다(적재 후에도 stale 방지).
+  if (state.intent === 'news' && state.newsData == null) {
+    const fallbackText = newsNoDataText(state.teamId);
+    const result = buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: fallbackText }],
+      {},
+      fallbackText,
+    );
+    reportA2UIResult('intent=news(no-data-fallback)', result);
+    await emitRenderA2UIToolCall(result, config);
+    // L0 write 생략 — 뉴스 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
+    logResponseLevel('L1', 'news');
+    return {
+      a2uiEnvelope: result.ops,
+      messages: [new AIMessage(fallbackText)],
+    };
+  }
+
+  // ── 템플릿 있음 (score: 실데이터 보유 / stats: 순위 실데이터 보유 / news: 뉴스 실데이터 보유) ──
   if (template) {
     // P3-W9 9.5: stats intent 면 지식 레벨 footnote 를 카드 하단에 정적 주입(LLM 미사용).
     //  - beginner → 용어 설명, expert → 세이버 안내, core → 추가 없음(adapted=false).
@@ -470,6 +500,10 @@ export async function emitA2UI(
       // 순위 카드: rows 만 주입(standings_compact 는 /reaction 슬롯이 없음).
       summary = '팀 순위';
       data = { rows: state.standingsData.rows };
+    } else if (state.intent === 'news' && state.newsData) {
+      // 뉴스 카드: rows 만 주입(news_compact 는 /reaction 슬롯이 없음, P3-W7 7.5 ADR-048).
+      summary = 'KBO 뉴스';
+      data = { rows: state.newsData.rows };
     } else {
       // score 카드(또는 score 데이터 있는 경로): home/away/inning + reaction.
       // P2-W6: 리액션은 TeamPersona 가 생성하고 OutputGuardrail 이 검증·정제한 값을

@@ -98,7 +98,14 @@ export interface L1Template {
   bindSchema: ReadonlyArray<string>;
 }
 
-/** intent → L1 템플릿 (score, stats) */
+/**
+ * intent → L1 템플릿 (score, stats, news).
+ *
+ * ⚠️ P3-W7 7.5 ADR-048: news 는 NewsGraph(services/news-graph.ts·fetchNewsData) 서브그래프
+ *    도입으로 **배선 해제** — news intent → news_compact. ADR-047 ④ 의 미배선 정책은 news
+ *    한정 해제(서브그래프가 cache_news 실데이터를 채우므로 빈 바인딩 폴백 회귀 없음).
+ *    schedule/lineup 은 데이터 서브그래프 부재라 그대로 미배선 유지.
+ */
 const TEMPLATE_BY_INTENT: Partial<Record<Intent, L1Template>> = {
   score: {
     templateId: SCORE_COMPACT_TEMPLATE_ID,
@@ -109,6 +116,11 @@ const TEMPLATE_BY_INTENT: Partial<Record<Intent, L1Template>> = {
     templateId: STANDINGS_COMPACT_TEMPLATE_ID,
     components: STANDINGS_COMPACT_COMPONENTS,
     bindSchema: STANDINGS_COMPACT_BIND_SCHEMA,
+  },
+  news: {
+    templateId: NEWS_COMPACT_TEMPLATE_ID,
+    components: NEWS_COMPACT_COMPONENTS,
+    bindSchema: NEWS_COMPACT_BIND_SCHEMA,
   },
 };
 

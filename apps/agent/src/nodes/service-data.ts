@@ -26,6 +26,7 @@ import {
   detectStatKind,
 } from '../services/stats-graph';
 import { fetchRandomMeme } from '../services/meme-graph';
+import { fetchNewsData } from '../services/news-graph';
 
 export async function serviceData(
   state: CoreGraphState,
@@ -99,6 +100,14 @@ export async function serviceData(
     // 단일 Text 카드로 방출(chat LLM 미경유). 랜덤이라 L0 캐시 write 안 함(emit 에서 생략).
     const memeContent = await fetchRandomMeme(state.teamId);
     return { memeContent };
+  }
+
+  if (state.intent === 'news') {
+    // P3-W7 7.5 (ADR-048): 팀 뉴스 + 일반 KBO 뉴스 최신 5건(cache_news). best-effort —
+    // DB 없음/만료/빈 결과 → null(EmitA2UI 가 news 분기에서 폴백 텍스트 카드 처리).
+    // EmitA2UI 가 news_compact 카드로 방출(chat LLM 미경유). meme 분기와 평행.
+    const newsData = await fetchNewsData(state.teamId);
+    return { newsData };
   }
 
   return {};
