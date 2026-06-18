@@ -19,8 +19,8 @@
  *   - intentConfidence = 'high' | 'default'  (매칭/미매칭)
  *   - cacheHit = 'miss'          (CacheLookup stub)
  */
-import type { GuardrailResult, Intent, TeamId } from './domain';
-import type { A2UIEnvelope } from './a2ui';
+import type { GuardrailResult, Intent, TeamId } from './domain.js';
+import type { A2UIEnvelope } from './a2ui.js';
 
 /**
  * Core 그래프 State (messages 채널은 별도 — LangGraph MessagesAnnotation 보존)

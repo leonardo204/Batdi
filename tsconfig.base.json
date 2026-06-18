@@ -20,6 +20,7 @@
     "baseUrl": ".",
     "paths": {
       "@batdi/types": ["packages/types/src/index.ts"],
+      "@batdi/guardrail": ["packages/guardrail/src/index.ts"],
       "@batdi/a2ui-schema": ["packages/a2ui-schema/src/index.ts"],
       "@batdi/ui": ["packages/ui/src/index.ts"]
     }

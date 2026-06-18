@@ -38,6 +38,9 @@ importers:
       '@batdi/a2ui-schema':
         specifier: workspace:^
         version: link:../../packages/a2ui-schema
+      '@batdi/guardrail':
+        specifier: workspace:^
+        version: link:../../packages/guardrail
       '@batdi/types':
         specifier: workspace:^
         version: link:../../packages/types
@@ -72,6 +75,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@batdi/guardrail':
+        specifier: workspace:*
+        version: link:../../packages/guardrail
       '@batdi/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -200,6 +206,16 @@ importers:
       '@ag-ui/a2ui-toolkit':
         specifier: 0.0.3
         version: 0.0.3
+      '@batdi/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
+  packages/guardrail:
+    dependencies:
       '@batdi/types':
         specifier: workspace:*
         version: link:../types

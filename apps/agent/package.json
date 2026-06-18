@@ -13,6 +13,7 @@
   "dependencies": {
     "@ag-ui/a2ui-toolkit": "0.0.3",
     "@batdi/a2ui-schema": "workspace:^",
+    "@batdi/guardrail": "workspace:^",
     "@batdi/types": "workspace:^",
     "@langchain/core": "^1.1.48",
     "@langchain/google-genai": "^2.1.31",
