@@ -120,6 +120,32 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(String(last.content)).toContain('선수 기록이 없');
   });
 
+  it('밈 질의(DB 없음) → meme STATIC 폴백 밈 카드 + AIMessage (P3-W8 8.2)', async () => {
+    // 테스트 env 는 DATABASE_URL='' → fetchRandomMeme=STATIC_MEMES 폴백(best-effort).
+    //   meme intent → ServiceData(fetchRandomMeme) → memeContent → EmitA2UI meme 분기
+    //   단일 Text 밈 카드 + AIMessage. chat(LLM) 폴백으로 빠지지 않는다.
+    delete process.env.GOOGLE_API_KEY;
+    const out = await graph.invoke({
+      messages: [{ role: 'user', content: '밈 보여줘' }],
+      userMessage: '밈 보여줘',
+      teamId: 'lotte',
+    });
+    expect(out.intent).toBe('meme');
+    expect(out.memeContent).toBeDefined();
+    expect(typeof out.memeContent).toBe('string');
+    expect((out.memeContent as string).trim()).not.toBe('');
+    // 단일 Text 밈 카드.
+    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
+    const compOp = ops.find((o) => 'updateComponents' in o) as
+      | { updateComponents: { components: Array<Record<string, unknown>> } }
+      | undefined;
+    expect(compOp?.updateComponents.components).toHaveLength(1);
+    // AIMessage = 밈 텍스트(= memeContent). 폴백 밈이라 비어있지 않다.
+    const last = out.messages[out.messages.length - 1];
+    expect(String(last.content)).toBe(out.memeContent);
+    expect(String(last.content).length).toBeGreaterThan(0);
+  });
+
   it('chat 질의(키 없음) → 팀톤 캔드 AIMessage + 단일 Text 카드', async () => {
     delete process.env.GOOGLE_API_KEY;
     const out = await graph.invoke({

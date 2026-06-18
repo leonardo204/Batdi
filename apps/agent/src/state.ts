@@ -114,6 +114,16 @@ export const CoreStateAnnotation = Annotation.Root({
     lastValue<StatsLeaderboard | null | undefined>(),
   ),
 
+  // ── 서비스 실데이터 (ServiceData, meme MemeGraph, P3-W8 8.2) ──
+  // ServiceData 가 meme intent 에서 fetchRandomMeme(teamId) 로 채운다(memes 실데이터).
+  //   - EmitA2UI 가 meme 분기에서 단일 Text 카드 + AIMessage 로 방출한다(chat LLM 미경유).
+  //   - 밈은 랜덤이라 비결정 → L0 캐시 write 하지 않는다(emit-a2ui meme 분기 write 생략).
+  // fetchRandomMeme 은 best-effort 로 항상 비어있지 않은 문자열 반환(DB 없음 → STATIC 폴백).
+  //   meme 외 intent 면 미설정(undefined).
+  memeContent: Annotation<string | undefined>(
+    lastValue<string | undefined>(),
+  ),
+
   // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──
   // L2 감정 리액션 텍스트. TeamPersona 가 score+template 경로에서만 생성하고,
   // OutputGuardrail 이 검증(수치 팩트체크·일베/비속어 재검증)해 정제한 뒤

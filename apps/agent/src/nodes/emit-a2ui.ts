@@ -395,7 +395,32 @@ export async function emitA2UI(
     };
   }
 
-  // ── 템플릿 없음 (chat/meme 등) → 텍스트-only + 단일 Text 카드 ──
+  // ── P3-W8 8.2: meme 분기 (chat LLM 으로 빠지기 전에 가로챔) ──
+  // meme intent 는 ServiceData(fetchRandomMeme)가 채운 state.memeContent 를 단일 Text 카드
+  // (root Text) + AIMessage 로 방출한다. 밈은 사람이 작성한 정적/시드 콘텐츠라 LLM(chat)
+  // 호출이 필요 없다. memeContent 는 best-effort 로 항상 비어있지 않지만, 방어적으로 폴백.
+  // ⚠️ 밈은 랜덤이라 비결정 → L0 캐시 write 하지 않는다(chat 폴백처럼 write 생략).
+  if (state.intent === 'meme') {
+    const memeText =
+      state.memeContent && state.memeContent.trim() !== ''
+        ? state.memeContent
+        : '오늘도 같이 야구 보면서 신나게 응원하자!';
+    const result = buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: memeText }],
+      {},
+      memeText,
+    );
+    reportA2UIResult('intent=meme', result);
+    await emitRenderA2UIToolCall(result, config);
+    // L0 write 생략 — 밈은 랜덤(비결정)이라 캐시하면 같은 밈만 반복 노출된다.
+    logResponseLevel('chat', 'meme');
+    return {
+      a2uiEnvelope: result.ops,
+      messages: [new AIMessage(memeText)],
+    };
+  }
+
+  // ── 템플릿 없음 (chat 등) → 텍스트-only + 단일 Text 카드 ──
   // P3-W8 8.1: chat 응답은 ChatGraph 서비스가 페르소나 + PersonalContext + 출력 가드레일 +
   // 팀톤 폴백을 갖춰 생성한다(이전 맨 Gemini 호출/스켈레톤 stub 교체).
   const text = await generateChatReply(state, config);

@@ -25,6 +25,7 @@ import {
   fetchPlayerLeaderboard,
   detectStatKind,
 } from '../services/stats-graph';
+import { fetchRandomMeme } from '../services/meme-graph';
 
 export async function serviceData(
   state: CoreGraphState,
@@ -53,6 +54,14 @@ export async function serviceData(
     // best-effort: DB 비활성/순위 미적재 → null (EmitA2UI 폴백 처리).
     const standingsData = await fetchStandings();
     return { standingsData };
+  }
+
+  if (state.intent === 'meme') {
+    // P3-W8 8.2: 팀별 밈을 랜덤 1건 선택(memes 테이블). best-effort 로 항상 비어있지
+    // 않은 문자열 반환(DB 없음/빈 결과 → STATIC_MEMES 폴백). EmitA2UI 가 meme 분기에서
+    // 단일 Text 카드로 방출(chat LLM 미경유). 랜덤이라 L0 캐시 write 안 함(emit 에서 생략).
+    const memeContent = await fetchRandomMeme(state.teamId);
+    return { memeContent };
   }
 
   return {};
