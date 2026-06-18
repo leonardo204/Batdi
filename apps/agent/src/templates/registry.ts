@@ -104,7 +104,9 @@ export interface L1Template {
  * ⚠️ P3-W7 7.5 ADR-048: news 는 NewsGraph(services/news-graph.ts·fetchNewsData) 서브그래프
  *    도입으로 **배선 해제** — news intent → news_compact. ADR-047 ④ 의 미배선 정책은 news
  *    한정 해제(서브그래프가 cache_news 실데이터를 채우므로 빈 바인딩 폴백 회귀 없음).
- *    schedule/lineup 은 데이터 서브그래프 부재라 그대로 미배선 유지.
+ * ⚠️ ADR-052: schedule/lineup 도 ScheduleGraph(fetchScheduleData)·LineupGraph(fetchLineupData)
+ *    서브그래프 도입으로 **배선 해제** — schedule → schedule_compact, lineup → lineup_compact.
+ *    데이터 null 인 경로는 EmitA2UI 가 팀 톤 폴백 텍스트 카드로 처리(빈 바인딩 폴백 회귀 없음).
  */
 const TEMPLATE_BY_INTENT: Partial<Record<Intent, L1Template>> = {
   score: {
@@ -121,6 +123,16 @@ const TEMPLATE_BY_INTENT: Partial<Record<Intent, L1Template>> = {
     templateId: NEWS_COMPACT_TEMPLATE_ID,
     components: NEWS_COMPACT_COMPONENTS,
     bindSchema: NEWS_COMPACT_BIND_SCHEMA,
+  },
+  schedule: {
+    templateId: SCHEDULE_COMPACT_TEMPLATE_ID,
+    components: SCHEDULE_COMPACT_COMPONENTS,
+    bindSchema: SCHEDULE_COMPACT_BIND_SCHEMA,
+  },
+  lineup: {
+    templateId: LINEUP_COMPACT_TEMPLATE_ID,
+    components: LINEUP_COMPACT_COMPONENTS,
+    bindSchema: LINEUP_COMPACT_BIND_SCHEMA,
   },
 };
 

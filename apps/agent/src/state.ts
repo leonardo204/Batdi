@@ -17,6 +17,8 @@ import type {
 import type { ScoreData } from './services/score-graph';
 import type { StandingsData, StatsLeaderboard } from './services/stats-graph';
 import type { NewsData } from './services/news-graph';
+import type { ScheduleData } from './services/schedule-graph';
+import type { LineupData } from './services/lineup-graph';
 import type { ConversationMemory } from './services/memory';
 
 /** 마지막-쓰기-우선(last-write-wins) reducer 헬퍼 */
@@ -161,6 +163,26 @@ export const CoreStateAnnotation = Annotation.Root({
   //   news 외 intent 면 미설정(undefined).
   newsData: Annotation<NewsData | null | undefined>(
     lastValue<NewsData | null | undefined>(),
+  ),
+
+  // ── 서비스 실데이터 (ServiceData, schedule ScheduleGraph, ADR-052) ──
+  // ServiceData 가 schedule intent 에서 fetchScheduleData(teamId) 로 채운다(kbo_games 실데이터).
+  //   - EmitA2UI 가 schedule 분기에서 schedule_compact 카드 데이터 모델(date + rows)로 주입한다.
+  //   - 일정은 LLM 감정 리액션을 생성하지 않으므로 reaction 슬롯 없음(L1).
+  // best-effort: DB 비활성/없음/예정 경기 없음 시 null → EmitA2UI 가 폴백 텍스트 카드로 방출.
+  //   schedule 외 intent 면 미설정(undefined).
+  scheduleData: Annotation<ScheduleData | null | undefined>(
+    lastValue<ScheduleData | null | undefined>(),
+  ),
+
+  // ── 서비스 실데이터 (ServiceData, lineup LineupGraph, ADR-052) ──
+  // ServiceData 가 lineup intent 에서 fetchLineupData(teamId) 로 채운다.
+  //   - 현재 선발 라인업 테이블 부재라 항상 null(정상 경로) → EmitA2UI 가 팀 톤 폴백 텍스트 카드.
+  //   - 선발/타순 크롤러 도입(ADR-052 잔여) 시 실데이터(team + rows 9타순)로 채워진다.
+  //   - 라인업은 LLM 감정 리액션을 생성하지 않으므로 reaction 슬롯 없음(L1).
+  //   lineup 외 intent 면 미설정(undefined).
+  lineupData: Annotation<LineupData | null | undefined>(
+    lastValue<LineupData | null | undefined>(),
   ),
 
   // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──

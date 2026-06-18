@@ -27,6 +27,8 @@ import {
 } from '../services/stats-graph';
 import { fetchRandomMeme } from '../services/meme-graph';
 import { fetchNewsData } from '../services/news-graph';
+import { fetchScheduleData } from '../services/schedule-graph';
+import { fetchLineupData } from '../services/lineup-graph';
 
 export async function serviceData(
   state: CoreGraphState,
@@ -108,6 +110,20 @@ export async function serviceData(
     // EmitA2UI 가 news_compact 카드로 방출(chat LLM 미경유). meme 분기와 평행.
     const newsData = await fetchNewsData(state.teamId);
     return { newsData };
+  }
+
+  if (state.intent === 'schedule') {
+    // ADR-052: 오늘 이후 예정 경기 5건(kbo_games). best-effort — DB 없음/예정 경기 없음 →
+    // null(EmitA2UI 가 schedule 분기에서 폴백 텍스트 카드 처리). news 분기와 평행.
+    const scheduleData = await fetchScheduleData(state.teamId);
+    return { scheduleData };
+  }
+
+  if (state.intent === 'lineup') {
+    // ADR-052: 선발 라인업/타순. 현재 라인업 테이블 부재라 항상 null(정상 경로) → EmitA2UI 가
+    // 팀 톤 폴백 텍스트 카드 처리. 선발 크롤러 도입 시 실데이터로 채워진다(ADR-052 잔여).
+    const lineupData = await fetchLineupData(state.teamId);
+    return { lineupData };
   }
 
   return {};

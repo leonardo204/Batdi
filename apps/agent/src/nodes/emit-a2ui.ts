@@ -225,6 +225,25 @@ function newsNoDataText(teamId: CoreGraphState['teamId']): string {
 }
 
 /**
+ * schedule intent 인데 일정 실데이터(state.scheduleData)가 없을 때의 팀 톤 폴백 문구(ADR-052).
+ * newsNoDataText 와 평행 — 수치 없음, 예정 경기 미적재 톤. 캐시 금지(데이터 부재).
+ */
+function scheduleNoDataText(teamId: CoreGraphState['teamId']): string {
+  const tone = cannedReactionFor(teamId);
+  return `${tone} 아직 다가오는 경기 일정을 못 가져왔어유~ 조금 있다 다시 물어봐줘!`;
+}
+
+/**
+ * lineup intent 인데 라인업 실데이터(state.lineupData)가 없을 때의 팀 톤 폴백 문구(ADR-052).
+ * 라인업은 선발 크롤러 부재라 거의 항상 이 경로다 — 경기 임박 시 공개되는 정보임을 안내.
+ * 캐시 금지(데이터 부재).
+ */
+function lineupNoDataText(teamId: CoreGraphState['teamId']): string {
+  const tone = cannedReactionFor(teamId);
+  return `${tone} 라인업은 보통 경기 임박할 때 공개돼유~ 경기 가까워지면 다시 물어봐줘!`;
+}
+
+/**
  * composite L3 게이트 실패/생성 불가 시 대표 intent 의 L1 템플릿으로 즉시 폴백한다(P3-W9 9.1).
  *
  * SSOT: palette-schema §5.4 "검증 실패 → 해당 intent L1 기본 Template 통째 폴백(재호출 금지)".
@@ -470,7 +489,50 @@ export async function emitA2UI(
     };
   }
 
-  // ── 템플릿 있음 (score: 실데이터 보유 / stats: 순위 실데이터 보유 / news: 뉴스 실데이터 보유) ──
+  // ── schedule DataFallbackHandler (ADR-052) ──
+  // schedule intent 인데 일정 실데이터 없음(state.scheduleData == null): 예정 경기 미적재/DB 없음 →
+  // schedule_compact 카드 대신 팀 톤 폴백 텍스트 카드(단일 Text) + AIMessage 를 방출한다.
+  // news 폴백과 평행. ⚠️ 데이터 부재라 L0 write 하지 않는다(적재 후에도 stale 방지).
+  if (state.intent === 'schedule' && state.scheduleData == null) {
+    const fallbackText = scheduleNoDataText(state.teamId);
+    const result = buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: fallbackText }],
+      {},
+      fallbackText,
+    );
+    reportA2UIResult('intent=schedule(no-data-fallback)', result);
+    await emitRenderA2UIToolCall(result, config);
+    // L0 write 생략 — 예정 경기 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
+    logResponseLevel('L1', 'schedule');
+    return {
+      a2uiEnvelope: result.ops,
+      messages: [new AIMessage(fallbackText)],
+    };
+  }
+
+  // ── lineup DataFallbackHandler (ADR-052) ──
+  // lineup intent 인데 라인업 실데이터 없음(state.lineupData == null): 선발 크롤러 부재라 거의
+  // 항상 이 경로 → lineup_compact 카드 대신 "라인업은 경기 임박 시 공개돼요" 팀 톤 폴백 텍스트
+  // 카드 + AIMessage. schedule 폴백과 평행. ⚠️ 데이터 부재라 L0 write 하지 않는다.
+  if (state.intent === 'lineup' && state.lineupData == null) {
+    const fallbackText = lineupNoDataText(state.teamId);
+    const result = buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: fallbackText }],
+      {},
+      fallbackText,
+    );
+    reportA2UIResult('intent=lineup(no-data-fallback)', result);
+    await emitRenderA2UIToolCall(result, config);
+    // L0 write 생략 — 라인업 미공개 상태를 캐시하면 공개 후에도 stale fallback 이 나간다.
+    logResponseLevel('L1', 'lineup');
+    return {
+      a2uiEnvelope: result.ops,
+      messages: [new AIMessage(fallbackText)],
+    };
+  }
+
+  // ── 템플릿 있음 (score: 실데이터 보유 / stats: 순위 실데이터 보유 / news: 뉴스 실데이터 보유 /
+  //    schedule: 일정 실데이터 보유 / lineup: 라인업 실데이터 보유) ──
   if (template) {
     // P3-W9 9.5: stats intent 면 지식 레벨 footnote 를 카드 하단에 정적 주입(LLM 미사용).
     //  - beginner → 용어 설명, expert → 세이버 안내, core → 추가 없음(adapted=false).
@@ -504,6 +566,20 @@ export async function emitA2UI(
       // 뉴스 카드: rows 만 주입(news_compact 는 /reaction 슬롯이 없음, P3-W7 7.5 ADR-048).
       summary = 'KBO 뉴스';
       data = { rows: state.newsData.rows };
+    } else if (state.intent === 'schedule' && state.scheduleData) {
+      // 일정 카드: date + rows 주입(schedule_compact 는 /reaction 슬롯이 없음, ADR-052).
+      summary = '경기 일정';
+      data = {
+        date: state.scheduleData.date,
+        rows: state.scheduleData.rows,
+      };
+    } else if (state.intent === 'lineup' && state.lineupData) {
+      // 라인업 카드: team + rows 주입(lineup_compact 는 /reaction 슬롯이 없음, ADR-052).
+      summary = '라인업';
+      data = {
+        team: state.lineupData.team,
+        rows: state.lineupData.rows,
+      };
     } else {
       // score 카드(또는 score 데이터 있는 경로): home/away/inning + reaction.
       // P2-W6: 리액션은 TeamPersona 가 생성하고 OutputGuardrail 이 검증·정제한 값을
