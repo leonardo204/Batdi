@@ -14,14 +14,17 @@ import type { RequestWithUser } from '../src/auth/jwt-auth.guard';
 function makeController(conversation: { userId: string } | null) {
   const findUnique = vi.fn().mockResolvedValue(conversation);
   const findMany = vi.fn().mockResolvedValue([]);
-  const prisma = { conversation: { findUnique, findMany } };
+  const deleteFn = vi.fn().mockResolvedValue({ id: 'conv-1' });
+  const prisma = {
+    conversation: { findUnique, findMany, delete: deleteFn },
+  };
   const summarizeConversation = vi.fn().mockResolvedValue('요약 결과');
   const summary = { summarizeConversation };
   const controller = new ConversationController(
     prisma as never,
     summary as never,
   );
-  return { controller, findUnique, findMany, summarizeConversation };
+  return { controller, findUnique, findMany, deleteFn, summarizeConversation };
 }
 
 function reqFor(userId: string): RequestWithUser {
@@ -103,5 +106,69 @@ describe('ConversationController.list', () => {
       { id: 'c1', title: '두산 얘기', summary: '요약', updatedAt, messageCount: 7 },
       { id: 'c2', title: null, summary: null, updatedAt, messageCount: 0 },
     ]);
+  });
+
+  it('q 없으면 소유자 범위만 필터(OR 절 없음)', async () => {
+    const { controller, findMany } = makeController(null);
+    await controller.list(reqFor('u1'));
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'u1' } }),
+    );
+  });
+
+  it('q 있으면 소유자 범위 + 제목/요약/메시지 content 부분일치(ILIKE) OR 필터', async () => {
+    const { controller, findMany } = makeController(null);
+    await controller.list(reqFor('u1'), '한화');
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: 'u1',
+          OR: [
+            { title: { contains: '한화', mode: 'insensitive' } },
+            { summary: { contains: '한화', mode: 'insensitive' } },
+            {
+              messages: {
+                some: { content: { contains: '한화', mode: 'insensitive' } },
+              },
+            },
+          ],
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 50,
+      }),
+    );
+  });
+
+  it('q 공백만이면 검색 없이 전체 목록(소유자 범위)', async () => {
+    const { controller, findMany } = makeController(null);
+    await controller.list(reqFor('u1'), '   ');
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'u1' } }),
+    );
+  });
+});
+
+describe('ConversationController.remove', () => {
+  it('대화 없음 → NotFoundException', async () => {
+    const { controller, deleteFn } = makeController(null);
+    await expect(
+      controller.remove(reqFor('u1'), 'conv-x'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(deleteFn).not.toHaveBeenCalled();
+  });
+
+  it('타 유저 소유 → ForbiddenException', async () => {
+    const { controller, deleteFn } = makeController({ userId: 'owner' });
+    await expect(
+      controller.remove(reqFor('intruder'), 'conv-1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(deleteFn).not.toHaveBeenCalled();
+  });
+
+  it('본인 소유 → delete 호출 + { deleted: true } 반환', async () => {
+    const { controller, deleteFn } = makeController({ userId: 'u1' });
+    const result = await controller.remove(reqFor('u1'), 'conv-1');
+    expect(deleteFn).toHaveBeenCalledWith({ where: { id: 'conv-1' } });
+    expect(result).toEqual({ deleted: true });
   });
 });

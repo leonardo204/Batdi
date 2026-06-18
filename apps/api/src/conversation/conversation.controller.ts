@@ -8,17 +8,25 @@
  * GET /conversations (JwtAuthGuard) — P4-W10 10.4
  *  - 본인(req.user.userId) 의 대화 목록을 updatedAt desc, take 50 으로 반환.
  *  - 각 항목 { id, title, summary, updatedAt, messageCount(_count.messages) }.
+ *  - 검색(platform-ops §12.3): ?q= 가 있으면 제목/요약/메시지 content 부분일치(ILIKE)로
+ *    소유자 범위 내 필터(updatedAt desc, take 50). q 없으면 기존 전체 목록.
+ *
+ * DELETE /conversations/:id (JwtAuthGuard) — platform-ops §12.3
+ *  - 본인 소유 검증 후 삭제. 없음 → 404, 타인 → 403. messages 는 onDelete Cascade.
+ *  - 반환 { deleted: true }.
  *
  * 명시적 종료는 idle/자정 스윕과 달리 게이트(SESSION_SUMMARY_ENABLED) 없이 즉시 동작한다
  *   (사용자 의도 종료). 단 키 없으면 summarizeConversation 이 null 을 반환한다(no-op).
  */
 import {
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   NotFoundException,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -42,12 +50,36 @@ export class ConversationController {
     private readonly summary: ConversationSummaryService,
   ) {}
 
-  /** 내 대화 목록 — 소유자(req.user.userId) 범위, updatedAt desc, take 50. */
+  /**
+   * 내 대화 목록 — 소유자(req.user.userId) 범위, updatedAt desc, take 50.
+   * q 가 있으면 제목/요약/메시지 content 부분일치(ILIKE)로 소유자 범위 내 필터한다.
+   */
   @UseGuards(JwtAuthGuard)
   @Get()
-  async list(@Req() req: RequestWithUser): Promise<ConversationListItem[]> {
+  async list(
+    @Req() req: RequestWithUser,
+    @Query('q') q?: string,
+  ): Promise<ConversationListItem[]> {
+    const term = q?.trim();
+    const where = term
+      ? {
+          userId: req.user.userId,
+          OR: [
+            { title: { contains: term, mode: 'insensitive' as const } },
+            { summary: { contains: term, mode: 'insensitive' as const } },
+            {
+              messages: {
+                some: {
+                  content: { contains: term, mode: 'insensitive' as const },
+                },
+              },
+            },
+          ],
+        }
+      : { userId: req.user.userId };
+
     const conversations = await this.prisma.conversation.findMany({
-      where: { userId: req.user.userId },
+      where,
       orderBy: { updatedAt: 'desc' },
       take: 50,
       select: {
@@ -66,6 +98,28 @@ export class ConversationController {
       updatedAt: c.updatedAt,
       messageCount: c._count.messages,
     }));
+  }
+
+  /** 대화 삭제 — 소유자 검증 후 삭제(messages Cascade). 없음 404 / 타인 403. */
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async remove(
+    @Req() req: RequestWithUser,
+    @Param('id') id: string,
+  ): Promise<{ deleted: true }> {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    if (!conversation) {
+      throw new NotFoundException('대화를 찾을 수 없습니다.');
+    }
+    if (conversation.userId !== req.user.userId) {
+      throw new ForbiddenException('본인 대화만 삭제할 수 있습니다.');
+    }
+
+    await this.prisma.conversation.delete({ where: { id } });
+    return { deleted: true };
   }
 
   /** 명시적 세션 종료 → 소유자 검증 후 즉시 최종 요약. */
