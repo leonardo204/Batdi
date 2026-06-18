@@ -119,6 +119,23 @@ describe('CrawlerHealthManager', () => {
     }
   });
 
+  it("news 소스(P3-W7 7.5): CRAWL_SOURCES 포함 + 독립 3회 실패 자동 비활성·성공 재활성", () => {
+    // news 가 소스 목록에 등록돼 있다.
+    expect(CRAWL_SOURCES).toContain('news');
+    expect(mgr.isEnabled('news')).toBe(true);
+
+    mgr.recordFailure('news');
+    mgr.recordFailure('news');
+    mgr.recordFailure('news'); // 3회 → 비활성
+    expect(mgr.isEnabled('news')).toBe(false);
+    // 다른 소스는 영향 없음(독립).
+    expect(mgr.isEnabled('schedule')).toBe(true);
+
+    mgr.recordSuccess('news'); // 성공 → 재활성
+    expect(mgr.isEnabled('news')).toBe(true);
+    expect(mgr.getHealth().news.consecutiveFailures).toBe(0);
+  });
+
   it('getHealth: 모든 소스 키 + 구조 반환(복사본 — 외부 변형이 내부에 영향 없음)', () => {
     const snapshot = mgr.getHealth();
     expect(Object.keys(snapshot).sort()).toEqual(

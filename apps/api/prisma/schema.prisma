@@ -231,7 +231,7 @@ model CacheNews {
   id          Int       @id @default(autoincrement())
   teamId      String?   @map("team_id") @db.VarChar(20)
   title       String?   @db.VarChar(255)
-  url         String?   @db.VarChar(512)
+  url         String?   @unique @db.VarChar(512)
   summary     String?   @db.Text
   publishedAt DateTime? @map("published_at") @db.Timestamp(6)
   source      String?   @db.VarChar(20)

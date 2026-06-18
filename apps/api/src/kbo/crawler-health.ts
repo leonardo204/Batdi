@@ -16,7 +16,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 /** 크롤 소스 식별자 — 각 소스는 독립적으로 성공/실패·비활성을 판정한다. */
-export type CrawlSource = 'schedule' | 'teamrank' | 'hitter' | 'pitcher';
+export type CrawlSource =
+  | 'schedule'
+  | 'teamrank'
+  | 'hitter'
+  | 'pitcher'
+  | 'news';
 
 /** 모든 크롤 소스 목록(상태 초기화·getHealth 순회용). */
 export const CRAWL_SOURCES: readonly CrawlSource[] = [
@@ -24,6 +29,7 @@ export const CRAWL_SOURCES: readonly CrawlSource[] = [
   'teamrank',
   'hitter',
   'pitcher',
+  'news',
 ] as const;
 
 /** 자동 비활성 임계치 — 연속 실패가 이 횟수에 도달하면 disabled=true. */
@@ -51,6 +57,7 @@ export class CrawlerHealthManager {
     teamrank: this.initState(),
     hitter: this.initState(),
     pitcher: this.initState(),
+    news: this.initState(),
   };
 
   /** 초기 헬스 상태(모든 소스 활성·실패 0). */
@@ -117,6 +124,7 @@ export class CrawlerHealthManager {
       teamrank: { ...this.health.teamrank },
       hitter: { ...this.health.hitter },
       pitcher: { ...this.health.pitcher },
+      news: { ...this.health.news },
     };
   }
 
