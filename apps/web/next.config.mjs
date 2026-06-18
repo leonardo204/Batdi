@@ -36,6 +36,31 @@ const nextConfig = {
         source: '/api/auth/:path*',
         destination: `${API_URL}/auth/:path*`,
       },
+      // 관심 선수 등록 프록시(P4-W10 10.1) — useCopilotAction 핸들러가 same-origin
+      // /api/favorites/* 로 호출, api(3001)/favorites/* 로 프록시. JWT 쿠키(credentials:'include').
+      {
+        source: '/api/favorites/:path*',
+        destination: `${API_URL}/favorites/:path*`,
+      },
+      // 6개 useCopilotAction 백엔드 프록시(P4-W10 10.1) — same-origin /api/* → api(3001)/*.
+      // toggleNotification / showPlayerDetail / requestScoreRefresh / showTeamComparison.
+      // JWT 쿠키(credentials:'include')로 가드 통과.
+      {
+        source: '/api/notifications/:path*',
+        destination: `${API_URL}/notifications/:path*`,
+      },
+      {
+        source: '/api/players/:path*',
+        destination: `${API_URL}/players/:path*`,
+      },
+      {
+        source: '/api/scores/:path*',
+        destination: `${API_URL}/scores/:path*`,
+      },
+      {
+        source: '/api/stats/:path*',
+        destination: `${API_URL}/stats/:path*`,
+      },
     ];
   },
 };

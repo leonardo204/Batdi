@@ -11,6 +11,7 @@
 import { CopilotChat } from '@copilotkit/react-core/v2';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useBatdiActions } from './hooks/useBatdiActions';
 
 // GET /api/auth/me 응답(부분)
 type AuthUser = { id: string; teamId?: string | null };
@@ -33,6 +34,8 @@ type MeResponse = { user: AuthUser; onboarded: boolean };
 export default function ChatPage() {
   const router = useRouter();
   const [authState, setAuthState] = useState<'checking' | 'ready'>('checking');
+  // 인증된 사용자 신원 — useBatdiActions 의 useCopilotReadable 컨텍스트로 전달.
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +56,7 @@ export default function ChatPage() {
         if (data.user.teamId) {
           document.documentElement.setAttribute('data-team', data.user.teamId);
         }
+        setAuthUser(data.user);
         setAuthState('ready');
       } catch {
         if (!cancelled) router.replace('/auth/login');
@@ -82,11 +86,18 @@ export default function ChatPage() {
     );
   }
 
-  return <ChatSurface />;
+  return <ChatSurface user={authUser} />;
 }
 
 /** 기존 CopilotChat 렌더 — 인증 통과 후에만 마운트. 렌더 로직 변경 금지. */
-function ChatSurface() {
+function ChatSurface({ user }: { user: AuthUser | null }) {
+  // P4-W10 10.1: 밧디 프론트엔드 액션 등록(registerFavoritePlayer). 렌더 영향 없음.
+  // CopilotKit Provider 하위(이 트리)에서 호출 → POST /copilotkit body.tools 로 액션 전송.
+  useBatdiActions({
+    userId: user?.id,
+    teamId: user?.teamId ?? undefined,
+  });
+
   return (
     <main
       style={{
