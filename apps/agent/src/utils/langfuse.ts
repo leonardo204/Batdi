@@ -89,7 +89,14 @@ export function logUiInvalidEvent(event: UiInvalidEvent): void {
 }
 
 /** 응답 레벨 (캐시/렌더 경로). 분포 관측용. */
-export type ResponseLevel = 'L0' | 'L1' | 'L2' | 'chat' | 'blocked';
+export type ResponseLevel =
+  | 'L0'
+  | 'L1'
+  | 'L2'
+  | 'L3'
+  | 'composite'
+  | 'chat'
+  | 'blocked';
 
 /**
  * 응답의 캐시/렌더 레벨을 Langfuse 에 기록한다(P2 완료조건: "L0/L1/L2 분포 확인 가능").
@@ -97,6 +104,8 @@ export type ResponseLevel = 'L0' | 'L1' | 'L2' | 'chat' | 'blocked';
  *  - L0: 완성 envelope 캐시 HIT(LLM 0)
  *  - L1: L1 템플릿 렌더(LLM 0, 리액션 없음 — 예: stats 순위 카드, score SCHEDULED)
  *  - L2: 템플릿 + L2 감정 리액션(LLM 1 — 예: score FINISHED 카드)
+ *  - L3/composite: 복합 질의에 LLM 이 동적 생성한 A2UI spec 이 UIValidator 게이트를
+ *    통과해 렌더된 경로(P3-W9 9.1). 게이트 실패 시 L1 대표 intent 폴백으로 기록된다.
  *  - chat: 템플릿 없는 잡담/밈 경로, blocked: 가드레일 차단
  *
  * best-effort(키 없음/오류 삼킴). 코어 langfuse 클라이언트로 trace 1건(name='response_level',

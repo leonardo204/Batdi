@@ -35,6 +35,43 @@ export async function serviceData(
     return {};
   }
 
+  // ── P3-W9 9.1: composite 복합 질의 → 여러 데이터 동시 조회(Promise.all) ──
+  // matchedIntents 에 score 가 있으면 fetchScoreData, stats 가 있으면 fetchStandings/
+  // fetchPlayerLeaderboard(statType='player' 면 리더보드)를 병렬로 받아 각 state 채널에 채운다.
+  // L3 UIComposer 가 이 데이터들을 한 화면 A2UI 로 합성한다. 단일 intent 분기는 아래 그대로.
+  // best-effort: 각 fetch* 는 DB 비활성/없음 시 null(throw 금지).
+  if (state.complexity === 'composite') {
+    const matched = state.matchedIntents ?? [];
+    const wantScore = matched.includes('score');
+    const wantStats = matched.includes('stats');
+    const wantPlayer = wantStats && state.statType === 'player';
+
+    const [scoreData, statsData] = await Promise.all([
+      wantScore ? fetchScoreData(state.teamId) : Promise.resolve(undefined),
+      wantStats
+        ? wantPlayer
+          ? fetchPlayerLeaderboard(
+              state.teamId,
+              detectStatKind(state.userMessageNormalized),
+            )
+          : fetchStandings()
+        : Promise.resolve(undefined),
+    ]);
+
+    const update: CoreGraphUpdate = {};
+    if (wantScore) update.scoreData = scoreData ?? null;
+    if (wantStats && wantPlayer) {
+      update.playerStats = (statsData as Awaited<
+        ReturnType<typeof fetchPlayerLeaderboard>
+      >) ?? null;
+    } else if (wantStats) {
+      update.standingsData = (statsData as Awaited<
+        ReturnType<typeof fetchStandings>
+      >) ?? null;
+    }
+    return update;
+  }
+
   if (state.intent === 'score') {
     // best-effort: DB 비활성/경기 없음 → null (EmitA2UI 폴백 처리).
     const scoreData = await fetchScoreData(state.teamId);

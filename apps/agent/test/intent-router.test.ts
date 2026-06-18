@@ -138,3 +138,55 @@ describe('IntentRouter node', () => {
     expect(standings.statType).toBe('standings');
   });
 });
+
+describe('IntentRouter — P3-W9 9.1 composite 감지', () => {
+  it('classifyIntent: 모든 매칭 intent 를 matchedIntents 로 수집(중복 제거, 대표=첫 매칭)', () => {
+    const r = classifyIntent(norm('스코어랑 순위 같이 알려줘'));
+    // 대표 intent 는 첫 매칭(score) — 기존 동작 보존.
+    expect(r.intent).toBe('score');
+    // score + stats 둘 다 수집.
+    expect(r.matchedIntents).toContain('score');
+    expect(r.matchedIntents).toContain('stats');
+    expect(r.matchedIntents.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('classifyIntent: 단일 intent 는 matchedIntents 길이 1(회귀)', () => {
+    const score = classifyIntent(norm('스코어 알려줘'));
+    expect(score.matchedIntents).toEqual(['score']);
+
+    const chat = classifyIntent(norm('안녕'));
+    expect(chat.intent).toBe('chat');
+    expect(chat.matchedIntents).toEqual([]); // 미매칭 → 빈 배열
+  });
+
+  it('intentRouter: "스코어랑 순위 같이" → complexity=composite + matchedIntents', () => {
+    const update = intentRouter({
+      userMessageNormalized: norm('스코어랑 순위 같이 알려줘'),
+    } as CoreGraphState);
+    expect(update.complexity).toBe('composite');
+    expect(update.intent).toBe('score'); // 대표 intent
+    expect(update.matchedIntents).toContain('score');
+    expect(update.matchedIntents).toContain('stats');
+  });
+
+  it('intentRouter: 단일 "스코어" → complexity=simple(회귀, composite 아님)', () => {
+    const update = intentRouter({
+      userMessageNormalized: norm('스코어 알려줘'),
+    } as CoreGraphState);
+    expect(update.complexity).toBe('simple');
+    expect(update.matchedIntents).toEqual(['score']);
+  });
+
+  it('intentRouter: 단일 "순위" → simple / 단일 chat("안녕") → general(회귀)', () => {
+    const standings = intentRouter({
+      userMessageNormalized: norm('순위 어때'),
+    } as CoreGraphState);
+    expect(standings.complexity).toBe('simple');
+
+    const chat = intentRouter({
+      userMessageNormalized: norm('안녕'),
+    } as CoreGraphState);
+    expect(chat.intent).toBe('chat');
+    expect(chat.complexity).toBe('general');
+  });
+});

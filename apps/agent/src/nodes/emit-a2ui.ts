@@ -37,6 +37,7 @@ import {
 } from '../databind/emit';
 import { logUiInvalidEvent, logResponseLevel } from '../utils/langfuse';
 import { generateChatReply } from '../services/chat-graph';
+import { composeL3 } from '../services/l3-composer';
 import { getPrisma } from '../utils/prisma';
 import { isPersonalized } from '../personal/personal-agent';
 import { buildCacheKey, personaScopeFor } from './cache-lookup';
@@ -213,6 +214,76 @@ function playerStatsNoDataText(teamId: CoreGraphState['teamId']): string {
   return `${tone} 아직 선수 기록이 없어유~ 조금만 기다려보자!`;
 }
 
+/**
+ * composite L3 게이트 실패/생성 불가 시 대표 intent 의 L1 템플릿으로 즉시 폴백한다(P3-W9 9.1).
+ *
+ * SSOT: palette-schema §5.4 "검증 실패 → 해당 intent L1 기본 Template 통째 폴백(재호출 금지)".
+ *   대표 intent(repIntent = matchedIntents[0] ?? state.intent)의 정형 데이터가 state 에 있으면
+ *   그 L1 템플릿(+data)로 렌더하고, 없으면 단일 Text 카드로 폴백한다. LLM 재호출은 하지 않는다.
+ *
+ * @returns 폴백 BuildA2UIResult(렌더용 components/data + summary 라벨).
+ */
+function buildCompositeFallback(state: CoreGraphState): {
+  result: BuildA2UIResult;
+  level: 'L1';
+} {
+  const repIntent: CoreGraphState['intent'] =
+    state.matchedIntents?.[0] ?? state.intent ?? 'chat';
+
+  // 대표 intent 가 score 이고 실데이터 있음 → score L1 템플릿.
+  if (repIntent === 'score' && state.scoreData) {
+    const template = resolveScoreTemplate(state.scoreData);
+    const compiled = compileBindings(template.components);
+    const data: Record<string, unknown> = {
+      ...(state.scoreData as unknown as Record<string, unknown>),
+      reaction: state.reaction ?? '',
+    };
+    return {
+      result: buildA2UIOps(compiled, data, scoreSummaryText(state.scoreData)),
+      level: 'L1',
+    };
+  }
+
+  // 대표 intent 가 stats 이고 실데이터 있음 → stats L1 템플릿(player/standings).
+  if (repIntent === 'stats') {
+    if (state.statType === 'player' && state.playerStats) {
+      const template = resolveStatsTemplate('player');
+      const compiled = compileBindings(template.components);
+      return {
+        result: buildA2UIOps(
+          compiled,
+          { rows: state.playerStats.rows },
+          '선수 기록',
+        ),
+        level: 'L1',
+      };
+    }
+    if (state.standingsData) {
+      const template = resolveStatsTemplate('standings');
+      const compiled = compileBindings(template.components);
+      return {
+        result: buildA2UIOps(
+          compiled,
+          { rows: state.standingsData.rows },
+          '팀 순위',
+        ),
+        level: 'L1',
+      };
+    }
+  }
+
+  // 데이터 없음/그 외 intent → 단일 Text 폴백 카드.
+  const fallbackText = '복합 질문이라 한 화면에 담기 어려워유~ 하나씩 물어봐줘!';
+  return {
+    result: buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: fallbackText }],
+      {},
+      fallbackText,
+    ),
+    level: 'L1',
+  };
+}
+
 export async function emitA2UI(
   state: CoreGraphState,
   config?: RunnableConfig,
@@ -250,6 +321,35 @@ export async function emitA2UI(
     await emitRenderA2UIToolCall({ components, data }, config);
     logResponseLevel('L0', state.intent ?? 'unknown');
     return { a2uiEnvelope: state.a2uiEnvelope };
+  }
+
+  // ── P3-W9 9.1: L3 UIComposer (composite 복합 질의) ──
+  // 서로 다른 intent 2개 이상(예: score+stats)이 매칭된 복합 질의는 LLM 이 A2UI spec 을
+  // 동적 생성하고, 우리 UIValidator 게이트(buildA2UIOps → validateBatdiA2UI: maxDepth4/
+  // maxNodes30/카탈로그/바인딩)가 검증한다. 통과 시 렌더(L3), 실패/생성 불가 시 대표 intent 의
+  // L1 템플릿으로 **즉시 폴백**(LLM 재호출 금지, ADR-019).
+  // ⚠️ L3/composite 응답은 LLM 비결정이라 L0 캐시 write 하지 않는다.
+  if (state.complexity === 'composite') {
+    const l3 = await composeL3(state, config);
+    if (l3 !== null) {
+      const result = buildA2UIOps(l3.components, l3.data, '복합 응답');
+      if (result.valid) {
+        // 게이트 통과 → L3 동적 카드 렌더(L0 write 안 함, 비결정).
+        await emitRenderA2UIToolCall(result, config);
+        logResponseLevel('L3', state.intent ?? 'composite');
+        return { a2uiEnvelope: result.ops };
+      }
+      // 게이트 실패(maxNodes/depth/카탈로그/바인딩) → llm_ui_invalid 기록 후 L1 폴백.
+      reportA2UIResult('composite(l3-invalid)', result);
+    }
+
+    // l3 == null(키 없음/파싱 실패/빈) 또는 게이트 실패 → 대표 intent L1 즉시 폴백.
+    const { result: fbResult } = buildCompositeFallback(state);
+    reportA2UIResult('composite(l1-fallback)', fbResult);
+    await emitRenderA2UIToolCall(fbResult, config);
+    // composite 는 L0 write 생략(LLM 비결정 / 데이터 합성 결과 비고정).
+    logResponseLevel('composite', state.intent ?? 'composite');
+    return { a2uiEnvelope: fbResult.ops };
   }
 
   // P2-W5.4: score intent 는 gameStatus 기반으로 3종(compact/default/emphasized) 중

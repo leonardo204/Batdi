@@ -82,30 +82,105 @@ export interface IntentClassification {
   confidence: 'high' | 'default';
   /** 매칭된 규칙의 statType(stats 규칙만). 미매칭/비-stats 규칙은 undefined. */
   statType?: 'standings' | 'player';
+  /**
+   * P3-W9 9.1: 매칭된 모든 intent(중복 제거, 등장 순서 보존, 첫 매칭=대표 intent 가 [0]).
+   * 모든 INTENT_RULES 를 순회해 수집한다(첫 매칭에서 멈추지 않음). 미매칭이면 [].
+   *   - 단일 intent 만 매칭 → 길이 1(대표 intent 와 동일, 회귀 영향 없음).
+   *   - 서로 다른 intent 2개 이상(예: score+stats) → composite 판정 입력.
+   */
+  matchedIntents: Intent[];
 }
+
+/**
+ * 접속표현 정규식 — composite 판정 보조 신호(routing.md §2 "접속표현").
+ * ⚠️ normalized 기준: 공백·"+"(SEPARATORS) 는 제거되므로 한글 접속어만 검사한다.
+ *   '그리고|랑|이랑|하고|및|와|과' 가 normalized 에 남는다. 단독으로는 무의미하고
+ *   "2개 이상 intent 매칭"과 결합할 때만 composite 보강 신호로 쓴다.
+ */
+export const CONNECTIVE_PATTERN = /그리고|이랑|랑|하고|및|와|과/;
 
 /** 순수 분류 함수 (테스트 직접 호출용) — 입력은 normalized form */
 export function classifyIntent(normalized: string): IntentClassification {
+  // 대표 intent(첫 매칭)는 기존 동작 그대로 — 단일 intent 경로 회귀 방지.
+  let primary: Intent = 'chat';
+  let confidence: 'high' | 'default' = 'default';
+  let statType: 'standings' | 'player' | undefined;
+  let primaryFound = false;
+
+  // P3-W9: 모든 규칙을 순회해 매칭된 intent 를 등장 순서대로 수집(중복 제거).
+  const matched: Intent[] = [];
   for (const rule of INTENT_RULES) {
     if (rule.pattern.test(normalized)) {
-      return {
-        intent: rule.intent,
-        confidence: 'high',
-        statType: rule.statType,
-      };
+      if (!primaryFound) {
+        // 첫 매칭 = 대표 intent(기존 classifyIntent 반환값과 동일).
+        primary = rule.intent;
+        confidence = 'high';
+        statType = rule.statType;
+        primaryFound = true;
+      }
+      if (!matched.includes(rule.intent)) {
+        matched.push(rule.intent);
+      }
     }
   }
-  return { intent: 'chat', confidence: 'default' };
+
+  if (!primaryFound) {
+    // 미매칭 → chat(default), matchedIntents 빈 배열.
+    return { intent: 'chat', confidence: 'default', matchedIntents: [] };
+  }
+
+  return {
+    intent: primary,
+    confidence,
+    statType,
+    matchedIntents: matched,
+  };
+}
+
+/**
+ * complexity 판정(순수 함수, P3-W9 9.1, routing.md §2 근사).
+ *
+ *  - composite: 서로 다른 intent 2개 이상 매칭(예: score+stats), 또는 접속표현이 있으면서
+ *    매칭 intent 가 2개 이상. (정형 데이터 카드 2종을 한 화면에 합성할 가치가 있는 질의.)
+ *  - general : chat/meme 단독(정형 카드 없는 잡담/밈 경로).
+ *  - simple  : 그 외 단일 정형 intent(score/stats/news/schedule/lineup 단독).
+ *
+ * ⚠️ 단일 intent 면 절대 composite 가 되지 않는다(matchedIntents 길이 < 2) — 기존 경로 회귀 방지.
+ */
+export function decideComplexity(
+  matchedIntents: Intent[],
+  _normalized: string,
+): 'simple' | 'general' | 'composite' {
+  const distinct = matchedIntents.length; // 이미 중복 제거됨
+
+  // 서로 다른 정형 intent 2개 이상 매칭(예: score+stats) → composite.
+  //   접속표현(CONNECTIVE_PATTERN)은 routing.md §2 의 보조 신호지만, 단독으로는 단일 intent 를
+  //   복합으로 끌어올리지 못한다(2매칭이 본질 게이트). 따라서 distinct>=2 를 1차 조건으로 둔다.
+  if (distinct >= 2) {
+    return 'composite';
+  }
+
+  // 단일 매칭(또는 0). chat/meme 단독은 general, 그 외 단일 정형 intent 는 simple.
+  const primary = matchedIntents[0];
+  if (primary === undefined || primary === 'chat' || primary === 'meme') {
+    return 'general';
+  }
+  return 'simple';
 }
 
 export function intentRouter(state: CoreGraphState): CoreGraphUpdate {
-  const { intent, confidence, statType } = classifyIntent(
+  const { intent, confidence, statType, matchedIntents } = classifyIntent(
+    state.userMessageNormalized,
+  );
+  const complexity = decideComplexity(
+    matchedIntents,
     state.userMessageNormalized,
   );
   return {
     intent,
     intentConfidence: confidence,
-    complexity: 'simple', // W2: L1 only
+    complexity,
     statType, // stats 규칙이면 'standings'|'player', 아니면 undefined
+    matchedIntents, // P3-W9: composite 데이터 다중 조회 + L3 폴백 대표 intent 결정용
   };
 }

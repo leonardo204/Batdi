@@ -56,6 +56,13 @@ export const CoreStateAnnotation = Annotation.Root({
   complexity: Annotation<'simple' | 'general' | 'composite'>(
     lastValue<'simple' | 'general' | 'composite'>(),
   ),
+  // P3-W9 9.1: composite 복합 질의 감지용 — IntentRouter 가 모든 INTENT_RULES 를 순회해
+  //   매칭된 intent 를 중복 제거해 수집한 배열(첫 매칭=대표 intent 는 state.intent 와 동일).
+  //   서로 다른 intent 2개 이상 매칭(예: score+stats) 또는 접속표현+2매칭이면 complexity='composite'.
+  //   ServiceData 가 composite 일 때 이 배열을 따라 여러 데이터를 동시 조회(Promise.all)하고,
+  //   EmitA2UI 가 L3 폴백 시 대표 intent(matchedIntents[0])의 L1 템플릿으로 폴백한다.
+  //   단일 intent 경로면 길이 0~1(회귀 영향 없음).
+  matchedIntents: Annotation<Intent[]>(lastValue<Intent[]>()),
   // stats intent 보조 분기(P3-W7 7.3b). IntentRouter 가 매칭된 규칙의 statType 을 노출:
   //   - 'standings' → 팀 순위 카드(standings_compact)
   //   - 'player'    → 팀 선수 리더보드 카드(player_stat_compact, 타율/방어율/홈런 등)

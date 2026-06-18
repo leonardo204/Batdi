@@ -146,6 +146,29 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(String(last.content).length).toBeGreaterThan(0);
   });
 
+  it('composite 질의(키 없음, DB 없음) → L3 null → 대표 intent L1 폴백 (P3-W9 9.1)', async () => {
+    // "스코어랑 순위 같이" → score+stats 매칭 → complexity=composite.
+    // 키 없음 → composeL3=null. DB 없음 → scoreData/standingsData=null →
+    //   buildCompositeFallback 이 대표 intent(score) 데이터 없음 → 단일 Text 폴백 카드.
+    //   그래프가 throw 없이 정상 종단(L1 폴백)함을 검증.
+    delete process.env.GOOGLE_API_KEY;
+    const out = await graph.invoke({
+      messages: [{ role: 'user', content: '스코어랑 순위 같이 알려줘' }],
+      userMessage: '스코어랑 순위 같이 알려줘',
+    });
+    expect(out.complexity).toBe('composite');
+    expect(out.matchedIntents).toContain('score');
+    expect(out.matchedIntents).toContain('stats');
+    expect(out.a2uiEnvelope).toBeDefined();
+    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
+    const compOp = ops.find((o) => 'updateComponents' in o) as
+      | { updateComponents: { components: Array<Record<string, unknown>> } }
+      | undefined;
+    // 대표 intent(score) 데이터 없음(DB 없음) → 단일 Text 폴백 카드.
+    expect(compOp?.updateComponents.components).toHaveLength(1);
+    expect(JSON.stringify(out.a2uiEnvelope)).toContain('createSurface');
+  });
+
   it('chat 질의(키 없음) → 팀톤 캔드 AIMessage + 단일 Text 카드', async () => {
     delete process.env.GOOGLE_API_KEY;
     const out = await graph.invoke({
