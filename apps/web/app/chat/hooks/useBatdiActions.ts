@@ -14,11 +14,39 @@
  * ⚠️ CopilotKit Provider 하위(클라이언트 컴포넌트)에서만 호출해야 한다. 렌더 영향 없음.
  */
 import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
+import { useEffect, useState } from 'react';
+import type {
+  ActionResult,
+  PlayerDetailData,
+  TeamComparisonData,
+} from '../components/ActionResultOverlay';
 
 /** POST /api/favorites/register 응답(부분). */
 interface RegisterFavoriteResponse {
   success?: boolean;
   favoritesCount?: number;
+}
+
+/** GET /api/users/me/level 응답(부분) — readable 노출용. */
+interface LevelInfo {
+  level: number;
+  levelName: string;
+  xp: number;
+  nextLevelXp: number | null;
+}
+
+/** GET /api/conversations 단건(부분) — recent readable 용. */
+interface ConversationListItem {
+  id: string;
+  title: string | null;
+  summary: string | null;
+}
+
+/** 403 레벨 잠금 응답(가정 형태). */
+interface LockedResponse {
+  locked?: boolean;
+  requiredLevel?: number;
+  levelName?: string;
 }
 
 /** 백엔드 검증 API 공통 호출 — same-origin /api/* 프록시 + JWT 쿠키. */
@@ -35,17 +63,103 @@ async function callApi<T>(
   return (await r.json()) as T;
 }
 
-/** useBatdiActions 옵션 — 현재 사용자 신원(있으면 컨텍스트로 노출). */
+/**
+ * fetch + 403 레벨 잠금 분기. 403 이면 {locked:true,...} 로 정규화해 반환한다.
+ * (showPlayerDetail/showTeamComparison 가 오버레이로 잠금 안내를 띄울 수 있도록.)
+ */
+async function fetchWithLock<T>(
+  path: string,
+): Promise<{ ok: true; data: T } | { ok: false; locked: LockedResponse }> {
+  const r = await fetch(path, { method: 'GET', credentials: 'include' });
+  if (r.status === 403) {
+    let body: LockedResponse = {};
+    try {
+      body = (await r.json()) as LockedResponse;
+    } catch {
+      // 본문 없거나 비-JSON — 기본 잠금 안내로 폴백.
+    }
+    return { ok: false, locked: { locked: true, ...body } };
+  }
+  return { ok: true, data: (await r.json()) as T };
+}
+
+/** lv→knowledgeLevel 추정(레벨 기반). lv≤2 beginner / 3~5 core / 6+ expert. */
+function estimateKnowledgeLevel(level: number | undefined): 'beginner' | 'core' | 'expert' {
+  if (level === undefined) return 'beginner';
+  if (level <= 2) return 'beginner';
+  if (level <= 5) return 'core';
+  return 'expert';
+}
+
+/** useBatdiActions 옵션 — 현재 사용자 신원 + 오버레이 open 콜백. */
 export interface UseBatdiActionsOptions {
   userId?: string;
   teamId?: string;
+  /** showPlayerDetail/showTeamComparison 결과를 오버레이로 띄우는 콜백(chat/page 소유). */
+  onShowResult?: (result: ActionResult) => void;
 }
 
 export function useBatdiActions(options: UseBatdiActionsOptions = {}): void {
+  const { onShowResult } = options;
+
+  // ── 추가 컨텍스트 소스(마운트 시 1회 fetch) ──
+  // architecture §9: user/team/level/profile/game/recent 노출.
+  //   game 은 현재 score 서브그래프 경유라 web 직접 소스가 없어 readable 미노출(잔여).
+  const [level, setLevel] = useState<LevelInfo | null>(null);
+  const [recent, setRecent] = useState<ConversationListItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/users/me/level', { credentials: 'include' });
+        if (!cancelled && r.ok) setLevel((await r.json()) as LevelInfo);
+      } catch {
+        // 컨텍스트 노출용 — 실패해도 채팅 동작에 영향 없음.
+      }
+    })();
+    (async () => {
+      try {
+        const r = await fetch('/api/conversations', { credentials: 'include' });
+        if (!cancelled && r.ok) {
+          const list = (await r.json()) as ConversationListItem[];
+          setRecent(Array.isArray(list) ? list.slice(0, 3) : []);
+        }
+      } catch {
+        // 동상.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // 현재 사용자 컨텍스트를 LLM 에 노출(선택) — 액션 인자 추론 보조.
   useCopilotReadable({
     description: '현재 사용자',
     value: { userId: options.userId, teamId: options.teamId },
+  });
+
+  // level — 현재 레벨/XP. 데이터 로딩 전이면 기본값(렌더 안전).
+  useCopilotReadable({
+    description: '현재 사용자의 레벨 정보(level, levelName, xp, nextLevelXp)',
+    value: level ?? { level: 0, levelName: '', xp: 0, nextLevelXp: null },
+  });
+
+  // profile — 레벨 기반 knowledgeLevel 추정 등 프로필 단서.
+  useCopilotReadable({
+    description:
+      '사용자 프로필 단서. knowledgeLevel 은 레벨 기반 추정(lv≤2 beginner / 3~5 core / 6+ expert)',
+    value: {
+      knowledgeLevel: estimateKnowledgeLevel(level?.level),
+      level: level?.level ?? null,
+    },
+  });
+
+  // recent — 최근 대화 3건 요약(맥락 보조). 비어 있어도 렌더 안전.
+  useCopilotReadable({
+    description: '사용자의 최근 대화 3건 요약(title/summary)',
+    value: recent.map((c) => ({ title: c.title, summary: c.summary })),
   });
 
   useCopilotAction({
@@ -101,8 +215,15 @@ export function useBatdiActions(options: UseBatdiActionsOptions = {}): void {
         required: true,
       },
     ],
-    handler: async ({ playerId }: { playerId: number }) =>
-      callApi(`/api/players/${playerId}`),
+    handler: async ({ playerId }: { playerId: number }) => {
+      const res = await fetchWithLock<PlayerDetailData>(`/api/players/${playerId}`);
+      if (!res.ok) {
+        onShowResult?.({ type: 'locked', data: { ...res.locked, locked: true } });
+        return res.locked;
+      }
+      onShowResult?.({ type: 'player', data: res.data });
+      return res.data;
+    },
   });
 
   useCopilotAction({
@@ -137,10 +258,17 @@ export function useBatdiActions(options: UseBatdiActionsOptions = {}): void {
         required: true,
       },
     ],
-    handler: async ({ teamA, teamB }: { teamA: string; teamB: string }) =>
-      callApi(
+    handler: async ({ teamA, teamB }: { teamA: string; teamB: string }) => {
+      const res = await fetchWithLock<TeamComparisonData>(
         `/api/stats/compare?teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`,
-      ),
+      );
+      if (!res.ok) {
+        onShowResult?.({ type: 'locked', data: { ...res.locked, locked: true } });
+        return res.locked;
+      }
+      onShowResult?.({ type: 'comparison', data: res.data });
+      return res.data;
+    },
   });
 
   // ── 프론트 전용 네비 2종(백엔드 mutation 없음) ──

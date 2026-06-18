@@ -11,6 +11,10 @@
 import { CopilotChat } from '@copilotkit/react-core/v2';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import {
+  ActionResultOverlay,
+  type ActionResult,
+} from './components/ActionResultOverlay';
 import { useBatdiActions } from './hooks/useBatdiActions';
 
 // GET /api/auth/me 응답(부분)
@@ -91,11 +95,16 @@ export default function ChatPage() {
 
 /** 기존 CopilotChat 렌더 — 인증 통과 후에만 마운트. 렌더 로직 변경 금지. */
 function ChatSurface({ user }: { user: AuthUser | null }) {
-  // P4-W10 10.1: 밧디 프론트엔드 액션 등록(registerFavoritePlayer). 렌더 영향 없음.
+  // showPlayerDetail/showTeamComparison 결과를 띄울 오버레이 상태(이 컴포넌트 소유).
+  const [overlay, setOverlay] = useState<ActionResult | null>(null);
+
+  // P4-W10 10.1: 밧디 프론트엔드 액션 등록(registerFavoritePlayer 외). 렌더 영향 없음.
   // CopilotKit Provider 하위(이 트리)에서 호출 → POST /copilotkit body.tools 로 액션 전송.
+  // onShowResult: 선수상세/팀비교 액션 결과가 오면 오버레이를 연다(액션 반환값은 LLM 후속용 유지).
   useBatdiActions({
     userId: user?.id,
     teamId: user?.teamId ?? undefined,
+    onShowResult: setOverlay,
   });
 
   return (
@@ -107,6 +116,7 @@ function ChatSurface({ user }: { user: AuthUser | null }) {
         background: 'var(--color-bg)',
       }}
     >
+      <ActionResultOverlay result={overlay} onClose={() => setOverlay(null)} />
       <CopilotChat
         agentId="batdi"
         labels={{
