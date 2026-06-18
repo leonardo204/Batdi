@@ -17,6 +17,13 @@ export const SCHEDULE_URL =
 export const TEAM_RANK_URL =
   'https://www.koreabaseball.com/Record/TeamRank/TeamRank.aspx';
 
+/**
+ * GameCenter 메인 — 당일 경기/선발투수 라인업 (ADR-056).
+ * robots.txt 허용(Disallow 는 /Common · /Help · /Member · /ws 뿐 → /Schedule/ 허용).
+ */
+export const GAMECENTER_URL =
+  'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx';
+
 /** 타자 기본기록 페이지 (선수 기본 스탯, P3-W7 7.3a) */
 export const HITTER_BASIC_URL =
   'https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx';
@@ -40,6 +47,42 @@ export const TEAM_RANK_SELECTORS = {
   series: '#cphContents_cphContents_cphContents_ddlSeries',
   /** 팀순위 테이블의 tbody */
   rankTable: '#cphContents_cphContents_cphContents_udpRecord > table > tbody',
+} as const;
+
+/**
+ * GameCenter 라인업 셀렉터 (ADR-056, 2026-06-18 실측 확정).
+ *  - 각 경기는 `li.game-cont`(또는 `.today-game .game-cont`). 정형 데이터 속성 보유:
+ *    g_id(=gameKey), g_dt, s_nm(구장), away_nm/home_nm(한글팀명), away_id/home_id(코드),
+ *    away_p_id/home_p_id(선발투수 ID), start_ck/lineup_ck.
+ *  - 선발투수명은 `.team.away .today-pitcher p` / `.team.home .today-pitcher p` 텍스트
+ *    ("선" 접두 span.before 제거 후 이름). 시각은 `.top ul li`(마지막), 상태는 `.staus`(원문 클래스 오타).
+ *  - g_id 와 텍스트 모두 away-then-home 순(예 "20260618KTOB0" = KT@OB, 텍스트 "선{away} VS 선{home}").
+ *    다만 파서는 .team.away / .team.home 구획을 직접 읽어 순서 모호성을 제거한다.
+ */
+export const GAMECENTER_SELECTORS = {
+  /** 경기 카드 목록 — li.game-cont 순회(outerHTML 단위 파싱) */
+  gameList: 'li.game-cont',
+  /** 컨테이너 등장 대기용 */
+  ready: '.today-game .game-cont, li.game-cont',
+} as const;
+
+/**
+ * GameCenter 한글 팀명 → 내부 팀 코드 매핑(ADR-056). 미지원 팀은 매핑 없음(null 처리).
+ * 우선 지원 4팀 + 표시 가능한 전 구단 한글명을 수용한다(home_nm/away_nm 기준).
+ * ⚠️ teamId 미지원 팀(매핑 없음)은 null 로 저장하고 표시명(home_nm)만 보존한다.
+ */
+export const GAMECENTER_TEAM_NAME_TO_ID: Record<string, string> = {
+  두산: 'doosan',
+  KIA: 'kia',
+  기아: 'kia',
+  롯데: 'lotte',
+  한화: 'hanwha',
+  LG: 'lg',
+  KT: 'kt',
+  삼성: 'samsung',
+  NC: 'nc',
+  SSG: 'ssg',
+  키움: 'heroes',
 } as const;
 
 /**

@@ -24,7 +24,12 @@ import {
 } from './kbo.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { KboScraper } from './kbo-scraper';
-import { KboGameWriter, PlayerStatWriter, TeamRecordWriter } from './kbo-writer';
+import {
+  KboGameWriter,
+  LineupWriter,
+  PlayerStatWriter,
+  TeamRecordWriter,
+} from './kbo-writer';
 import { CrawlerHealthManager, type CrawlSource } from './crawler-health';
 import type { HitterStatRow, PitcherStatRow } from './kbo-parser';
 import { SERIES_TYPES, type SeriesTypeName } from './kbo-teams';
@@ -38,6 +43,7 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
     private readonly gameWriter: KboGameWriter,
     private readonly recordWriter: TeamRecordWriter,
     private readonly playerStatWriter: PlayerStatWriter,
+    private readonly lineupWriter: LineupWriter,
     private readonly prisma: PrismaService,
     private readonly health: CrawlerHealthManager,
   ) {}
@@ -146,6 +152,14 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
 
       // 선수 기본 스탯(타자·투수, 우선 4팀) — 일정·순위 크롤 뒤에.
       await this.crawlPlayerStats(season);
+
+      // 당일 선발 라인업(GameCenter, ADR-056) — 독립 health 게이트. best-effort.
+      const lineups = await this.withHealthGate('lineup', () =>
+        this.scraper.scrapeLineups(),
+      );
+      if (lineups) {
+        await this.lineupWriter.write(lineups);
+      }
 
       this.logger.log('일일 KBO 크롤링 완료');
     } catch (err) {

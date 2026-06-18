@@ -9,7 +9,12 @@
 import { Module } from '@nestjs/common';
 import { DailyKboScheduler } from './daily-kbo.scheduler';
 import { KboScraper } from './kbo-scraper';
-import { KboGameWriter, PlayerStatWriter, TeamRecordWriter } from './kbo-writer';
+import {
+  KboGameWriter,
+  LineupWriter,
+  PlayerStatWriter,
+  TeamRecordWriter,
+} from './kbo-writer';
 import { CrawlerHealthManager } from './crawler-health';
 
 @Module({
@@ -18,9 +23,16 @@ import { CrawlerHealthManager } from './crawler-health';
     KboGameWriter,
     TeamRecordWriter,
     PlayerStatWriter,
+    LineupWriter,
     CrawlerHealthManager,
     DailyKboScheduler,
   ],
-  exports: [KboGameWriter, TeamRecordWriter, PlayerStatWriter, CrawlerHealthManager],
+  exports: [
+    KboGameWriter,
+    TeamRecordWriter,
+    PlayerStatWriter,
+    LineupWriter,
+    CrawlerHealthManager,
+  ],
 })
 export class KboModule {}

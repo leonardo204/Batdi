@@ -362,6 +362,28 @@ model KboGame {
   @@map("kbo_games")
 }
 
+// 경기별 선발투수 라인업 (GameCenter 크롤, ADR-056). gameKey(g_id) 자연키.
+// 선발 매치업(away/home 선발투수명 + 팀)·구장·시각·상태를 보존한다. 한글 팀명은
+// teamId(doosan/kia/lotte/hanwha 등)로 매핑하되 미지원 팀은 null(표시명만 보존).
+// MVP: 선발투수 매치업만(풀 9타순은 lineup_ck 게시 후 상세페이지 — ADR-056 잔여).
+model GameLineup {
+  gameKey      String   @id @map("game_key") @db.VarChar(32) // g_id (예 "20260618KTOB0")
+  gameDate     DateTime @map("game_date") @db.Date // g_dt
+  homeTeamId   String?  @map("home_team_id") @db.VarChar(10) // 한글명→teamId(미지원 null)
+  awayTeamId   String?  @map("away_team_id") @db.VarChar(10)
+  homeTeamName String   @map("home_team_name") @db.VarChar(20) // home_nm(한글)
+  awayTeamName String   @map("away_team_name") @db.VarChar(20) // away_nm(한글)
+  homeStarter  String?  @map("home_starter") @db.VarChar(40) // 홈 선발투수명(미발표 null)
+  awayStarter  String?  @map("away_starter") @db.VarChar(40) // 원정 선발투수명(미발표 null)
+  stadium      String?  @db.VarChar(20) // s_nm
+  gameTime     String?  @map("game_time") @db.VarChar(5) // "HH:mm"
+  status       String   @db.VarChar(16) // 경기예정|경기중|경기종료|취소 등(원문)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([gameDate], map: "idx_game_lineups_date")
+  @@map("game_lineups")
+}
+
 // 팀 시즌 순위/기록 (TeamRank 페이지). (season, team) 자연키.
 model TeamSeasonRecord {
   season        Int

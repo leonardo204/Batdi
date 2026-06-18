@@ -14,6 +14,8 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  GAMECENTER_SELECTORS,
+  GAMECENTER_URL,
   HITTER_BASIC_URL,
   PITCHER_BASIC_URL,
   PLAYER_STAT_SELECTORS,
@@ -27,10 +29,12 @@ import {
 import {
   parseGameSchedule,
   parseHitterBasic,
+  parseLineups,
   parsePitcherBasic,
   parseTeamSeasonRecord,
 } from './kbo-parser';
 import type {
+  GameLineupRow,
   HitterStatRow,
   KboGameRow,
   PitcherStatRow,
@@ -159,6 +163,47 @@ export class KboScraper {
       return rows;
     } catch (err) {
       this.logger.error(`팀순위 크롤링 오류(빈 결과 반환): ${String(err)}`);
+      return [];
+    } finally {
+      if (browser) {
+        await browser.close().catch(() => undefined);
+      }
+    }
+  }
+
+  /**
+   * GameCenter 당일 경기 선발투수 라인업 크롤링 (단일 페이지, ADR-056).
+   *
+   * robots.txt 허용 경로(/Schedule/). 단일 페이지 1회 로드라 드롭다운/추가 네비게이션이
+   * 없다 → 페이지 내 10초 sleep 불필요(요청 1회). 다만 호출부(daily-kbo.scheduler)에서
+   * withHealthGate('lineup', ...) 로 게이트한다.
+   *
+   * networkidle 후 game-cont 등장 대기 → 전체 페이지 HTML 을 parseLineups 에 넘긴다.
+   * best-effort: 실패해도 throw 하지 않고 빈 배열 반환(graceful degradation).
+   *
+   * @returns 파싱된 경기 라인업 행들(부분/빈 결과 가능)
+   */
+  async scrapeLineups(): Promise<GameLineupRow[]> {
+    let browser: Browser | null = null;
+    try {
+      browser = await this.launchBrowser();
+      if (!browser) {
+        this.logger.warn('Playwright 로드 실패 — 라인업 크롤링 생략');
+        return [];
+      }
+      const page = await browser.newPage();
+      await page.goto(GAMECENTER_URL, { waitUntil: 'networkidle' });
+      // game-cont 등장 대기(없으면 타임아웃 → catch 로 빈 배열).
+      await page
+        .waitForSelector(GAMECENTER_SELECTORS.ready, { timeout: 15_000 })
+        .catch(() => undefined);
+
+      const html = await page.content();
+      const rows = parseLineups(html);
+      this.logger.log(`라인업 수집: GameCenter → ${rows.length}경기`);
+      return rows;
+    } catch (err) {
+      this.logger.error(`라인업 크롤링 오류(빈 결과 반환): ${String(err)}`);
       return [];
     } finally {
       if (browser) {

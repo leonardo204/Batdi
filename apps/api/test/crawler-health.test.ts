@@ -136,6 +136,22 @@ describe('CrawlerHealthManager', () => {
     expect(mgr.getHealth().news.consecutiveFailures).toBe(0);
   });
 
+  it('lineup 소스(ADR-056): CRAWL_SOURCES 포함 + 독립 3회 실패 자동 비활성·성공 재활성', () => {
+    expect(CRAWL_SOURCES).toContain('lineup');
+    expect(mgr.isEnabled('lineup')).toBe(true);
+
+    mgr.recordFailure('lineup');
+    mgr.recordFailure('lineup');
+    mgr.recordFailure('lineup'); // 3회 → 비활성
+    expect(mgr.isEnabled('lineup')).toBe(false);
+    // 다른 소스는 영향 없음(독립).
+    expect(mgr.isEnabled('news')).toBe(true);
+
+    mgr.recordSuccess('lineup'); // 성공 → 재활성
+    expect(mgr.isEnabled('lineup')).toBe(true);
+    expect(mgr.getHealth().lineup.consecutiveFailures).toBe(0);
+  });
+
   it('getHealth: 모든 소스 키 + 구조 반환(복사본 — 외부 변형이 내부에 영향 없음)', () => {
     const snapshot = mgr.getHealth();
     expect(Object.keys(snapshot).sort()).toEqual(

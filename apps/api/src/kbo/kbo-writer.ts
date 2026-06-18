@@ -9,6 +9,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type {
+  GameLineupRow,
   HitterStatRow,
   KboGameRow,
   PitcherStatRow,
@@ -298,6 +299,78 @@ export class PlayerStatWriter {
     };
     this.logger.log(
       `pitching_stats upsert: collected=${result.collected} players=${result.players} stats=${result.stats}`,
+    );
+    return result;
+  }
+}
+
+/**
+ * LineupWriter — GameCenter 선발 라인업(GameLineupRow) Prisma 영속화 (ADR-056).
+ *
+ * gameKey(g_id) 자연키로 game_lineups 에 upsert. update 시에는 변경 가능 필드만 갱신한다
+ * (선발투수/상태/시각은 경기 임박 시 갱신, 대진/날짜/팀은 사실상 불변이나 함께 set).
+ * KboGameWriter 패턴 평행.
+ */
+@Injectable()
+export class LineupWriter {
+  private readonly logger = new Logger(LineupWriter.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * 라인업 행들을 gameKey 로 upsert. 기존 존재 여부로 created/updated 구분.
+   * update 는 갱신 가능 필드(선발투수/상태/시각/구장/팀명·teamId)를 set.
+   */
+  async write(rows: GameLineupRow[]): Promise<WriteResult> {
+    let saved = 0;
+    let modified = 0;
+
+    for (const row of rows) {
+      const existing = await this.prisma.gameLineup.findUnique({
+        where: { gameKey: row.gameKey },
+        select: { gameKey: true },
+      });
+
+      await this.prisma.gameLineup.upsert({
+        where: { gameKey: row.gameKey },
+        create: {
+          gameKey: row.gameKey,
+          gameDate: new Date(row.gameDate),
+          homeTeamId: row.homeTeamId,
+          awayTeamId: row.awayTeamId,
+          homeTeamName: row.homeTeamName,
+          awayTeamName: row.awayTeamName,
+          homeStarter: row.homeStarter,
+          awayStarter: row.awayStarter,
+          stadium: row.stadium,
+          gameTime: row.gameTime,
+          status: row.status,
+        },
+        update: {
+          // 선발/상태/시각은 경기 임박 시 갱신될 수 있어 모두 set(키만 불변).
+          gameDate: new Date(row.gameDate),
+          homeTeamId: row.homeTeamId,
+          awayTeamId: row.awayTeamId,
+          homeTeamName: row.homeTeamName,
+          awayTeamName: row.awayTeamName,
+          homeStarter: row.homeStarter,
+          awayStarter: row.awayStarter,
+          stadium: row.stadium,
+          gameTime: row.gameTime,
+          status: row.status,
+        },
+      });
+
+      if (existing) {
+        modified += 1;
+      } else {
+        saved += 1;
+      }
+    }
+
+    const result: WriteResult = { collected: rows.length, saved, modified };
+    this.logger.log(
+      `game_lineups upsert: collected=${result.collected} saved=${result.saved} modified=${result.modified}`,
     );
     return result;
   }

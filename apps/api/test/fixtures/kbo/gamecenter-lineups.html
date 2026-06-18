@@ -1,0 +1,72 @@
+<!-- GameCenter 라인업 픽스처 (ADR-056, 2026-06-18 실측 구조 기반).
+     game-cont 3건: ① 두산(home)-KT(away) 잠실 ② KIA(home)-LG(away) 광주
+     ③ 선발 미발표(today-pitcher 텍스트 비어있음) + g_id 누락 1건(skip 검증). -->
+<div class="today-game">
+  <ul class="game-list-n">
+    <li class="game-cont" g_id="20260618KTOB0" g_dt="20260618" s_nm="잠실"
+        away_id="KT" home_id="OB" away_nm="KT" home_nm="두산"
+        away_p_id="50030" home_p_id="55268" start_ck="1" lineup_ck="20">
+      <div class="top"><ul><li>잠실</li><li><img src="x.png"></li><li>18:30</li></ul></div>
+      <div class="middle">
+        <div class="broadcasting"> MS-T,SPO-T</div>
+        <p class="staus">경기예정</p>
+        <div class="info">
+          <div class="team away">
+            <div class="emb"><img src="emblem_KT.png" alt="KT"></div>
+            <div class="today-pitcher"><p><span class="before">선</span>소형준 </p></div>
+          </div>
+          <div class="vs">VS</div>
+          <div class="team home">
+            <div class="emb"><img src="emblem_OB.png" alt="두산"></div>
+            <div class="today-pitcher"><p><span class="before">선</span>최민석 </p></div>
+          </div>
+        </div>
+      </div>
+    </li>
+
+    <li class="game-cont" g_id="20260618LGHT0" g_dt="20260618" s_nm="광주"
+        away_id="LG" home_id="HT" away_nm="LG" home_nm="KIA"
+        away_p_id="55130" home_p_id="77637" start_ck="1" lineup_ck="20">
+      <div class="top"><ul><li>광주</li><li><img src="x.png"></li><li>18:30</li></ul></div>
+      <div class="middle">
+        <div class="broadcasting"> S-T</div>
+        <p class="staus">경기예정</p>
+        <div class="info">
+          <div class="team away">
+            <div class="emb"><img src="emblem_LG.png" alt="LG"></div>
+            <div class="today-pitcher"><p><span class="before">선</span>톨허스트 </p></div>
+          </div>
+          <div class="vs">VS</div>
+          <div class="team home">
+            <div class="emb"><img src="emblem_HT.png" alt="KIA"></div>
+            <div class="today-pitcher"><p><span class="before">선</span>양현종 </p></div>
+          </div>
+        </div>
+      </div>
+    </li>
+
+    <!-- 선발 미발표(today-pitcher 빈 텍스트) + 시각 없음 -->
+    <li class="game-cont" g_id="20260618SSWO0" g_dt="20260618" s_nm="고척"
+        away_id="SS" home_id="WO" away_nm="삼성" home_nm="키움"
+        start_ck="0" lineup_ck="0">
+      <div class="top"><ul><li>고척</li></ul></div>
+      <div class="middle">
+        <p class="staus"></p>
+        <div class="info">
+          <div class="team away">
+            <div class="today-pitcher"><p></p></div>
+          </div>
+          <div class="vs">VS</div>
+          <div class="team home">
+            <div class="today-pitcher"><p></p></div>
+          </div>
+        </div>
+      </div>
+    </li>
+
+    <!-- g_id 누락 → skip 대상 -->
+    <li class="game-cont" g_dt="20260618" s_nm="대전" away_nm="한화" home_nm="롯데">
+      <div class="info"><div class="team away"><div class="today-pitcher"><p>선X</p></div></div></div>
+    </li>
+  </ul>
+</div>

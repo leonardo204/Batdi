@@ -15,6 +15,7 @@ import {
   type SeriesTypeName,
   type TeamCode,
 } from './kbo-teams';
+import { GAMECENTER_TEAM_NAME_TO_ID } from './kbo.constants';
 
 /** 파싱된 경기 1건 (KboGame 모델에 그대로 write 가능한 행) */
 export interface KboGameRow {
@@ -401,6 +402,139 @@ export function parsePitcherBasic(
       strikeouts: parseIntOrNull(cellText(15)),
       whip: parseFloatOrNull(cellText(18)),
       raw,
+    });
+  });
+
+  return rows;
+}
+
+/** 파싱된 경기 라인업 1건 (GameLineup 모델에 그대로 write 가능한 행, ADR-056) */
+export interface GameLineupRow {
+  /** g_id — gameKey (예 "20260618KTOB0") */
+  gameKey: string;
+  /** "yyyy-MM-dd" ISO 날짜 문자열 (g_dt 에서 파생, DB @db.Date) */
+  gameDate: string;
+  /** 한글명→teamId 매핑(미지원 팀 null) */
+  homeTeamId: string | null;
+  awayTeamId: string | null;
+  /** home_nm / away_nm (한글 표시명) */
+  homeTeamName: string;
+  awayTeamName: string;
+  /** 선발투수명("선" 접두 제거). 미발표 시 null. */
+  homeStarter: string | null;
+  awayStarter: string | null;
+  /** s_nm (구장) */
+  stadium: string | null;
+  /** "HH:mm" (top ul 마지막 li). 없으면 null. */
+  gameTime: string | null;
+  /** 경기 상태 원문(.staus, 예 "경기예정"). 없으면 "경기예정" 폴백. */
+  status: string;
+}
+
+/** 한글 팀명 → 내부 teamId(미지원/빈값 null) */
+export function teamNameToId(name: string | null | undefined): string | null {
+  const key = (name ?? '').trim();
+  if (key === '') {
+    return null;
+  }
+  return GAMECENTER_TEAM_NAME_TO_ID[key] ?? null;
+}
+
+/** "yyyyMMdd" → "yyyy-MM-dd" (g_dt → ISO). 형식 불일치 시 그대로 반환. */
+function gdtToIso(gdt: string): string {
+  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(gdt.trim());
+  if (!m) {
+    return gdt.trim();
+  }
+  return `${m[1]}-${m[2]}-${m[3]}`;
+}
+
+/**
+ * `.today-pitcher p` 텍스트에서 선발투수명을 추출한다("선" 접두/공백 제거).
+ *   예) "선소형준 " → "소형준". 빈 문자열/없음 → null(미발표).
+ *  - span.before("선") 가 텍스트에 포함되므로 선두 "선"을 1회 제거한다.
+ */
+export function extractStarterName(
+  raw: string | null | undefined,
+): string | null {
+  let s = (raw ?? '').replace(/\s+/g, ' ').trim();
+  if (s === '') {
+    return null;
+  }
+  // 선두 "선" 접두(span.before) 제거 — 한글 선발투수명이 "선X" 형태이므로 1회만 제거.
+  if (s.startsWith('선')) {
+    s = s.slice(1).trim();
+  }
+  return s === '' ? null : s;
+}
+
+/**
+ * GameCenter 메인 HTML 파싱 → 경기별 선발 라인업 행 (ADR-056, 순수 함수).
+ *
+ * 입력: GameCenter 의 `li.game-cont` 들을 포함하는 HTML(전체 페이지 또는 game-cont 묶음).
+ * 각 `li.game-cont` 의 데이터 속성(g_id/g_dt/s_nm/home_nm/away_nm) +
+ * `.team.away/.team.home .today-pitcher` 텍스트(선발투수명) + `.staus`(상태) + `.top ul li`(시각)을
+ * 읽어 GameLineupRow 로 변환한다.
+ *
+ *  - g_id(gameKey) 없는 항목은 skip(불완전 행).
+ *  - away/home 은 .team.away / .team.home 구획을 **직접** 읽어 순서 모호성을 제거한다(실측 확정).
+ *  - teamId 는 한글명(home_nm/away_nm) → teamNameToId(미지원 null).
+ *  - 시각: `.top ul li` 중 "HH:mm" 패턴인 마지막 li. 없으면 null.
+ *  - 상태: `.staus` 텍스트(원문 클래스 오타 그대로). 없으면 "경기예정" 폴백.
+ */
+export function parseLineups(html: string): GameLineupRow[] {
+  const $ = cheerio.load(html);
+  const rows: GameLineupRow[] = [];
+
+  $('li.game-cont').each((_, li) => {
+    const $li = $(li);
+    const gameKey = ($li.attr('g_id') ?? '').trim();
+    if (gameKey === '') {
+      return; // gameKey 없으면 skip.
+    }
+
+    const gdt = ($li.attr('g_dt') ?? '').trim();
+    const homeTeamName = ($li.attr('home_nm') ?? '').trim();
+    const awayTeamName = ($li.attr('away_nm') ?? '').trim();
+    const stadiumAttr = ($li.attr('s_nm') ?? '').trim();
+
+    const homeStarter = extractStarterName(
+      $li.find('.team.home .today-pitcher').first().text(),
+    );
+    const awayStarter = extractStarterName(
+      $li.find('.team.away .today-pitcher').first().text(),
+    );
+
+    // 상태(.staus — 원문 클래스 오타 그대로). 없으면 예정 폴백.
+    const statusText = $li
+      .find('.staus')
+      .first()
+      .text()
+      .replace(/\s+/g, ' ')
+      .trim();
+    const status = statusText !== '' ? statusText : '경기예정';
+
+    // 시각: top ul 의 li 중 "HH:mm" 패턴(마지막). 없으면 null.
+    let gameTime: string | null = null;
+    $li.find('.top ul li').each((_i, el) => {
+      const t = $(el).text().trim();
+      if (/^\d{1,2}:\d{2}$/.test(t)) {
+        gameTime = t;
+      }
+    });
+
+    rows.push({
+      gameKey,
+      gameDate: gdtToIso(gdt),
+      homeTeamId: teamNameToId(homeTeamName),
+      awayTeamId: teamNameToId(awayTeamName),
+      homeTeamName,
+      awayTeamName,
+      homeStarter,
+      awayStarter,
+      stadium: stadiumAttr !== '' ? stadiumAttr : null,
+      gameTime,
+      status,
     });
   });
 
