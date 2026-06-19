@@ -3,6 +3,11 @@
  *
  * SSOT: Ref-docs/specs/design/batdi-architecture.md ADR-048.
  *
+ * ⚠️ DEPRECATED (ADR-058): news intent 의 실데이터는 agent 의 Gemini Google Search
+ *    grounding(news-search.ts → cache_news queryKey TTL)으로 **대체**됐다. 이 RSS 배치
+ *    스케줄러는 보조/비활성 경로다 — NEWS_CRAWLER_ENABLED 가 'true' 가 아니면 no-op(기본 off).
+ *    코드는 보존하되 배선/기본 동작은 변경하지 않는다(향후 보강 채널로 남겨둠).
+ *
  * - @Cron('*\/30 * * * *', Asia/Seoul): 30분마다 Google News RSS(4팀) 크롤 → 요약 → cache_news upsert.
  * - NEWS_CRAWLER_ENABLED 가 'true' 가 아니면 no-op + 로깅(CI/테스트/로컬 부팅 라이브 호출 차단).
  * - withHealthGate('news'): daily-kbo.scheduler 패턴 동일 — scrapeAll 0건=recordFailure,

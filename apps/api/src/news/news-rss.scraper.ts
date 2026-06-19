@@ -3,6 +3,10 @@
  *
  * SSOT: Ref-docs/specs/design/batdi-architecture.md ADR-048.
  *
+ * ⚠️ DEPRECATED (ADR-058): news intent 의 실데이터는 Gemini Google Search grounding
+ *    (agent/news-search.ts)으로 대체됐다. 이 RSS 스크래퍼는 보조/비활성 경로로 보존만 한다
+ *    (DailyNewsScheduler 가 NEWS_CRAWLER_ENABLED off 기본이라 호출되지 않음). 배선 변경 없음.
+ *
  * ⚠️ 크롤 채널은 **Google News RSS 공개 피드만** 사용한다 — 네이버/다음 직접 크롤 절대 금지
  *    (CLAUDE.md 불변식). RSS 는 robots 무관 공개 피드라 허용.
  * ⚠️ CLAUDE.md "요청 간격 10초+·동시 1·순차" — for...of 순차 + 팀 사이 sleep(REQUEST_DELAY_MS).

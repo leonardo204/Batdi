@@ -27,6 +27,7 @@ import {
 } from '../services/stats-graph';
 import { fetchRandomMeme } from '../services/meme-graph';
 import { fetchNewsData } from '../services/news-graph';
+import { extractNewsQuery } from '../services/news-search';
 import { fetchScheduleData } from '../services/schedule-graph';
 import { fetchLineupData } from '../services/lineup-graph';
 import { fetchHeadToHead } from '../services/head-to-head-graph';
@@ -106,10 +107,12 @@ export async function serviceData(
   }
 
   if (state.intent === 'news') {
-    // P3-W7 7.5 (ADR-048): 팀 뉴스 + 일반 KBO 뉴스 최신 5건(cache_news). best-effort —
-    // DB 없음/만료/빈 결과 → null(EmitA2UI 가 news 분기에서 폴백 텍스트 카드 처리).
+    // ADR-058: 사용자 메시지에서 검색 토픽을 추출(extractNewsQuery — LLM 미사용)하고,
+    // queryKey 로 cache_news(TTL 30분) HIT 면 즉시, MISS 면 Gemini grounding 실시간 검색
+    // → 저장 후 rows. best-effort — 키 없음/검색 실패/빈 → null(EmitA2UI 폴백 텍스트 카드).
     // EmitA2UI 가 news_compact 카드로 방출(chat LLM 미경유). meme 분기와 평행.
-    const newsData = await fetchNewsData(state.teamId);
+    const query = extractNewsQuery(state.userMessage, state.teamId);
+    const newsData = await fetchNewsData(query, state.teamId);
     return { newsData };
   }
 

@@ -268,6 +268,9 @@ model CacheScore {
 model CacheNews {
   id          Int       @id @default(autoincrement())
   teamId      String?   @map("team_id") @db.VarChar(20)
+  // ADR-058: Gemini grounding 검색 질의 키(extractNewsQuery → normalize → hash).
+  // 임의 토픽 질의("오타니 뉴스" 등)를 키링해 TTL 캐시 조회/저장에 사용한다.
+  queryKey    String?   @map("query_key") @db.VarChar(64)
   title       String?   @db.VarChar(255)
   url         String?   @unique @db.VarChar(512)
   summary     String?   @db.Text
@@ -277,6 +280,8 @@ model CacheNews {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
   @@index([teamId, publishedAt(sort: Desc)], map: "idx_cache_news_team")
+  // ADR-058: queryKey + expiresAt(미만료) 조합으로 grounding 캐시 HIT 조회.
+  @@index([queryKey, expiresAt], map: "idx_cache_news_query")
   @@map("cache_news")
 }
 
