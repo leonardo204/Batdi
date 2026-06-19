@@ -83,17 +83,33 @@ function reportA2UIResult(stage: string, result: BuildA2UIResult): void {
  * args 는 delta(문자열)로 흘러가므로 JSON.stringify 한다.
  * tool_call id 는 run 당 단일 surface 라 안정 상수(Date/random 미사용).
  */
+/**
+ * 턴마다 고유한 A2UI surfaceId 를 만든다.
+ *
+ * ⚠️ surfaceId 가 상수(batdi-main)면 CopilotKit 렌더러가 **같은 surface 를 in-place 갱신**해
+ *   이전 카드(예: 순위표)가 다음 카드(예: 스코어)로 덮어써진다(버그). LangGraph 런타임이
+ *   주입하는 `config.configurable.run_id`(런=턴 단위 유일, 결정론·resume 안전)로 분리해
+ *   턴마다 새 surface 가 쌓이게 한다. run_id 없으면(단위테스트) 상수 폴백.
+ */
+function surfaceIdFor(config: RunnableConfig | undefined): string {
+  const runId = (config?.configurable as { run_id?: unknown } | undefined)?.run_id;
+  return typeof runId === 'string' && runId.trim() !== ''
+    ? `batdi-${runId}`
+    : BATDI_SURFACE_ID;
+}
+
 async function emitRenderA2UIToolCall(
   result: Pick<BuildA2UIResult, 'components' | 'data'>,
   config: RunnableConfig | undefined,
 ): Promise<void> {
+  const surfaceId = surfaceIdFor(config);
   await dispatchCustomEvent(
     MANUALLY_EMIT_TOOL_CALL,
     {
-      id: `render-${BATDI_SURFACE_ID}`,
+      id: `render-${surfaceId}`,
       name: RENDER_A2UI_TOOL_NAME,
       args: JSON.stringify({
-        surfaceId: BATDI_SURFACE_ID,
+        surfaceId,
         components: result.components,
         data: result.data,
       }),
