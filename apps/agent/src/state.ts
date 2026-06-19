@@ -19,6 +19,7 @@ import type { StandingsData, StatsLeaderboard } from './services/stats-graph';
 import type { NewsData } from './services/news-graph';
 import type { ScheduleData } from './services/schedule-graph';
 import type { LineupData } from './services/lineup-graph';
+import type { HeadToHeadData } from './services/head-to-head-graph';
 import type { ConversationMemory } from './services/memory';
 
 /** 마지막-쓰기-우선(last-write-wins) reducer 헬퍼 */
@@ -183,6 +184,16 @@ export const CoreStateAnnotation = Annotation.Root({
   //   lineup 외 intent 면 미설정(undefined).
   lineupData: Annotation<LineupData | null | undefined>(
     lastValue<LineupData | null | undefined>(),
+  ),
+
+  // ── 서비스 실데이터 (ServiceData, h2h HeadToHeadGraph, ADR-057) ──
+  // ServiceData 가 h2h intent 에서 fetchHeadToHead(teamId) 로 채운다(team_head_to_head 실데이터).
+  //   - EmitA2UI 가 h2h 분기에서 h2h_compact 카드 데이터 모델(rows)로 주입한다.
+  //   - 상대전적은 LLM 감정 리액션을 생성하지 않으므로 reaction 슬롯 없음(L1).
+  // best-effort: DB 비활성/teamId 없음/미적재/빈 결과 시 null → EmitA2UI 가 폴백 텍스트 카드로 방출.
+  //   h2h 외 intent 면 미설정(undefined).
+  headToHeadData: Annotation<HeadToHeadData | null | undefined>(
+    lastValue<HeadToHeadData | null | undefined>(),
   ),
 
   // ── 리액션 (TeamPersona → OutputGuardrail → EmitA2UI) ──

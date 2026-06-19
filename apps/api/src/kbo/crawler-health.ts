@@ -22,7 +22,8 @@ export type CrawlSource =
   | 'hitter'
   | 'pitcher'
   | 'news'
-  | 'lineup';
+  | 'lineup'
+  | 'h2h';
 
 /** 모든 크롤 소스 목록(상태 초기화·getHealth 순회용). */
 export const CRAWL_SOURCES: readonly CrawlSource[] = [
@@ -32,6 +33,7 @@ export const CRAWL_SOURCES: readonly CrawlSource[] = [
   'pitcher',
   'news',
   'lineup',
+  'h2h',
 ] as const;
 
 /** 자동 비활성 임계치 — 연속 실패가 이 횟수에 도달하면 disabled=true. */
@@ -61,6 +63,7 @@ export class CrawlerHealthManager {
     pitcher: this.initState(),
     news: this.initState(),
     lineup: this.initState(),
+    h2h: this.initState(),
   };
 
   /** 초기 헬스 상태(모든 소스 활성·실패 0). */
@@ -129,6 +132,7 @@ export class CrawlerHealthManager {
       pitcher: { ...this.health.pitcher },
       news: { ...this.health.news },
       lineup: { ...this.health.lineup },
+      h2h: { ...this.health.h2h },
     };
   }
 

@@ -244,6 +244,15 @@ function lineupNoDataText(teamId: CoreGraphState['teamId']): string {
 }
 
 /**
+ * h2h intent 인데 상대전적 실데이터(state.headToHeadData)가 없을 때의 팀 톤 폴백 문구(ADR-057).
+ * lineupNoDataText 와 평행 — 수치 없음, 상대전적 미적재/팀 미지정 톤. 캐시 금지(데이터 부재).
+ */
+function headToHeadNoDataText(teamId: CoreGraphState['teamId']): string {
+  const tone = cannedReactionFor(teamId);
+  return `${tone} 아직 상대전적 정보를 못 가져왔어유~ 조금 있다 다시 물어봐줘!`;
+}
+
+/**
  * composite L3 게이트 실패/생성 불가 시 대표 intent 의 L1 템플릿으로 즉시 폴백한다(P3-W9 9.1).
  *
  * SSOT: palette-schema §5.4 "검증 실패 → 해당 intent L1 기본 Template 통째 폴백(재호출 금지)".
@@ -531,6 +540,27 @@ export async function emitA2UI(
     };
   }
 
+  // ── h2h DataFallbackHandler (ADR-057) ──
+  // h2h intent 인데 상대전적 실데이터 없음(state.headToHeadData == null): 미적재/teamId 없음/DB 없음 →
+  // h2h_compact 카드 대신 팀 톤 폴백 텍스트 카드(단일 Text) + AIMessage 를 방출한다.
+  // schedule/lineup 폴백과 평행. ⚠️ 데이터 부재라 L0 write 하지 않는다(적재 후에도 stale 방지).
+  if (state.intent === 'h2h' && state.headToHeadData == null) {
+    const fallbackText = headToHeadNoDataText(state.teamId);
+    const result = buildA2UIOps(
+      [{ id: 'root', component: 'Text', text: fallbackText }],
+      {},
+      fallbackText,
+    );
+    reportA2UIResult('intent=h2h(no-data-fallback)', result);
+    await emitRenderA2UIToolCall(result, config);
+    // L0 write 생략 — 상대전적 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
+    logResponseLevel('L1', 'h2h');
+    return {
+      a2uiEnvelope: result.ops,
+      messages: [new AIMessage(fallbackText)],
+    };
+  }
+
   // ── 템플릿 있음 (score: 실데이터 보유 / stats: 순위 실데이터 보유 / news: 뉴스 실데이터 보유 /
   //    schedule: 일정 실데이터 보유 / lineup: 라인업 실데이터 보유) ──
   if (template) {
@@ -580,6 +610,10 @@ export async function emitA2UI(
         team: state.lineupData.team,
         rows: state.lineupData.rows,
       };
+    } else if (state.intent === 'h2h' && state.headToHeadData) {
+      // 상대전적 카드: rows 만 주입(h2h_compact 는 /reaction 슬롯이 없음, ADR-057).
+      summary = '상대전적';
+      data = { rows: state.headToHeadData.rows };
     } else {
       // score 카드(또는 score 데이터 있는 경로): home/away/inning + reaction.
       // P2-W6: 리액션은 TeamPersona 가 생성하고 OutputGuardrail 이 검증·정제한 값을

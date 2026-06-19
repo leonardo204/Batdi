@@ -73,6 +73,23 @@ export interface PitcherStatRow {
   raw: string[];
 }
 
+/**
+ * 파싱된 상대전적 1쌍 (TeamHeadToHead 모델에 write 가능한 행, ADR-057).
+ * 매트릭스 표의 (행팀, 컬럼상대) 한 쌍 = 행팀이 상대팀을 상대로 거둔 W-L-D.
+ */
+export interface TeamHeadToHeadRow {
+  season: number;
+  /** 행팀 코드(doosan/hanwha/... — 미지원이면 'unknown') */
+  teamId: TeamCode;
+  /** 상대팀 코드. 미지원 팀(toTeamCode 'unknown')이면 null. */
+  opponentId: TeamCode | null;
+  /** 상대팀 한글 표시명(헤더 라벨에서 "(승-패-무)" 제거) */
+  opponentName: string;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
 /** 파싱된 팀 시즌 기록 1건 (TeamSeasonRecord 모델에 그대로 write 가능한 행) */
 export interface TeamSeasonRecordRow {
   season: number;
@@ -312,6 +329,128 @@ export function parseTeamSeasonRecord(
       streak: cellText(9),
     });
   });
+
+  return rows;
+}
+
+/**
+ * 헤더 라벨에서 상대팀 한글명을 추출한다("(승-패-무)" 접미 제거).
+ *   예) "KIA(승-패-무)" → "KIA", "삼성(승-패-무)" → "삼성".
+ *  - "팀명"/"합계" 등 비-팀 라벨은 호출부에서 별도로 거른다.
+ */
+function stripWldSuffix(label: string): string {
+  return label.replace(/\s*\(.*?\)\s*$/, '').trim();
+}
+
+/**
+ * "W-L-D" 셀("5-3-0")을 [wins, losses, draws] 로 분해한다.
+ *  - 정확히 3개 정수가 아니면(■/합계/빈값 등) null 반환(호출부에서 skip).
+ */
+function parseWldCell(cell: string): [number, number, number] | null {
+  const m = /^(\d+)\s*-\s*(\d+)\s*-\s*(\d+)$/.exec(cell.trim());
+  if (!m) {
+    return null;
+  }
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+}
+
+/**
+ * 상대전적 매트릭스 표(pnlVsTeam) tbody HTML 파싱 (ADR-057).
+ *
+ * 표 구조(실측 확정):
+ *  - 헤더(thead tr): [0]"팀명" [1..10]"{상대팀}(승-패-무)" [11]"합계".
+ *  - 본문(tbody tr): [0]행팀 한글명 + [1..N]매트릭스 셀("5-3-0"=W-L-D / "■"=자기 / 마지막"합계").
+ *
+ * 규칙:
+ *  - 각 (행팀, 컬럼상대) 쌍을 한 행으로 만든다.
+ *  - ■(자기자신)·합계 컬럼·비-W-L-D 셀은 skip.
+ *  - 컬럼 상대팀명은 헤더 라벨에서 "(승-패-무)" 제거. "팀명"/"합계" 헤더는 매트릭스 컬럼이 아니다.
+ *  - 한글 팀명 → teamId(toTeamCode). 미지원 상대(unknown) 는 opponentId=null + opponentName 보존.
+ *  - 행팀이 unknown 인 행 전체는 skip(저장 키 의미 없음). 컬럼이 unknown 이면 opponentId=null 로 보존.
+ *
+ * ⚠️ loadRows: cheerio 가 맨몸 <tbody> 를 폐기하므로 <table> 래퍼를 보장한다(다른 파서와 동일).
+ *    다만 pnlVsTeam 의 outerHTML 은 thead 를 별도 영역에 둘 수 있어, 헤더를 첫 <tr>(td/th 혼재)
+ *    로도 폴백 인식한다.
+ */
+export function parseHeadToHead(
+  tableHtml: string,
+  season: number,
+): TeamHeadToHeadRow[] {
+  const $ = loadRows(tableHtml);
+  const rows: TeamHeadToHeadRow[] = [];
+
+  // 모든 tr 의 셀 텍스트 배열을 먼저 추출한다(thead/tbody 구분 없이 직렬 처리).
+  const trCells: string[][] = [];
+  $('tr').each((_i, tr) => {
+    trCells.push(
+      $(tr)
+        .find('th, td')
+        .toArray()
+        .map((c) => $(c).text().trim()),
+    );
+  });
+  if (trCells.length === 0) {
+    return rows;
+  }
+
+  // 헤더: "팀명" 으로 시작하고 "(...-...)" 라벨을 포함하는 첫 행.
+  let headerIdx = -1;
+  for (let i = 0; i < trCells.length; i += 1) {
+    const c = trCells[i] ?? [];
+    if (c[0] === '팀명' && c.some((x) => /\(.*[-‐]/.test(x))) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) {
+    // 헤더 미발견 → 매트릭스 표 아님(빈 결과).
+    return rows;
+  }
+
+  const headerCells = trCells[headerIdx] ?? [];
+  // 컬럼 인덱스 → 상대팀 한글명 매핑. [0]은 "팀명"이라 제외, "합계"는 제외.
+  const colTeamName: Record<number, string> = {};
+  for (let col = 1; col < headerCells.length; col += 1) {
+    const label = headerCells[col] ?? '';
+    if (label === '' || label === '합계') {
+      continue;
+    }
+    colTeamName[col] = stripWldSuffix(label);
+  }
+
+  // 본문 행: 헤더 다음 tr 들.
+  for (let r = headerIdx + 1; r < trCells.length; r += 1) {
+    const cells = trCells[r] ?? [];
+    if (cells.length < 2) {
+      continue;
+    }
+    const rowTeamName = cells[0] ?? '';
+    const teamId = toTeamCode(rowTeamName);
+    if (teamId === 'unknown') {
+      continue; // 행팀 미식별 → skip(저장 키 의미 없음).
+    }
+
+    for (let col = 1; col < cells.length; col += 1) {
+      const opponentName = colTeamName[col];
+      if (opponentName === undefined) {
+        continue; // "합계" 등 비-매트릭스 컬럼.
+      }
+      const wld = parseWldCell(cells[col] ?? '');
+      if (wld === null) {
+        continue; // ■(자기)·빈값·비-W-L-D 셀.
+      }
+      const oppCode = toTeamCode(opponentName);
+      rows.push({
+        season,
+        teamId,
+        opponentId: oppCode === 'unknown' ? null : oppCode,
+        opponentName,
+        wins: wld[0],
+        losses: wld[1],
+        draws: wld[2],
+      });
+    }
+  }
 
   return rows;
 }

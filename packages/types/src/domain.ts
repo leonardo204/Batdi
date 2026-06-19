@@ -80,6 +80,7 @@ export type Intent =
   | 'news' // 뉴스·기사·소식
   | 'schedule' // 경기 일정
   | 'lineup' // 선발·라인업
+  | 'h2h' // 팀간 상대전적 (맞대결·천적, ADR-057)
   | 'meme' // 밈·유머
   | 'chat'; // 잡담 (미매칭 기본값)
 

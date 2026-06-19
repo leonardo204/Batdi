@@ -47,6 +47,15 @@ export const TEAM_RANK_SELECTORS = {
   series: '#cphContents_cphContents_cphContents_ddlSeries',
   /** 팀순위 테이블의 tbody */
   rankTable: '#cphContents_cphContents_cphContents_udpRecord > table > tbody',
+  /**
+   * 상대전적 매트릭스 표(ADR-057, 2026-06-19 실측 확정).
+   *  - TeamRank.aspx 동일 페이지의 `#...pnlVsTeam > table`(class tData) 표.
+   *  - 헤더: `팀명` + `{상대팀}(승-패-무)`×10 + `합계`. 행: 행팀명 + 매트릭스 셀(W-L-D)/■/합계.
+   *  - 순위 표(rankTable)와 별개 table 이라 1회 로드로 함께 추출한다.
+   *  - ⚠️ rankTable 과 달리 `> tbody` 가 아니라 **table 전체**를 추출한다: 컬럼→상대팀 매핑에
+   *    필요한 헤더 행이 `<thead>`(tbody 밖)에 있어 tbody 만 잡으면 헤더가 누락된다(실측 확정).
+   */
+  vsTeamTable: '#cphContents_cphContents_cphContents_pnlVsTeam > table',
 } as const;
 
 /**

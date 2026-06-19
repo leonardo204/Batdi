@@ -29,6 +29,7 @@ import { fetchRandomMeme } from '../services/meme-graph';
 import { fetchNewsData } from '../services/news-graph';
 import { fetchScheduleData } from '../services/schedule-graph';
 import { fetchLineupData } from '../services/lineup-graph';
+import { fetchHeadToHead } from '../services/head-to-head-graph';
 
 export async function serviceData(
   state: CoreGraphState,
@@ -124,6 +125,13 @@ export async function serviceData(
     // 팀 톤 폴백 텍스트 카드 처리. 선발 크롤러 도입 시 실데이터로 채워진다(ADR-052 잔여).
     const lineupData = await fetchLineupData(state.teamId);
     return { lineupData };
+  }
+
+  if (state.intent === 'h2h') {
+    // ADR-057: 팀 상대전적(team_head_to_head). best-effort — DB 없음/teamId 없음/미적재 →
+    // null(EmitA2UI 가 h2h 분기에서 폴백 텍스트 카드 처리). schedule/news 분기와 평행.
+    const headToHeadData = await fetchHeadToHead(state.teamId);
+    return { headToHeadData };
   }
 
   return {};

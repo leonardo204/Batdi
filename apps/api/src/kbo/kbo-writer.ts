@@ -13,6 +13,7 @@ import type {
   HitterStatRow,
   KboGameRow,
   PitcherStatRow,
+  TeamHeadToHeadRow,
   TeamSeasonRecordRow,
 } from './kbo-parser';
 
@@ -157,6 +158,69 @@ export class TeamRecordWriter {
     const result: WriteResult = { collected: rows.length, saved, modified };
     this.logger.log(
       `team_season_records upsert: collected=${result.collected} saved=${result.saved} modified=${result.modified}`,
+    );
+    return result;
+  }
+}
+
+/**
+ * H2HWriter — 상대전적 매트릭스(TeamHeadToHeadRow) Prisma 영속화 (ADR-057).
+ *
+ * (season, teamId, opponentId) 자연키로 team_head_to_head 에 upsert. opponentId 가 nullable 이라
+ * Postgres UNIQUE 가 NULL 을 중복 허용하므로(표준 SQL), prisma.upsert 의 compound-unique where
+ * 대신 findFirst → create/update 로 멱등성을 직접 보장한다(미지원 상대 null 행 중복 방지).
+ * update 시에는 변경 가능 필드(wins/losses/draws/opponentName)만 갱신한다.
+ */
+@Injectable()
+export class H2HWriter {
+  private readonly logger = new Logger(H2HWriter.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async write(rows: TeamHeadToHeadRow[]): Promise<WriteResult> {
+    let saved = 0;
+    let modified = 0;
+
+    for (const row of rows) {
+      const existing = await this.prisma.teamHeadToHead.findFirst({
+        where: {
+          season: row.season,
+          teamId: row.teamId,
+          opponentId: row.opponentId,
+        },
+        select: { id: true },
+      });
+
+      if (existing) {
+        await this.prisma.teamHeadToHead.update({
+          where: { id: existing.id },
+          data: {
+            opponentName: row.opponentName,
+            wins: row.wins,
+            losses: row.losses,
+            draws: row.draws,
+          },
+        });
+        modified += 1;
+      } else {
+        await this.prisma.teamHeadToHead.create({
+          data: {
+            season: row.season,
+            teamId: row.teamId,
+            opponentId: row.opponentId,
+            opponentName: row.opponentName,
+            wins: row.wins,
+            losses: row.losses,
+            draws: row.draws,
+          },
+        });
+        saved += 1;
+      }
+    }
+
+    const result: WriteResult = { collected: rows.length, saved, modified };
+    this.logger.log(
+      `team_head_to_head upsert: collected=${result.collected} saved=${result.saved} modified=${result.modified}`,
     );
     return result;
   }

@@ -10,6 +10,7 @@ import { Module } from '@nestjs/common';
 import { DailyKboScheduler } from './daily-kbo.scheduler';
 import { KboScraper } from './kbo-scraper';
 import {
+  H2HWriter,
   KboGameWriter,
   LineupWriter,
   PlayerStatWriter,
@@ -24,6 +25,7 @@ import { CrawlerHealthManager } from './crawler-health';
     TeamRecordWriter,
     PlayerStatWriter,
     LineupWriter,
+    H2HWriter,
     CrawlerHealthManager,
     DailyKboScheduler,
   ],
@@ -32,6 +34,7 @@ import { CrawlerHealthManager } from './crawler-health';
     TeamRecordWriter,
     PlayerStatWriter,
     LineupWriter,
+    H2HWriter,
     CrawlerHealthManager,
   ],
 })

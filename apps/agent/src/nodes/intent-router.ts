@@ -51,6 +51,8 @@ export const INTENT_RULES: ReadonlyArray<IntentRule> = [
     pattern:
       /지금.*경기|이기고|지고\s*있|이겼|이긴|이김|졌|패배|승리|완승|완패|역전|끝내기|경기.*결과|결과/,
   },
+  // 상대전적(h2h) — stats/score 보다 먼저(“상대전적”이 stats/순위로 새지 않게, ADR-057).
+  { intent: 'h2h', pattern: /상대전적|맞대결|천적|상대\s*전적/ },
   // 순위/승률(standings) 우선 — 일반 stats보다 먼저
   {
     intent: 'stats',

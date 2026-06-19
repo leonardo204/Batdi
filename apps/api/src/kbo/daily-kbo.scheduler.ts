@@ -25,6 +25,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { KboScraper } from './kbo-scraper';
 import {
+  H2HWriter,
   KboGameWriter,
   LineupWriter,
   PlayerStatWriter,
@@ -44,6 +45,7 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
     private readonly recordWriter: TeamRecordWriter,
     private readonly playerStatWriter: PlayerStatWriter,
     private readonly lineupWriter: LineupWriter,
+    private readonly h2hWriter: H2HWriter,
     private readonly prisma: PrismaService,
     private readonly health: CrawlerHealthManager,
   ) {}
@@ -150,6 +152,14 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
         await this.recordWriter.write(records);
       }
 
+      // 상대전적 매트릭스(TeamRank.aspx pnlVsTeam, ADR-057) — 독립 health 게이트.
+      const h2h = await this.withHealthGate('h2h', () =>
+        this.scraper.scrapeHeadToHead(season),
+      );
+      if (h2h) {
+        await this.h2hWriter.write(h2h);
+      }
+
       // 선수 기본 스탯(타자·투수, 우선 4팀) — 일정·순위 크롤 뒤에.
       await this.crawlPlayerStats(season);
 
@@ -216,6 +226,14 @@ export class DailyKboScheduler implements OnApplicationBootstrap {
       );
       if (records) {
         await this.recordWriter.write(records);
+      }
+
+      // 상대전적 매트릭스(ADR-057) — 백필에도 동일 health 게이트.
+      const h2h = await this.withHealthGate('h2h', () =>
+        this.scraper.scrapeHeadToHead(season),
+      );
+      if (h2h) {
+        await this.h2hWriter.write(h2h);
       }
 
       // 선수 기본 스탯(타자·투수, 우선 4팀) — 일정·순위 백필 뒤에.

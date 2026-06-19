@@ -89,6 +89,11 @@ import {
   MEME_CARD_BIND_SCHEMA,
   MEME_CARD_TEMPLATE_ID,
 } from './meme_card';
+import {
+  HEAD_TO_HEAD_COMPACT_COMPONENTS,
+  HEAD_TO_HEAD_COMPACT_BIND_SCHEMA,
+  HEAD_TO_HEAD_COMPACT_TEMPLATE_ID,
+} from './h2h_compact';
 
 export interface L1Template {
   templateId: string;
@@ -133,6 +138,11 @@ const TEMPLATE_BY_INTENT: Partial<Record<Intent, L1Template>> = {
     templateId: LINEUP_COMPACT_TEMPLATE_ID,
     components: LINEUP_COMPACT_COMPONENTS,
     bindSchema: LINEUP_COMPACT_BIND_SCHEMA,
+  },
+  h2h: {
+    templateId: HEAD_TO_HEAD_COMPACT_TEMPLATE_ID,
+    components: HEAD_TO_HEAD_COMPACT_COMPONENTS,
+    bindSchema: HEAD_TO_HEAD_COMPACT_BIND_SCHEMA,
   },
 };
 
@@ -439,5 +449,13 @@ export const TEMPLATE_CATALOG: A2UITemplateRow[] = [
     componentTree: MEME_CARD_COMPONENTS,
     bindSchema: MEME_CARD_BIND_SCHEMA,
     variants: ['card'],
+  },
+  // ── h2h(ADR-057): 팀 상대전적 카드 — h2h intent 배선(TEMPLATE_BY_INTENT.h2h) ──
+  {
+    templateId: HEAD_TO_HEAD_COMPACT_TEMPLATE_ID,
+    intent: 'h2h',
+    componentTree: HEAD_TO_HEAD_COMPACT_COMPONENTS,
+    bindSchema: HEAD_TO_HEAD_COMPACT_BIND_SCHEMA,
+    variants: ['compact'],
   },
 ];

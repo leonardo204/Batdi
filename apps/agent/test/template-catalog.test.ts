@@ -57,9 +57,9 @@ function treeHasReaction(compiled: Array<Record<string, unknown>>): boolean {
 }
 
 describe('TEMPLATE_CATALOG — 카탈로그 구조(ADR-047)', () => {
-  it('16종(≥15) 등록', () => {
+  it('17종(≥15) 등록 (ADR-057 h2h_compact 추가)', () => {
     expect(TEMPLATE_CATALOG.length).toBeGreaterThanOrEqual(15);
-    expect(TEMPLATE_CATALOG.length).toBe(16);
+    expect(TEMPLATE_CATALOG.length).toBe(17);
   });
 
   it('templateId 유니크', () => {
@@ -84,6 +84,7 @@ describe('TEMPLATE_CATALOG — 카탈로그 구조(ADR-047)', () => {
     expect(byIntent('lineup')).toBeGreaterThanOrEqual(1);
     expect(byIntent('meme')).toBeGreaterThanOrEqual(1);
     expect(byIntent('chat')).toBeGreaterThanOrEqual(1);
+    expect(byIntent('h2h')).toBeGreaterThanOrEqual(1); // ADR-057
   });
 
   it.each(TEMPLATE_CATALOG.map((r) => [r.templateId, r] as const))(

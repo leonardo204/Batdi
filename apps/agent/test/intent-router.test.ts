@@ -65,6 +65,19 @@ describe('IntentRouter.classifyIntent', () => {
     expect(classifyIntent(norm('오늘 선발 누구야')).intent).toBe('lineup');
     expect(classifyIntent(norm('웃긴 거 보여줘')).intent).toBe('meme');
   });
+
+  it('상대전적/맞대결/천적 → h2h (ADR-057)', () => {
+    expect(classifyIntent(norm('상대전적 어때')).intent).toBe('h2h');
+    expect(classifyIntent(norm('상대 전적 보여줘')).intent).toBe('h2h');
+    expect(classifyIntent(norm('두산 맞대결 어때')).intent).toBe('h2h');
+    expect(classifyIntent(norm('우리 천적 누구야')).intent).toBe('h2h');
+  });
+
+  it('회귀: "순위" 는 여전히 stats(h2h 규칙이 가로채지 않음)', () => {
+    const r = classifyIntent(norm('우리 순위 어때'));
+    expect(r.intent).toBe('stats');
+    expect(r.statType).toBe('standings');
+  });
 });
 
 describe('IntentRouter — P2 키워드 보강 (결과·승패·팀별칭)', () => {

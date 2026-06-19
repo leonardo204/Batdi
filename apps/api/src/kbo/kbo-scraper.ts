@@ -28,6 +28,7 @@ import {
 } from './kbo.constants';
 import {
   parseGameSchedule,
+  parseHeadToHead,
   parseHitterBasic,
   parseLineups,
   parsePitcherBasic,
@@ -38,6 +39,7 @@ import type {
   HitterStatRow,
   KboGameRow,
   PitcherStatRow,
+  TeamHeadToHeadRow,
   TeamSeasonRecordRow,
 } from './kbo-parser';
 import { getSeriesType, type SeriesTypeName } from './kbo-teams';
@@ -163,6 +165,53 @@ export class KboScraper {
       return rows;
     } catch (err) {
       this.logger.error(`팀순위 크롤링 오류(빈 결과 반환): ${String(err)}`);
+      return [];
+    } finally {
+      if (browser) {
+        await browser.close().catch(() => undefined);
+      }
+    }
+  }
+
+  /**
+   * 상대전적 매트릭스 크롤링 (TeamRank.aspx 동일 페이지의 pnlVsTeam 표, ADR-057).
+   *
+   * 순위 표(scrapeTeamRank)와 같은 페이지지만 별개 table(pnlVsTeam) 이라 독립 health 게이트로
+   * 1회 더 로드한다(드롭다운 시즌 선택 후 매트릭스 표 outerHTML 추출). best-effort —
+   * 실패/미설치 시 빈 배열 반환(graceful degradation).
+   *
+   * @param season 시즌(연도)
+   * @returns 파싱된 상대전적 쌍 행들(부분/빈 결과 가능)
+   */
+  async scrapeHeadToHead(season: number): Promise<TeamHeadToHeadRow[]> {
+    let browser: Browser | null = null;
+    try {
+      browser = await this.launchBrowser();
+      if (!browser) {
+        this.logger.warn('Playwright 로드 실패 — 상대전적 크롤링 생략');
+        return [];
+      }
+      const page = await browser.newPage();
+      await page.goto(TEAM_RANK_URL, { waitUntil: 'networkidle' });
+
+      // 시즌 드롭다운 선택 후 매트릭스 표 갱신 대기(순위 표와 동일 UpdatePanel).
+      await this.selectAndWaitForTableReload(
+        page,
+        TEAM_RANK_SELECTORS.year,
+        `${season}`,
+        TEAM_RANK_SELECTORS.vsTeamTable,
+      );
+      await page.waitForSelector(TEAM_RANK_SELECTORS.vsTeamTable);
+
+      const html = await page
+        .locator(TEAM_RANK_SELECTORS.vsTeamTable)
+        .evaluate((el: { outerHTML: string }) => el.outerHTML);
+      const rows = parseHeadToHead(html, season);
+      this.logger.log(`상대전적 수집: ${season} → ${rows.length}쌍`);
+      await sleep(REQUEST_DELAY_MS);
+      return rows;
+    } catch (err) {
+      this.logger.error(`상대전적 크롤링 오류(빈 결과 반환): ${String(err)}`);
       return [];
     } finally {
       if (browser) {

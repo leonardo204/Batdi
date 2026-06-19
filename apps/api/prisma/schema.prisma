@@ -43,19 +43,19 @@ model User {
 }
 
 model Conversation {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
   // P3-W9 9.3/9.4: LangGraph run 의 thread_id(=conversationId 소스). CopilotKit 라운드트립의
   //   안정 키로 대화를 식별·upsert 한다(unique → 멱등). 익명/미배선 run 은 null.
-  threadId  String?  @unique @map("thread_id") @db.VarChar(100)
-  title     String?  @db.VarChar(100)
-  summary   String?  @db.Text
+  threadId     String?   @unique @map("thread_id") @db.VarChar(100)
+  title        String?   @db.VarChar(100)
+  summary      String?   @db.Text
   // P3-W9 9.3: 세션 종료 트리거(idle/자정/명시적)로 최종 요약을 기록한 시각. 재요약 멱등성:
   //   idle 스윕은 summarizedAt 이 null 이거나 updatedAt 보다 과거일 때만 다시 요약한다
   //   (매 idle 마다 중복 요약 방지 + 새 메시지로 updated_at 이 갱신되면 재요약 허용).
   summarizedAt DateTime? @map("summarized_at") @db.Timestamp(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
 
   user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages Message[]
@@ -402,4 +402,22 @@ model TeamSeasonRecord {
 
   @@id([season, team])
   @@map("team_season_records")
+}
+
+// 팀간 상대전적 매트릭스 (TeamRank 페이지 pnlVsTeam 표, ADR-057).
+// (season, teamId, opponentId) 자연키. 미지원 상대팀은 opponentId=null(opponentName 보존).
+model TeamHeadToHead {
+  id           Int      @id @default(autoincrement())
+  season       Int
+  teamId       String   @map("team_id") @db.VarChar(10) // 행팀 코드(doosan/hanwha/...)
+  opponentId   String?  @map("opponent_id") @db.VarChar(10) // 상대팀 코드(미지원 null)
+  opponentName String   @map("opponent_name") @db.VarChar(20) // 상대팀 한글 표시명
+  wins         Int
+  losses       Int
+  draws        Int
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@unique([season, teamId, opponentId], map: "uq_h2h_season_team_opp")
+  @@index([season, teamId], map: "idx_h2h_season_team")
+  @@map("team_head_to_head")
 }
