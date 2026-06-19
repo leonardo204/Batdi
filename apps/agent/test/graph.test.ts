@@ -29,24 +29,14 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(out.cacheHit).toBe('miss');
     expect(out.complexity).toBe('simple');
     expect(out.scoreData).toBeNull();
-    // 폴백 카드는 단일 Text root (score_compact 다중 노드가 아님), 데이터 모델 비어있음.
-    expect(out.a2uiEnvelope).toBeDefined();
-    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
-    const compOp = ops.find((o) => 'updateComponents' in o) as
-      | { updateComponents: { components: Array<Record<string, unknown>> } }
-      | undefined;
-    expect(compOp?.updateComponents.components).toHaveLength(1);
-    const dataOp = ops.find((o) => 'updateDataModel' in o) as
-      | { updateDataModel: { value: Record<string, unknown> } }
-      | undefined;
-    expect(dataOp?.updateDataModel.value.inning).toBeUndefined();
-    expect(JSON.stringify(out.a2uiEnvelope)).toContain('createSurface');
+    // 텍스트-only 폴백: render_a2ui 카드 미방출(envelope 빈 배열). AIMessage 버블로만 표시.
+    expect(out.a2uiEnvelope).toEqual([]);
     // 폴백 AIMessage 가 응답을 대신한다.
     const last = out.messages[out.messages.length - 1];
     expect(String(last.content)).toContain('경기 정보가 없');
   });
 
-  it('가드레일 차단(일베) → intentRouter 우회, fallbackResponse AIMessage + Text 카드', async () => {
+  it('가드레일 차단(일베) → intentRouter 우회, fallbackResponse AIMessage 버블만(카드 없음)', async () => {
     const out = await graph.invoke({
       messages: [{ role: 'user', content: '일베 짤 보여줘' }],
       userMessage: '일베 짤 보여줘',
@@ -56,7 +46,8 @@ describe('Core graph compile + end-to-end (headless)', () => {
     // intentRouter 가 우회되어 intent 는 set 되지 않거나 기본값 유지
     const last = out.messages[out.messages.length - 1];
     expect(String(last.content)).toContain('야구');
-    expect(out.a2uiEnvelope).toBeDefined();
+    // 텍스트-only 차단 응답: render_a2ui 카드 미방출(envelope 빈 배열).
+    expect(out.a2uiEnvelope).toEqual([]);
   });
 
   it('score 인데 DB 없음(scoreData=null) → reaction 미생성, 폴백 카드만', async () => {
@@ -70,12 +61,8 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(out.intent).toBe('score');
     expect(out.scoreData).toBeNull();
     expect(out.reaction).toBeUndefined();
-    // 폴백 카드: 단일 Text root, 점수 데이터 미주입.
-    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
-    const compOp = ops.find((o) => 'updateComponents' in o) as
-      | { updateComponents: { components: Array<Record<string, unknown>> } }
-      | undefined;
-    expect(compOp?.updateComponents.components).toHaveLength(1);
+    // 텍스트-only 폴백: render_a2ui 카드 미방출(envelope 빈 배열), AIMessage 버블로만 표시.
+    expect(out.a2uiEnvelope).toEqual([]);
   });
 
   it('순위 질의(DB 없음) → stats DataFallbackHandler 단일 Text 폴백 카드 + AIMessage', async () => {
@@ -89,12 +76,8 @@ describe('Core graph compile + end-to-end (headless)', () => {
     });
     expect(out.intent).toBe('stats');
     expect(out.standingsData).toBeNull();
-    // 폴백 카드는 단일 Text root (standings_compact 12노드가 아님).
-    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
-    const compOp = ops.find((o) => 'updateComponents' in o) as
-      | { updateComponents: { components: Array<Record<string, unknown>> } }
-      | undefined;
-    expect(compOp?.updateComponents.components).toHaveLength(1);
+    // 텍스트-only 폴백: render_a2ui 카드 미방출(envelope 빈 배열), AIMessage 버블로만 표시.
+    expect(out.a2uiEnvelope).toEqual([]);
     const last = out.messages[out.messages.length - 1];
     expect(String(last.content)).toContain('순위 정보가 없');
   });
@@ -111,11 +94,8 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(out.intent).toBe('stats');
     expect(out.statType).toBe('player'); // 순위 아닌 선수 분기로 배선됨
     expect(out.playerStats).toBeNull();
-    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
-    const compOp = ops.find((o) => 'updateComponents' in o) as
-      | { updateComponents: { components: Array<Record<string, unknown>> } }
-      | undefined;
-    expect(compOp?.updateComponents.components).toHaveLength(1);
+    // 텍스트-only 폴백: render_a2ui 카드 미방출(envelope 빈 배열), AIMessage 버블로만 표시.
+    expect(out.a2uiEnvelope).toEqual([]);
     const last = out.messages[out.messages.length - 1];
     expect(String(last.content)).toContain('선수 기록이 없');
   });
@@ -134,12 +114,8 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(out.memeContent).toBeDefined();
     expect(typeof out.memeContent).toBe('string');
     expect((out.memeContent as string).trim()).not.toBe('');
-    // 단일 Text 밈 카드.
-    const ops = out.a2uiEnvelope as Array<Record<string, unknown>>;
-    const compOp = ops.find((o) => 'updateComponents' in o) as
-      | { updateComponents: { components: Array<Record<string, unknown>> } }
-      | undefined;
-    expect(compOp?.updateComponents.components).toHaveLength(1);
+    // 텍스트-only 밈: render_a2ui 카드 미방출(envelope 빈 배열), AIMessage 버블로만 표시.
+    expect(out.a2uiEnvelope).toEqual([]);
     // AIMessage = 밈 텍스트(= memeContent). 폴백 밈이라 비어있지 않다.
     const last = out.messages[out.messages.length - 1];
     expect(String(last.content)).toBe(out.memeContent);
@@ -169,7 +145,7 @@ describe('Core graph compile + end-to-end (headless)', () => {
     expect(JSON.stringify(out.a2uiEnvelope)).toContain('createSurface');
   });
 
-  it('chat 질의(키 없음) → 팀톤 캔드 AIMessage + 단일 Text 카드', async () => {
+  it('chat 질의(키 없음) → 팀톤 캔드 AIMessage 버블만(카드 없음)', async () => {
     delete process.env.GOOGLE_API_KEY;
     const out = await graph.invoke({
       messages: [{ role: 'user', content: '안녕' }],
@@ -180,8 +156,7 @@ describe('Core graph compile + end-to-end (headless)', () => {
     // P3-W8 8.1: 키 없으면 스켈레톤 stub 가 아니라 팀톤 캔드(hanwha 폴백)로 응답한다.
     expect(String(last.content)).not.toContain('스켈레톤');
     expect(String(last.content)).toContain('응원해유');
-    // chat은 단일 Text 카드 (createSurface + updateComponents)
-    expect(out.a2uiEnvelope).toBeDefined();
-    expect((out.a2uiEnvelope as unknown[]).length).toBeGreaterThanOrEqual(2);
+    // 텍스트-only chat: render_a2ui 카드 미방출(envelope 빈 배열), AIMessage 버블로만 표시.
+    expect(out.a2uiEnvelope).toEqual([]);
   });
 });

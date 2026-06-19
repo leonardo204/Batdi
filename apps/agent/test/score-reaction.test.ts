@@ -126,25 +126,14 @@ describe('emitA2UI — score 실데이터 없음 → DataFallbackHandler (W5.5)'
     } as unknown as CoreGraphState;
   }
 
-  it('scoreData=null → 점수 템플릿(score_compact) 대신 단일 Text 폴백 카드 + AIMessage', async () => {
+  it('scoreData=null → 점수 템플릿(score_compact) 대신 AIMessage 버블만(카드 미방출)', async () => {
     const update = await emitA2UI(makeNoDataState());
-    const ops = update.a2uiEnvelope as Array<Record<string, unknown>>;
-    // 폴백 카드: 단일 Text root (score_compact 의 다중 노드가 아님).
-    const compOp = ops.find((o) => 'updateComponents' in o) as
-      | { updateComponents: { components: Array<Record<string, unknown>> } }
-      | undefined;
-    const comps = compOp?.updateComponents.components ?? [];
-    expect(comps).toHaveLength(1);
-    expect(comps[0]).toMatchObject({ id: 'root', component: 'Text' });
-    // 점수 데이터(home/away/inning)는 주입되지 않는다(폴백은 빈 데이터 모델).
-    const dataOp = ops.find((o) => 'updateDataModel' in o) as
-      | { updateDataModel: { value: Record<string, unknown> } }
-      | undefined;
-    expect(dataOp?.updateDataModel.value.home).toBeUndefined();
-    expect(dataOp?.updateDataModel.value.inning).toBeUndefined();
-    // AIMessage 가 동반(폴백 텍스트가 응답을 대신)
+    // 텍스트-only 폴백: render_a2ui 카드 미방출(envelope 빈 배열).
+    expect(update.a2uiEnvelope).toEqual([]);
+    // AIMessage 버블이 응답을 대신한다(하나만).
     const msgs = update.messages as Array<{ content: unknown }>;
     expect(msgs).toBeDefined();
+    expect(msgs).toHaveLength(1);
     expect(String(msgs[0]?.content)).toContain('경기 정보가 없');
     // 수치(점수) 미포함
     expect(String(msgs[0]?.content)).not.toMatch(/[0-9]/);

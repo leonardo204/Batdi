@@ -349,18 +349,11 @@ export async function emitA2UI(
     const blockedText =
       state.inputGuardrailResult.fallbackResponse ??
       '그런 얘기는 좀 그런 거 같아유~ 즐겁게 야구 얘기 하자!';
-    const result = buildA2UIOps(
-      [{ id: 'root', component: 'Text', text: blockedText }],
-      {},
-      blockedText,
-    );
-    reportA2UIResult(
-      `guardrail-blocked(${state.inputGuardrailResult.violationType ?? 'unknown'})`,
-      result,
-    );
+    // 텍스트-only 응답: AIMessage 버블 하나만 방출한다(render_a2ui Text 카드 제거).
+    // 카드+버블 둘 다 내면 CopilotChat 이 텍스트를 2번 렌더한다(중복 표시 버그).
     logResponseLevel('blocked', state.intent ?? 'unknown');
     return {
-      a2uiEnvelope: result.ops,
+      a2uiEnvelope: [],
       messages: [new AIMessage(blockedText)],
     };
   }
@@ -427,17 +420,11 @@ export async function emitA2UI(
   // ⚠️ 데이터 없는 상태는 캐시하면 안 되므로 L0 write 하지 않는다(Cache 무결성).
   if (state.intent === 'score' && state.scoreData == null) {
     const fallbackText = scoreNoDataText(state.teamId);
-    const result = buildA2UIOps(
-      [{ id: 'root', component: 'Text', text: fallbackText }],
-      {},
-      fallbackText,
-    );
-    reportA2UIResult('intent=score(no-data-fallback)', result);
-    await emitRenderA2UIToolCall(result, config);
+    // 텍스트-only 폴백: AIMessage 버블 하나만(render_a2ui Text 카드 제거 → 중복 표시 방지).
     // L0 write 생략 — 경기 없는 상태를 캐시하면 다음 경기일에도 stale fallback 이 나간다.
     logResponseLevel('L1', 'score');
     return {
-      a2uiEnvelope: result.ops,
+      a2uiEnvelope: [],
       messages: [new AIMessage(fallbackText)],
     };
   }
@@ -452,17 +439,11 @@ export async function emitA2UI(
     state.playerStats == null
   ) {
     const fallbackText = playerStatsNoDataText(state.teamId);
-    const result = buildA2UIOps(
-      [{ id: 'root', component: 'Text', text: fallbackText }],
-      {},
-      fallbackText,
-    );
-    reportA2UIResult('intent=stats(player,no-data-fallback)', result);
-    await emitRenderA2UIToolCall(result, config);
+    // 텍스트-only 폴백: AIMessage 버블 하나만(render_a2ui Text 카드 제거 → 중복 표시 방지).
     // L0 write 생략 — 선수 기록 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
     logResponseLevel('L1', 'stats');
     return {
-      a2uiEnvelope: result.ops,
+      a2uiEnvelope: [],
       messages: [new AIMessage(fallbackText)],
     };
   }
@@ -478,17 +459,11 @@ export async function emitA2UI(
     state.standingsData == null
   ) {
     const fallbackText = standingsNoDataText(state.teamId);
-    const result = buildA2UIOps(
-      [{ id: 'root', component: 'Text', text: fallbackText }],
-      {},
-      fallbackText,
-    );
-    reportA2UIResult('intent=stats(no-data-fallback)', result);
-    await emitRenderA2UIToolCall(result, config);
+    // 텍스트-only 폴백: AIMessage 버블 하나만(render_a2ui Text 카드 제거 → 중복 표시 방지).
     // L0 write 생략 — 순위 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
     logResponseLevel('L1', 'stats');
     return {
-      a2uiEnvelope: result.ops,
+      a2uiEnvelope: [],
       messages: [new AIMessage(fallbackText)],
     };
   }
@@ -499,17 +474,11 @@ export async function emitA2UI(
   // stats 폴백과 평행. ⚠️ 데이터 부재라 L0 write 하지 않는다(적재 후에도 stale 방지).
   if (state.intent === 'news' && state.newsData == null) {
     const fallbackText = newsNoDataText(state.teamId);
-    const result = buildA2UIOps(
-      [{ id: 'root', component: 'Text', text: fallbackText }],
-      {},
-      fallbackText,
-    );
-    reportA2UIResult('intent=news(no-data-fallback)', result);
-    await emitRenderA2UIToolCall(result, config);
+    // 텍스트-only 폴백: AIMessage 버블 하나만(render_a2ui Text 카드 제거 → 중복 표시 방지).
     // L0 write 생략 — 뉴스 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
     logResponseLevel('L1', 'news');
     return {
-      a2uiEnvelope: result.ops,
+      a2uiEnvelope: [],
       messages: [new AIMessage(fallbackText)],
     };
   }
@@ -520,17 +489,11 @@ export async function emitA2UI(
   // news 폴백과 평행. ⚠️ 데이터 부재라 L0 write 하지 않는다(적재 후에도 stale 방지).
   if (state.intent === 'schedule' && state.scheduleData == null) {
     const fallbackText = scheduleNoDataText(state.teamId);
-    const result = buildA2UIOps(
-      [{ id: 'root', component: 'Text', text: fallbackText }],
-      {},
-      fallbackText,
-    );
-    reportA2UIResult('intent=schedule(no-data-fallback)', result);
-    await emitRenderA2UIToolCall(result, config);
+    // 텍스트-only 폴백: AIMessage 버블 하나만(render_a2ui Text 카드 제거 → 중복 표시 방지).
     // L0 write 생략 — 예정 경기 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
     logResponseLevel('L1', 'schedule');
     return {
-      a2uiEnvelope: result.ops,
+      a2uiEnvelope: [],
       messages: [new AIMessage(fallbackText)],
     };
   }
@@ -541,17 +504,11 @@ export async function emitA2UI(
   // 카드 + AIMessage. schedule 폴백과 평행. ⚠️ 데이터 부재라 L0 write 하지 않는다.
   if (state.intent === 'lineup' && state.lineupData == null) {
     const fallbackText = lineupNoDataText(state.teamId);
-    const result = buildA2UIOps(
-      [{ id: 'root', component: 'Text', text: fallbackText }],
-      {},
-      fallbackText,
-    );
-    reportA2UIResult('intent=lineup(no-data-fallback)', result);
-    await emitRenderA2UIToolCall(result, config);
+    // 텍스트-only 폴백: AIMessage 버블 하나만(render_a2ui Text 카드 제거 → 중복 표시 방지).
     // L0 write 생략 — 라인업 미공개 상태를 캐시하면 공개 후에도 stale fallback 이 나간다.
     logResponseLevel('L1', 'lineup');
     return {
-      a2uiEnvelope: result.ops,
+      a2uiEnvelope: [],
       messages: [new AIMessage(fallbackText)],
     };
   }
@@ -562,17 +519,11 @@ export async function emitA2UI(
   // schedule/lineup 폴백과 평행. ⚠️ 데이터 부재라 L0 write 하지 않는다(적재 후에도 stale 방지).
   if (state.intent === 'h2h' && state.headToHeadData == null) {
     const fallbackText = headToHeadNoDataText(state.teamId);
-    const result = buildA2UIOps(
-      [{ id: 'root', component: 'Text', text: fallbackText }],
-      {},
-      fallbackText,
-    );
-    reportA2UIResult('intent=h2h(no-data-fallback)', result);
-    await emitRenderA2UIToolCall(result, config);
+    // 텍스트-only 폴백: AIMessage 버블 하나만(render_a2ui Text 카드 제거 → 중복 표시 방지).
     // L0 write 생략 — 상대전적 미적재 상태를 캐시하면 적재 후에도 stale fallback 이 나간다.
     logResponseLevel('L1', 'h2h');
     return {
-      a2uiEnvelope: result.ops,
+      a2uiEnvelope: [],
       messages: [new AIMessage(fallbackText)],
     };
   }
@@ -686,36 +637,29 @@ export async function emitA2UI(
       state.memeContent && state.memeContent.trim() !== ''
         ? state.memeContent
         : '오늘도 같이 야구 보면서 신나게 응원하자!';
-    const result = buildA2UIOps(
-      [{ id: 'root', component: 'Text', text: memeText }],
-      {},
-      memeText,
-    );
-    reportA2UIResult('intent=meme', result);
-    await emitRenderA2UIToolCall(result, config);
+    // 텍스트-only 응답: AIMessage 버블 하나만(render_a2ui Text 카드 제거 → 중복 표시 방지).
     // L0 write 생략 — 밈은 랜덤(비결정)이라 캐시하면 같은 밈만 반복 노출된다.
     logResponseLevel('chat', 'meme');
     return {
-      a2uiEnvelope: result.ops,
+      a2uiEnvelope: [],
       messages: [new AIMessage(memeText)],
     };
   }
 
-  // ── 템플릿 없음 (chat 등) → 텍스트-only + 단일 Text 카드 ──
+  // ── 템플릿 없음 (chat 등) → 텍스트-only 버블 ──
   // P3-W8 8.1: chat 응답은 ChatGraph 서비스가 페르소나 + PersonalContext + 출력 가드레일 +
   // 팀톤 폴백을 갖춰 생성한다(이전 맨 Gemini 호출/스켈레톤 stub 교체).
+  //
+  // ⚠️ 텍스트-only 응답은 AIMessage 버블 하나로만 보여야 한다. render_a2ui Text 카드를
+  //   함께 내면 CopilotChat 이 카드+버블 둘 다 렌더해 텍스트가 2번 표시된다(중복 표시 버그).
+  //   따라서 카드(emitRenderA2UIToolCall)는 내지 않고 a2uiEnvelope 는 빈 배열로 둔다.
   const { text, toolCalls } = await generateChatReply(state, config);
-  const result = buildA2UIOps(
-    [{ id: 'root', component: 'Text', text }],
-    {},
-    text,
-  );
-  reportA2UIResult(`intent=${state.intent}(no-template)`, result);
 
   logResponseLevel('chat', state.intent ?? 'unknown');
   // P4-W10 10.1: LLM 이 프론트 액션을 호출했으면 구조화된 tool_calls 를 가진 AIMessage 를
   //   messages 에 실어준다 → CopilotKit 클라이언트(processAgentResult)가 message.toolCalls 를
   //   읽어 getTool(name).handler 를 실행한다(ADR-050). tool_call 없으면 기존 텍스트 메시지.
+  //   tool_call 유무와 무관하게 render_a2ui Text 카드는 내지 않는다(텍스트는 버블로만).
   const assistantMessage =
     toolCalls.length > 0
       ? new AIMessage({
@@ -729,7 +673,7 @@ export async function emitA2UI(
         })
       : new AIMessage(text);
   return {
-    a2uiEnvelope: result.ops,
+    a2uiEnvelope: [],
     messages: [assistantMessage],
   };
 }

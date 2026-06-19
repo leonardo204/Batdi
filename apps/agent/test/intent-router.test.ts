@@ -78,6 +78,27 @@ describe('IntentRouter.classifyIntent', () => {
     expect(r.intent).toBe('stats');
     expect(r.statType).toBe('standings');
   });
+
+  it('스탯+순위 결합: "타율 순위"·"홈런 순위" → stats/player (player 규칙이 standings 앞)', () => {
+    // 구체 스탯 키워드(타율/홈런)가 일반 "순위"를 가로채야 한다(선수 리더보드 의도).
+    const avg = classifyIntent(norm('타율 순위'));
+    expect(avg.intent).toBe('stats');
+    expect(avg.statType).toBe('player');
+
+    const hr = classifyIntent(norm('홈런 순위'));
+    expect(hr.intent).toBe('stats');
+    expect(hr.statType).toBe('player');
+  });
+
+  it('스탯 키워드 없는 순위/승률 → stats/standings (회귀)', () => {
+    const rank = classifyIntent(norm('순위 알려줘'));
+    expect(rank.intent).toBe('stats');
+    expect(rank.statType).toBe('standings');
+
+    const wpct = classifyIntent(norm('승률'));
+    expect(wpct.intent).toBe('stats');
+    expect(wpct.statType).toBe('standings');
+  });
 });
 
 describe('IntentRouter — P2 키워드 보강 (결과·승패·팀별칭)', () => {

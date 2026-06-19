@@ -10,6 +10,13 @@
  * DATABASE_URL='' 테스트 env 라 writeL0Cache 는 getPrisma=undefined 로 자연 skip(부수효과 없음).
  */
 import { describe, it, expect, vi } from 'vitest';
+
+// render_a2ui 카드 방출(dispatchCustomEvent) 횟수로 "카드 분기 1회 / 텍스트 폴백 0회"를 검증.
+const dispatchMock = vi.fn(async () => undefined);
+vi.mock('@langchain/core/callbacks/dispatch', () => ({
+  dispatchCustomEvent: (...args: unknown[]) => dispatchMock(...args),
+}));
+
 import { emitA2UI } from '../src/nodes/emit-a2ui';
 import * as chatMod from '../src/services/chat-graph';
 import type { CoreGraphState } from '../src/state';
@@ -58,8 +65,9 @@ function dataModel(o: Array<Record<string, unknown>>): Record<string, unknown> {
 }
 
 describe('emitA2UI — schedule intent → schedule_compact 카드', () => {
-  it('scheduleData 있으면 schedule_compact ops(date+rows 주입), chat 미호출', async () => {
+  it('scheduleData 있으면 schedule_compact ops(date+rows 주입) + 카드 dispatch, chat 미호출', async () => {
     const chatSpy = vi.spyOn(chatMod, 'generateChatReply');
+    dispatchMock.mockClear();
 
     const scheduleData = {
       date: '6월 18일 기준',
@@ -74,6 +82,7 @@ describe('emitA2UI — schedule intent → schedule_compact 카드', () => {
     const update = await emitA2UI(makeState({ scheduleData }));
 
     expect(chatSpy).not.toHaveBeenCalled();
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
     const o = ops(update);
     // schedule_compact: root Column + title + date + 5 row = 8 노드(단일 Text 폴백 아님).
     expect(components(o).length).toBeGreaterThan(1);
@@ -85,17 +94,19 @@ describe('emitA2UI — schedule intent → schedule_compact 카드', () => {
     chatSpy.mockRestore();
   });
 
-  it('scheduleData == null → 팀 톤 폴백 단일 Text 카드 + AIMessage(chat 미호출)', async () => {
+  it('scheduleData == null → 팀 톤 폴백 AIMessage 버블만(카드·chat 미호출)', async () => {
     const chatSpy = vi.spyOn(chatMod, 'generateChatReply');
+    dispatchMock.mockClear();
 
     const update = await emitA2UI(makeState({ scheduleData: null }));
 
     expect(chatSpy).not.toHaveBeenCalled();
-    const o = ops(update);
-    expect(components(o)).toHaveLength(1);
-    expect(components(o)[0]).toMatchObject({ id: 'root', component: 'Text' });
+    // 텍스트-only 폴백: render_a2ui 카드 미방출(dispatch 0회 + envelope 빈 배열).
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(update.a2uiEnvelope).toEqual([]);
 
     const msgs = update.messages as Array<{ content: unknown }> | undefined;
+    expect(msgs).toHaveLength(1);
     expect(String(msgs?.[msgs.length - 1]?.content)).not.toBe('');
 
     chatSpy.mockRestore();
@@ -107,27 +118,30 @@ describe('emitA2UI — schedule intent → schedule_compact 카드', () => {
 });
 
 describe('emitA2UI — lineup intent → lineup_compact 카드 / 폴백', () => {
-  it('lineupData == null(정상 경로) → 팀 톤 폴백 단일 Text 카드 + AIMessage', async () => {
+  it('lineupData == null(정상 경로) → 팀 톤 폴백 AIMessage 버블만(카드 미방출)', async () => {
     const chatSpy = vi.spyOn(chatMod, 'generateChatReply');
+    dispatchMock.mockClear();
 
     const update = await emitA2UI(
       makeState({ intent: 'lineup', lineupData: null }),
     );
 
     expect(chatSpy).not.toHaveBeenCalled();
-    const o = ops(update);
-    expect(components(o)).toHaveLength(1);
-    expect(components(o)[0]).toMatchObject({ id: 'root', component: 'Text' });
+    // 텍스트-only 폴백: render_a2ui 카드 미방출(dispatch 0회 + envelope 빈 배열).
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(update.a2uiEnvelope).toEqual([]);
 
     const msgs = update.messages as Array<{ content: unknown }> | undefined;
+    expect(msgs).toHaveLength(1);
     // "라인업" 안내 문구 포함.
     expect(String(msgs?.[msgs.length - 1]?.content)).toContain('라인업');
 
     chatSpy.mockRestore();
   });
 
-  it('lineupData 있으면 lineup_compact ops(team+rows 주입), chat 미호출', async () => {
+  it('lineupData 있으면 lineup_compact ops(team+rows 주입) + 카드 dispatch, chat 미호출', async () => {
     const chatSpy = vi.spyOn(chatMod, 'generateChatReply');
+    dispatchMock.mockClear();
 
     const lineupData = {
       team: '두산',
@@ -140,6 +154,7 @@ describe('emitA2UI — lineup intent → lineup_compact 카드 / 폴백', () => 
     );
 
     expect(chatSpy).not.toHaveBeenCalled();
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
     const o = ops(update);
     // lineup_compact: root Column + title + team + 9 row = 12 노드.
     expect(components(o).length).toBeGreaterThan(1);

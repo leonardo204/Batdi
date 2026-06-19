@@ -53,17 +53,21 @@ export const INTENT_RULES: ReadonlyArray<IntentRule> = [
   },
   // 상대전적(h2h) — stats/score 보다 먼저(“상대전적”이 stats/순위로 새지 않게, ADR-057).
   { intent: 'h2h', pattern: /상대전적|맞대결|천적|상대\s*전적/ },
-  // 순위/승률(standings) 우선 — 일반 stats보다 먼저
-  {
-    intent: 'stats',
-    statType: 'standings',
-    pattern: /순위|몇\s*위|승률|게임\s*차|연승|연패|선두|꼴찌|상위권|하위권/,
-  },
+  // ⚠️ 선수 스탯(player)을 순위(standings)보다 **먼저** 매칭한다.
+  //   "타율 순위"·"홈런 순위" 처럼 스탯 키워드+순위가 함께 오면 팀 순위표가 아니라
+  //   선수 리더보드를 원하므로, 구체 스탯 키워드(타율/홈런/방어율…)가 일반 "순위"를
+  //   가로채야 한다. "순위"·"승률"만 있으면(스탯 키워드 없음) standings 로 떨어진다.
   {
     intent: 'stats',
     statType: 'player',
     pattern:
       /타율|방어율|홈런|era|war|ops|세이버|타점|도루|출루율|장타율|탈삼진|wrc|fip|whip|성적|기록/,
+  },
+  // 순위/승률(standings) — 스탯 키워드 없는 순위/승률 표현
+  {
+    intent: 'stats',
+    statType: 'standings',
+    pattern: /순위|몇\s*위|승률|게임\s*차|연승|연패|선두|꼴찌|상위권|하위권/,
   },
   { intent: 'news', pattern: /뉴스|소식|기사|근황|이슈|화제/ },
   {
